@@ -1,0 +1,64 @@
+{
+  "items": [
+    {
+      "itemId": "lucidmate_trip_pass",
+      "name": "Trip Pass",
+      "description": "Permanently unlocks Nebula, Ultraviolet and Lava themes, and removes the between-matches interstitial. Cosmetic and ad-free only — no chess rule changes.",
+      "category": "bundle",
+      "price": { "type": "bucks", "value": "399" },
+      "entitlements": [
+        { "entitlementId": "lucidmate_theme_pack_cosmic", "quantity": 1, "consumable": false },
+        { "entitlementId": "lucidmate_no_interstitials", "quantity": 1, "consumable": false },
+        { "entitlementId": "lucidmate_theme_lava", "quantity": 1, "consumable": false }
+      ],
+      "assets": {},
+      "unique": true,
+      "active": true,
+      "regions": [],
+      "refundEligible": true,
+      "refundWindowHours": 24,
+      "tags": ["lucidmate", "founder", "cosmetic", "ad-free", "permanent"],
+      "sortOrder": 1,
+      "releasedAt": null,
+      "expiresAt": null
+    },
+    {
+      "itemId": "lucidmate_theme_pack_cosmic",
+      "name": "Theme Pack — Cosmic",
+      "description": "Permanently unlocks the Nebula and Ultraviolet trip themes. Cosmetic only.",
+      "category": "non_consumable",
+      "price": { "type": "bucks", "value": "199" },
+      "entitlements": [{ "entitlementId": "lucidmate_theme_pack_cosmic", "quantity": 1, "consumable": false }],
+      "assets": {},
+      "unique": true,
+      "active": true,
+      "regions": [],
+      "refundEligible": true,
+      "refundWindowHours": 24,
+      "tags": ["lucidmate", "cosmetic", "permanent"],
+      "sortOrder": 2,
+      "releasedAt": null,
+      "expiresAt": null
+    },
+    {
+      "itemId": "lucidmate_no_interstitials",
+      "name": "Ad-Free Forever",
+      "description": "Permanently removes the between-matches interstitial. Optional rewarded videos remain available and are never required.",
+      "category": "non_consumable",
+      "price": { "type": "bucks", "value": "249" },
+      "entitlements": [{ "entitlementId": "lucidmate_no_interstitials", "quantity": 1, "consumable": false }],
+      "assets": {},
+      "unique": true,
+      "active": true,
+      "regions": [],
+      "refundEligible": true,
+      "refundWindowHours": 24,
+      "tags": ["lucidmate", "ad-free", "permanent"],
+      "sortOrder": 3,
+      "releasedAt": null,
+      "expiresAt": null
+    }
+  ],
+  "sales": [],
+  "collections": []
+}

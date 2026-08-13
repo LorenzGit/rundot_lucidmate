@@ -1,0 +1,32 @@
+{
+  "rooms": [
+    {
+      "type": "lucidmate-chess",
+      "file": "src/rooms/ChessRoom.ts",
+      "export": "default",
+      "config": {
+        "maxPlayers": 2,
+        "idleTimeout": 600,
+        "autoPersist": true,
+        "persistInterval": 5000,
+        "allowReconnect": true,
+        "reconnectTimeout": 60
+      }
+    },
+    {
+      "type": "lucidmate-correspondence",
+      "file": "src/rooms/ChessRoom.ts",
+      "export": "default",
+      "persistent": true,
+      "config": {
+        "maxPlayers": 2,
+        "idleTimeout": 300,
+        "autoPersist": true,
+        "persistInterval": 1000,
+        "allowReconnect": true,
+        "reconnectTimeout": 90,
+        "tickInterval": 60
+      }
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+export function describeJoinError(error: unknown): string {
+    const message = error instanceof Error ? error.message : String(error ?? "");
+    if (/not found|room_not_found|no longer exists/i.test(message)) {
+        return "Match code not found. Check all 6 characters or ask for a new code.";
+    }
+    if (/full|locked/i.test(message)) return "That match already has two players.";
+    if (
+        /duplicate.?session|same (player|profile|account)|already connected|already in (this|the) room/i.test(message)
+    ) {
+        return "You’re already connected to this board. To test both sides, join from a different RUN account.";
+    }
+    if (/unauthori[sz]ed|forbidden|close(?:d)?\s*4001/i.test(message)) {
+        return "RUN couldn’t open this board for your account. Refresh RUN, then try again.";
+    }
+    return "We couldn’t reach that board. Try again in a moment.";
+}

@@ -1,0 +1,90 @@
+KEY,English,PortugueseBR,SpanishLA
+MenuSubtitle,"Classic chess. Soft neon themes. Quick matches.","Xadrez clássico. Temas suaves. Partidas rápidas.","Ajedrez clásico. Temas suaves. Partidas rápidas."
+MenuNavLabel,GAME MENUS,MENUS DO JOGO,MENÚS DEL JUEGO
+MenuLounge,LOUNGE,LOUNGE,SALÓN
+MenuDailyRewards,AURAS,AURAS,AURAS
+MenuDailyQuests,TRIPS,VIAGENS,VIAJES
+MenuStats,STATS,STATS,STATS
+MenuSettings,SETTINGS,OPÇÕES,AJUSTES
+ButtonPlay,PLAY,JOGAR,JUGAR
+ButtonBack,BACK,VOLTAR,ATRÁS
+ButtonMenu,MENU,MENU,MENÚ
+ButtonDone,DONE,PRONTO,LISTO
+ButtonTest,TEST,TESTAR,PROBAR
+PlayerSummary,PLAYER SUMMARY,RESUMO DO JOGADOR,RESUMEN DEL JUGADOR
+LabelWins,WINS,VITÓRIAS,VICTORIAS
+LabelAuras,AURAS,AURAS,AURAS
+LabelTurn,TURN,TURNO,TURNO
+LabelMoves,MOVES,JOGADAS,JUGADAS
+LabelCaptures,CAPTURES,CAPTURAS,CAPTURAS
+LabelChecks,CHECKS,XEQUES,JAQUES
+LabelScore,SCORE,PONTOS,PUNTOS
+LabelDay,DAY,DIA,DÍA
+LoadingCopy,Setting the board…,Montando o tabuleiro…,Preparando el tablero…
+Paused,PAUSED,PAUSADO,EN PAUSA
+PausedEyebrow,MATCH HELD,PARTIDA PAUSADA,PARTIDA EN PAUSA
+PausedResume,TAP TO RESUME,TOQUE PARA CONTINUAR,TOCA PARA CONTINUAR
+HelperUndo,UNDO,DESFAZER,DESHACER
+HelperUndoHint,Rewind the last exchange.,Desfaz a última troca.,Deshace el último intercambio.
+HelperHint,HINT,DICA,PISTA
+HelperHintHint,Glow a strong legal idea.,Destaca uma boa jogada legal.,Resalta una buena jugada legal.
+ResultsAgain,PLAY AGAIN,JOGAR DE NOVO,JUGAR OTRA VEZ
+ResultsLounge,BACK TO LOUNGE,VOLTAR AO LOUNGE,VOLVER AL SALÓN
+ResultsDoubleAuras,WATCH · DOUBLE [auras] AURAS,ASSISTIR · DOBRAR [auras] AURAS,VER · DUPLICAR [auras] AURAS
+AdLoading,LOADING…,CARREGANDO…,CARGANDO…
+AdUnavailable,NO VIDEO AVAILABLE RIGHT NOW,NENHUM VÍDEO DISPONÍVEL AGORA,NINGÚN VIDEO DISPONIBLE AHORA
+KickerLounge,THEMES,TEMAS,TEMAS
+LoungeBody,"Themes never change the rules — only the colours.","Temas nunca mudam as regras — só as cores.","Los temas nunca cambian las reglas — solo los colores."
+LoungeProducts,RUN BITS SHOP,LOJA RUN BITS,TIENDA RUN BITS
+LoungeProductsBody,"Permanent unlocks, bought with Run Bits.","Desbloqueios permanentes, comprados com Run Bits.","Desbloqueos permanentes, comprados con Run Bits."
+LoungeSafetyNote,"Ownership is read from RUN entitlements every session, never from this device.","A posse é lida das permissões da RUN a cada sessão, nunca deste aparelho.","La propiedad se lee de las licencias de RUN cada sesión, nunca de este dispositivo."
+ThemeSelect,SELECT,SELECIONAR,SELECCIONAR
+ThemeSelected,IN USE,EM USO,EN USO
+ThemeUnlockAuras,UNLOCK · [cost],DESBLOQUEAR · [cost],DESBLOQUEAR · [cost]
+NotEnoughAuras,NOT ENOUGH AURAS YET,AURAS INSUFICIENTES,AURAS INSUFICIENTES
+Owned,RUN BITS,RUN BITS,RUN BITS
+ProductOwned,OWNED,ADQUIRIDO,ADQUIRIDO
+PurchaseWorking,OPENING CHECKOUT…,ABRINDO PAGAMENTO…,ABRIENDO PAGO…
+PurchaseConfirmed,UNLOCKED — THANK YOU,DESBLOQUEADO — OBRIGADO,DESBLOQUEADO — GRACIAS
+PurchaseCancelled,PURCHASE CANCELLED,COMPRA CANCELADA,COMPRA CANCELADA
+PurchaseFailed,PURCHASE DID NOT COMPLETE,A COMPRA NÃO FOI CONCLUÍDA,LA COMPRA NO SE COMPLETÓ
+PurchasePending,STILL CONFIRMING — WE WILL FINISH THIS NEXT TIME YOU OPEN THE GAME,AINDA CONFIRMANDO — TERMINAREMOS NA PRÓXIMA VEZ,AÚN CONFIRMANDO — LO TERMINAREMOS LA PRÓXIMA VEZ
+PurchaseUnavailable,NOT AVAILABLE RIGHT NOW,INDISPONÍVEL AGORA,NO DISPONIBLE AHORA
+KickerStats,TRIP LOG,DIÁRIO,DIARIO
+StatsBody,Everything you have played so far.,Tudo o que você jogou até agora.,Todo lo que has jugado hasta ahora.
+StatWins,WINS,VITÓRIAS,VICTORIAS
+StatLosses,LOSSES,DERROTAS,DERROTAS
+StatDraws,DRAWS,EMPATES,EMPATES
+StatMatches,MATCHES,PARTIDAS,PARTIDAS
+StatCaptures,CAPTURES,CAPTURAS,CAPTURAS
+StatWinStreak,BEST WIN STREAK,MELHOR SEQUÊNCIA,MEJOR RACHA
+KickerDailyRewards,RETURN LOOP,VOLTE SEMPRE,VUELVE PRONTO
+DailyRewardsBody,A handful of auras for every day you come back to the board.,Algumas auras por cada dia que você volta ao tabuleiro.,Unas auras por cada día que vuelves al tablero.
+KickerDailyQuests,TODAY'S TRIP,VIAGEM DE HOJE,VIAJE DE HOY
+DailyQuestsBody,Three jobs a day. They reset with the trusted clock.,Três tarefas por dia. Reiniciam com o relógio confiável.,Tres tareas al día. Se reinician con el reloj confiable.
+ClaimAuras,CLAIM [auras] AURAS,RECEBER [auras] AURAS,RECLAMAR [auras] AURAS
+Claimed,CLAIMED,RECEBIDO,RECLAMADO
+ClaimedToday,CLAIMED TODAY,RECEBIDO HOJE,RECLAMADO HOY
+InProgress,IN PROGRESS,EM ANDAMENTO,EN PROGRESO
+Saving,SAVING…,SALVANDO…,GUARDANDO…
+LocalClaimNote,Local claims work offline; trusted time is used on RUN host.,Reivindicações locais funcionam offline; o relógio confiável é usado no host RUN.,Las reclamaciones locales funcionan sin conexión; el reloj confiable se usa en el host RUN.
+KickerSettings,CONTROLS,CONTROLES,CONTROLES
+SettingsMusic,Music,Música,Música
+SettingsMusicVolume,Music volume,Volume da música,Volumen de música
+SettingsSfx,Sound effects,Efeitos sonoros,Efectos de sonido
+SettingsSfxVolume,SFX volume,Volume dos efeitos,Volumen de efectos
+SettingsHaptics,Haptics,Vibração,Vibración
+SettingsReducedMotion,Reduced motion,Menos movimento,Menos movimiento
+SettingsNotifications,Notifications,Notificações,Notificaciones
+SettingsQuality,Graphics quality,Qualidade gráfica,Calidad gráfica
+SettingsUnavailable,Not available right now,Indisponível agora,No disponible ahora
+NotificationFailed,Could not update notification preference,Não foi possível atualizar as notificações,No se pudo actualizar la preferencia
+HapticSent,Haptic sent,Vibração enviada,Vibración enviada
+HapticUnsupported,Haptics unsupported here,Vibração não suportada,Vibración no soportada
+ToggleOn,ON,LIGADO,ACTIVADO
+ToggleOff,OFF,DESLIGADO,DESACTIVADO
+ToggleAsk,ASK,PERGUNTAR,PREGUNTAR
+SettingsLanguage,Language,Idioma,Idioma
+SettingsLow,Low,Baixa,Baja
+SettingsHigh,High,Alta,Alta
+NotificationConsentNote,Notifications are optional and can be turned off anytime.,Notificações são opcionais e podem ser desligadas a qualquer momento.,Las notificaciones son opcionales y se pueden desactivar en cualquier momento.

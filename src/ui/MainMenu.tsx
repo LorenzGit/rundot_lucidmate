@@ -1,0 +1,501 @@
+import packageJson from "../../package.json";
+import { useEffect, useState } from "react";
+import { audioManager } from "../audio/audioManager.ts";
+import { canUseAuthoritativeRealtime } from "../game/chess/onlineClient.ts";
+import { GAME_NAME } from "../game/constants.ts";
+import {
+    endCorrespondenceMatch,
+    leaveOnlineMatch,
+    startCorrespondenceMatch,
+    startOnlineMatch,
+} from "../game/runController.ts";
+import { correspondence } from "../social/correspondence.ts";
+import type { CorrespondenceMatch } from "../social/model.ts";
+import { paceLabel } from "../social/model.ts";
+import { store, useStore } from "../state/store.ts";
+import { dailySystems } from "../systems/dailySystems.ts";
+import { runtimeServices } from "../systems/runtimeServices.ts";
+import GearIcon from "./GearIcon.tsx";
+
+const MINI_SQUARES = [
+    "a4",
+    "b4",
+    "c4",
+    "d4",
+    "a3",
+    "b3",
+    "c3",
+    "d3",
+    "a2",
+    "b2",
+    "c2",
+    "d2",
+    "a1",
+    "b1",
+    "c1",
+    "d1",
+] as const;
+
+function cue(action: () => void): void {
+    action();
+    void audioManager.unlock().then(() => {
+        audioManager.play("tap");
+        void runtimeServices.haptic("light");
+    });
+}
+
+function CpuIcon() {
+    return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="5" y="6" width="14" height="12" rx="3" />
+            <path d="M9 3v3M15 3v3M9 18v3M15 18v3M2 10h3M19 10h3M2 14h3M19 14h3" />
+            <circle cx="9.5" cy="11.5" r="1" />
+            <circle cx="14.5" cy="11.5" r="1" />
+            <path d="M9 15h6" />
+        </svg>
+    );
+}
+
+function JoinIcon() {
+    return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M13 5h6v14h-6M3 12h12M10 7l5 5-5 5" />
+        </svg>
+    );
+}
+
+function MiniBoard({ match }: { match: CorrespondenceMatch }) {
+    const accent = (match.lastMove?.to ?? match.matchKey.length * 7) % 16;
+    return (
+        <span className="inbox-mini-board" aria-hidden="true">
+            {MINI_SQUARES.map((square, index) => (
+                <i key={square} className={index === accent ? "hot" : ""}>
+                    {index === accent ? (match.color === "b" ? "♞" : "♘") : ""}
+                </i>
+            ))}
+        </span>
+    );
+}
+
+function dueCopy(match: CorrespondenceMatch): string {
+    if (match.unavailable) return "Couldn’t connect";
+    if (match.phase === "waiting") return "Invite waiting";
+    if (match.phase === "over") {
+        if (match.reason === "cancelled") return "Match ended";
+        if (match.result === "win") return "You won";
+        if (match.result === "loss") return "Rival won";
+        return "Draw";
+    }
+    if (!match.deadlineAt) return paceLabel(match.pace);
+    const remaining = Math.max(0, match.deadlineAt - Date.now());
+    const hours = Math.max(1, Math.ceil(remaining / 3_600_000));
+    return hours < 24 ? `${hours}h left` : `${Math.ceil(hours / 24)}d left`;
+}
+
+function matchStatus(match: CorrespondenceMatch, yourMove: boolean): string {
+    if (match.unavailable) return "NEEDS ATTENTION";
+    if (match.phase === "waiting") return "CHALLENGE";
+    if (yourMove) return "YOUR MOVE";
+    return match.phase === "over" ? "FINAL" : "WAITING";
+}
+
+function MatchCard({ match, onManage }: { match: CorrespondenceMatch; onManage: () => void }) {
+    const yourMove = match.phase === "playing" && match.color === match.turn;
+    const status = matchStatus(match, yourMove);
+    const open = () => {
+        if (match.unavailable) {
+            cue(onManage);
+            return;
+        }
+        cue(() => store.patch({ socialBusy: true }));
+        void startCorrespondenceMatch({ matchKey: match.matchKey, pace: match.pace }).then((ok) => {
+            if (!ok) {
+                store.patch({ socialBusy: false });
+                onManage();
+            }
+        });
+    };
+    return (
+        <article
+            className={`inbox-match${yourMove ? " your-move" : ""}${match.unavailable ? " unavailable" : ""}`}
+            data-match-key={match.matchKey}
+        >
+            <button type="button" className="inbox-match-open" onClick={open}>
+                <MiniBoard match={match} />
+                <span className="inbox-match-copy">
+                    <small>{status}</small>
+                    <strong>{match.opponent?.username ?? "Waiting for a friend"}</strong>
+                    <em>
+                        {match.moveCount ? `${match.moveCount} moves · ` : ""}
+                        {dueCopy(match)}
+                    </em>
+                </span>
+                <span className="inbox-match-arrow" aria-hidden="true">
+                    ›
+                </span>
+            </button>
+            <button
+                type="button"
+                className="inbox-match-manage"
+                aria-label={`Manage board with ${match.opponent?.username ?? "your friend"}`}
+                onClick={() => cue(onManage)}
+            >
+                •••
+            </button>
+        </article>
+    );
+}
+
+function BoardActions({ match, onClose }: { match: CorrespondenceMatch; onClose: () => void }) {
+    const busy = useStore((state) => state.socialBusy);
+    const [confirmEnd, setConfirmEnd] = useState(false);
+    const [actionError, setActionError] = useState<string | null>(null);
+    const title = match.opponent?.username ?? "Friend board";
+
+    useEffect(() => {
+        const closeOnEscape = (event: KeyboardEvent) => {
+            if (event.key === "Escape" && !busy) onClose();
+        };
+        window.addEventListener("keydown", closeOnEscape);
+        return () => window.removeEventListener("keydown", closeOnEscape);
+    }, [busy, onClose]);
+
+    const remove = () => {
+        cue(() => correspondence.removeReference(match.matchKey));
+        onClose();
+    };
+
+    const end = () => {
+        setActionError(null);
+        cue(() => setConfirmEnd(false));
+        void endCorrespondenceMatch(match).then((ended) => {
+            if (ended) {
+                onClose();
+            } else {
+                setActionError("We couldn’t reach this game. Check your connection, or remove this card.");
+            }
+        });
+    };
+
+    return (
+        <div
+            className="board-actions-backdrop"
+            role="presentation"
+            onPointerDown={(event) => {
+                if (event.target === event.currentTarget && !busy) onClose();
+            }}
+        >
+            <section
+                className="board-actions-card"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="board-actions-title"
+            >
+                <button
+                    type="button"
+                    className="board-actions-close"
+                    aria-label="Close board actions"
+                    onClick={() => cue(onClose)}
+                >
+                    ×
+                </button>
+                <p>{confirmEnd ? "CONFIRM" : match.unavailable ? "SAVED BOARD" : "BOARD OPTIONS"}</p>
+                <h2 id="board-actions-title">{confirmEnd ? "End this match?" : title}</h2>
+                {confirmEnd ? (
+                    <>
+                        <span>
+                            {match.phase === "waiting"
+                                ? "This cancels the challenge for everyone."
+                                : "This resigns the game and gives your rival the win."}
+                        </span>
+                        <div className="board-actions-row">
+                            <button
+                                type="button"
+                                className="board-action neutral"
+                                onClick={() => cue(() => setConfirmEnd(false))}
+                            >
+                                Keep playing
+                            </button>
+                            <button type="button" className="board-action danger" disabled={busy} onClick={end}>
+                                {busy ? "Ending…" : "End match"}
+                            </button>
+                        </div>
+                    </>
+                ) : (
+                    <>
+                        <span>
+                            {match.unavailable
+                                ? "We couldn’t find this game online. It may have expired, or it may have been created in Preview App."
+                                : `${paceLabel(match.pace)} · ${dueCopy(match)}`}
+                        </span>
+                        {actionError && (
+                            <p className="board-action-error" role="alert">
+                                {actionError}
+                            </p>
+                        )}
+                        {match.phase !== "over" && !match.unavailable && (
+                            <button
+                                type="button"
+                                className="board-action danger-outline"
+                                disabled={busy}
+                                onClick={() => cue(() => setConfirmEnd(true))}
+                            >
+                                End match
+                                <small>{match.phase === "waiting" ? "Cancel for everyone" : "Resign this game"}</small>
+                            </button>
+                        )}
+                        <button type="button" className="board-action neutral" disabled={busy} onClick={remove}>
+                            Remove this card
+                            <small>
+                                {match.phase === "over" || match.unavailable
+                                    ? "Clear it from Your Games"
+                                    : "Match keeps running"}
+                            </small>
+                        </button>
+                    </>
+                )}
+            </section>
+        </div>
+    );
+}
+
+function NavIcon({ name }: { name: "rivals" | "league" | "dreams" | "settings" }) {
+    if (name === "settings") return <GearIcon />;
+    if (name === "rivals") {
+        return (
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="8" cy="8" r="3" />
+                <circle cx="16" cy="8" r="3" />
+                <path d="M2.5 19c.8-4 2.8-6 5.5-6s4.7 2 5.5 6M10.5 19c.8-4 2.8-6 5.5-6s4.7 2 5.5 6" />
+            </svg>
+        );
+    }
+    if (name === "league") {
+        return (
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M7 4h10v5c0 4-2 7-5 8-3-1-5-4-5-8ZM4 6h3v3c0 2-1 3-3 3ZM20 6h-3v3c0 2 1 3 3 3M9 21h6M12 17v4" />
+            </svg>
+        );
+    }
+    return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 3 14.2 8.2 20 9l-4.2 4 1 5.8L12 16l-4.8 2.8 1-5.8L4 9l5.8-.8Z" />
+        </svg>
+    );
+}
+
+export default function MainMenu() {
+    const state = useStore((value) => value);
+    const [managedMatchKey, setManagedMatchKey] = useState<string | null>(null);
+    const matches = state.correspondenceMatches;
+    const yourMove = matches.filter((match) => match.phase === "playing" && match.color === match.turn);
+    const waiting = matches.filter(
+        (match) => match.phase === "waiting" || (match.phase === "playing" && match.color !== match.turn),
+    );
+    const recent = matches.filter((match) => match.phase === "over");
+    const visible = [...yourMove, ...waiting, ...recent];
+    const reward = dailySystems.rewardView();
+    const busy = state.socialBusy || state.onlineStatus === "connecting";
+    const onlineReady = canUseAuthoritativeRealtime();
+    const managedMatch = matches.find((match) => match.matchKey === managedMatchKey) ?? null;
+
+    useEffect(() => {
+        if (store.get().onlineStatus !== "idle") {
+            void leaveOnlineMatch();
+        }
+    }, []);
+
+    const findRival = () => {
+        if (!onlineReady) return;
+        cue(() => store.patch({ socialBusy: true }));
+        audioManager.play("start");
+        void startOnlineMatch({ mode: "quick" }).then((ok) => {
+            store.patch({ socialBusy: false });
+            if (!ok) audioManager.play("reject");
+        });
+    };
+
+    const code = state.onlineJoinCode.trim().toUpperCase();
+    const validCode = /^[A-Z0-9]{6}$/.test(code);
+    const joinByCode = () => {
+        if (!onlineReady) return;
+        if (busy || !validCode) {
+            store.patch({ onlineError: "Enter all 6 characters from your friend’s code." });
+            audioManager.play("reject");
+            void runtimeServices.haptic("error");
+            return;
+        }
+        cue(() => store.patch({ socialBusy: true, onlineJoinCode: code }));
+        audioManager.play("start");
+        void startOnlineMatch({ mode: "join", joinCode: code }).then((ok) => {
+            store.patch({ socialBusy: false });
+            if (!ok) audioManager.play("reject");
+        });
+    };
+
+    return (
+        <main className="dream-menu inbox-menu pt-safe-top pb-safe-bottom" data-testid="main-menu">
+            <header className="dream-topbar inbox-topbar">
+                <div className="dream-wordmark">
+                    <span>CHESS, TOGETHER</span>
+                    <h1>{GAME_NAME}</h1>
+                </div>
+                <small className="inbox-version">v{packageJson.version}</small>
+            </header>
+
+            <button
+                type="button"
+                className="cpu-hero"
+                onClick={() => cue(() => store.patch({ menuScreen: "practice" }))}
+            >
+                <span className="cpu-hero-icon">
+                    <CpuIcon />
+                </span>
+                <div>
+                    <p>PLAY THE COMPUTER</p>
+                    <h2>Start a solo game</h2>
+                    <small>Easy, Standard or Expert · choose your side</small>
+                </div>
+                <b aria-hidden="true">›</b>
+            </button>
+
+            <div className="inbox-start-panel">
+                <section className="inbox-actions" aria-label="Start a game">
+                    <button
+                        type="button"
+                        className="inbox-action primary"
+                        onClick={() => cue(() => store.patch({ menuScreen: "challenge" }))}
+                    >
+                        <span className="inbox-action-glyph">＋</span>
+                        <span>
+                            <strong>Challenge a friend</strong>
+                            <small>{onlineReady ? "Play over a day or three" : "See how friend games work"}</small>
+                        </span>
+                    </button>
+                    <button type="button" className="inbox-action" onClick={findRival} disabled={busy || !onlineReady}>
+                        <span className="inbox-action-glyph">⌁</span>
+                        <span>
+                            <strong>{busy ? "Finding a rival…" : "Find a live rival"}</strong>
+                            <small>
+                                {onlineReady ? "Matched online, play now" : "Available when connected to RUN"}
+                            </small>
+                        </span>
+                    </button>
+                </section>
+                <form
+                    className={`join-code-strip${onlineReady ? "" : " unavailable"}`}
+                    aria-label="Join a match with a code"
+                    onSubmit={(event) => {
+                        event.preventDefault();
+                        joinByCode();
+                    }}
+                >
+                    <span className="join-code-glyph">
+                        <JoinIcon />
+                    </span>
+                    <label htmlFor="match-code">
+                        <span>JOIN WITH CODE</span>
+                        <input
+                            id="match-code"
+                            data-testid="join-code-input"
+                            className="join-code-input"
+                            value={state.onlineJoinCode}
+                            placeholder={onlineReady ? "ENTER CODE" : "OPEN IN RUN TO JOIN"}
+                            disabled={!onlineReady}
+                            autoCapitalize="characters"
+                            autoComplete="off"
+                            spellCheck={false}
+                            maxLength={6}
+                            onChange={(event) =>
+                                store.patch({
+                                    onlineJoinCode: event.currentTarget.value
+                                        .toUpperCase()
+                                        .replace(/[^A-Z0-9]/g, "")
+                                        .slice(0, 6),
+                                    onlineError: null,
+                                })
+                            }
+                        />
+                    </label>
+                    <button type="submit" className="join-code-submit" disabled={busy || !validCode || !onlineReady}>
+                        JOIN
+                    </button>
+                </form>
+                {state.onlineError && (
+                    <p className="join-code-error" role="alert">
+                        {state.onlineError}
+                    </p>
+                )}
+            </div>
+
+            <section className={`inbox-list${visible.length ? "" : " empty"}`} aria-label="Match inbox">
+                <div className="inbox-section-head">
+                    <p>YOUR GAMES</p>
+                    <span>
+                        {yourMove.length
+                            ? `${yourMove.length} waiting on you`
+                            : visible.length
+                              ? `${visible.length} ${visible.length === 1 ? "board" : "boards"}`
+                              : "ALL CAUGHT UP"}
+                    </span>
+                </div>
+                {visible.length ? (
+                    <div className="inbox-match-stack">
+                        {visible.map((match) => (
+                            <MatchCard
+                                key={match.matchKey}
+                                match={match}
+                                onManage={() => setManagedMatchKey(match.matchKey)}
+                            />
+                        ))}
+                    </div>
+                ) : (
+                    <div className="inbox-empty">
+                        <span className="empty-board-mark" aria-hidden="true">
+                            <i />
+                            <i />
+                            <i />
+                            <i />
+                        </span>
+                        <div>
+                            <strong>No friend games yet</strong>
+                            <p>Challenge someone, or play the computer above.</p>
+                        </div>
+                    </div>
+                )}
+            </section>
+
+            <button
+                type="button"
+                className={`inbox-daily${reward.ready && !reward.claimed ? " ready" : ""}`}
+                onClick={() => cue(() => store.patch({ menuScreen: "dreams" }))}
+            >
+                <span className="daily-beacon-orbit" aria-hidden="true" />
+                <span>
+                    <small>DAILY DREAM</small>
+                    <strong>{reward.claimed ? "Keep today's streak alive" : `${reward.reward} auras are ready`}</strong>
+                </span>
+                <b aria-hidden="true">›</b>
+            </button>
+
+            <nav className="dream-dock inbox-dock" aria-label="Community menus">
+                {(
+                    [
+                        ["rivals", "rivals", "Rivals"],
+                        ["league", "league", "League"],
+                        ["dreams", "dreams", "Daily"],
+                        ["settings", "settings", "Settings"],
+                    ] as const
+                ).map(([screen, icon, label]) => (
+                    <button key={screen} type="button" onClick={() => cue(() => store.patch({ menuScreen: screen }))}>
+                        <span>
+                            <NavIcon name={icon} />
+                        </span>
+                        {label}
+                    </button>
+                ))}
+            </nav>
+            {managedMatch && <BoardActions match={managedMatch} onClose={() => setManagedMatchKey(null)} />}
+        </main>
+    );
+}
