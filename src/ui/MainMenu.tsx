@@ -78,7 +78,7 @@ function MiniBoard({ match }: { match: CorrespondenceMatch }) {
 }
 
 function dueCopy(match: CorrespondenceMatch): string {
-    if (match.unavailable) return "Couldn’t connect";
+    if (match.unavailable) return "Tap to reconnect";
     if (match.phase === "waiting") return "Invite waiting";
     if (match.phase === "over") {
         if (match.reason === "cancelled") return "Match ended";
@@ -93,7 +93,7 @@ function dueCopy(match: CorrespondenceMatch): string {
 }
 
 function matchStatus(match: CorrespondenceMatch, yourMove: boolean): string {
-    if (match.unavailable) return "NEEDS ATTENTION";
+    if (match.unavailable) return "RECONNECT";
     if (match.phase === "waiting") return "CHALLENGE";
     if (yourMove) return "YOUR MOVE";
     return match.phase === "over" ? "FINAL" : "WAITING";
@@ -103,15 +103,10 @@ function MatchCard({ match, onManage }: { match: CorrespondenceMatch; onManage: 
     const yourMove = match.phase === "playing" && match.color === match.turn;
     const status = matchStatus(match, yourMove);
     const open = () => {
-        if (match.unavailable) {
-            cue(onManage);
-            return;
-        }
         cue(() => store.patch({ socialBusy: true }));
         void startCorrespondenceMatch({ matchKey: match.matchKey, pace: match.pace }).then((ok) => {
             if (!ok) {
                 store.patch({ socialBusy: false });
-                onManage();
             }
         });
     };
@@ -177,6 +172,14 @@ function BoardActions({ match, onClose }: { match: CorrespondenceMatch; onClose:
         });
     };
 
+    const retry = () => {
+        cue(onClose);
+        store.patch({ socialBusy: true });
+        void startCorrespondenceMatch({ matchKey: match.matchKey, pace: match.pace }).then(() => {
+            store.patch({ socialBusy: false });
+        });
+    };
+
     return (
         <div
             className="board-actions-backdrop"
@@ -199,7 +202,7 @@ function BoardActions({ match, onClose }: { match: CorrespondenceMatch; onClose:
                 >
                     ×
                 </button>
-                <p>{confirmEnd ? "CONFIRM" : match.unavailable ? "SAVED BOARD" : "BOARD OPTIONS"}</p>
+                <p>{confirmEnd ? "CONFIRM" : match.unavailable ? "RECONNECT BOARD" : "BOARD OPTIONS"}</p>
                 <h2 id="board-actions-title">{confirmEnd ? "End this match?" : title}</h2>
                 {confirmEnd ? (
                     <>
@@ -225,7 +228,7 @@ function BoardActions({ match, onClose }: { match: CorrespondenceMatch; onClose:
                     <>
                         <span>
                             {match.unavailable
-                                ? "We couldn’t find this game online. It may have expired, or it may have been created in Preview App."
+                                ? "The last connection attempt failed. Your saved board is still here."
                                 : `${paceLabel(match.pace)} · ${dueCopy(match)}`}
                         </span>
                         {actionError && (
@@ -242,6 +245,12 @@ function BoardActions({ match, onClose }: { match: CorrespondenceMatch; onClose:
                             >
                                 End match
                                 <small>{match.phase === "waiting" ? "Cancel for everyone" : "Resign this game"}</small>
+                            </button>
+                        )}
+                        {match.unavailable && (
+                            <button type="button" className="board-action neutral" disabled={busy} onClick={retry}>
+                                Try reconnecting
+                                <small>Open this saved board again</small>
                             </button>
                         )}
                         <button type="button" className="board-action neutral" disabled={busy} onClick={remove}>

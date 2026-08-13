@@ -38,6 +38,7 @@ type StatusHandler = (snap: OnlineSessionSnapshot) => void;
 type ServerState = Extract<ChessServerMessage, { type: "state" }>;
 
 const MAX_PLAYERS = 2;
+const ROOM_STATE_TIMEOUT_MS = 12_000;
 
 function realtimeAvailable(): boolean {
     try {
@@ -226,18 +227,24 @@ export class OnlineChessClient {
             return false;
         }
 
-        try {
-            if (knownRoomCode) {
-                try {
-                    const room = await RundotGameAPI.realtime.joinRoomByCode<ChessProtocol>(knownRoomCode);
-                    await this.openCorrespondenceRoom(room, matchKey, pace, 2_500);
-                    this.finishConnection();
-                    return true;
-                } catch {
-                    this.releaseRoom();
-                    this.error = null;
-                }
+        let lastError: unknown = null;
+        if (knownRoomCode) {
+            try {
+                // Rejoin the exact warm room first. A previous 2.5-second state
+                // budget was too short for cold production connections.
+                const room = await RundotGameAPI.realtime.joinRoomByCode<ChessProtocol>(knownRoomCode);
+                await this.openCorrespondenceRoom(room, matchKey, pace);
+                this.finishConnection();
+                return true;
+            } catch (error) {
+                lastError = error;
+                this.releaseRoom();
             }
+        }
+
+        try {
+            // If the invitation handle expired, the stable key resumes the
+            // durable board across room-server restarts and deployments.
             const room = await RundotGameAPI.realtime.joinOrCreateRoom<ChessProtocol>(CORRESPONDENCE_ROOM_TYPE, {
                 criteria: { matchKey },
                 persistentKey: matchKey,
@@ -245,21 +252,23 @@ export class OnlineChessClient {
             await this.openCorrespondenceRoom(room, matchKey, pace);
             this.finishConnection();
             return true;
-        } catch {
+        } catch (error) {
+            lastError = error;
             this.releaseRoom();
-            this.setStatus(
-                "error",
-                "This saved board is no longer available. Remove it from your list or create a new board.",
-            );
-            return false;
         }
+        const timedOut = lastError instanceof Error && /timed out|board state/i.test(lastError.message);
+        this.setStatus(
+            "error",
+            `We couldn’t reopen this board${timedOut ? " before the connection timed out" : ""}. Try again in a moment.`,
+        );
+        return false;
     }
 
     private async openCorrespondenceRoom(
         room: ServerRoom<ChessProtocol>,
         matchKey: string,
         pace: CorrespondencePace,
-        timeoutMs = 6_000,
+        timeoutMs = ROOM_STATE_TIMEOUT_MS,
     ): Promise<void> {
         this.room = room;
         this.roomCode = room.roomCode;
@@ -315,7 +324,6 @@ export class OnlineChessClient {
             },
             onDisconnect: () => {
                 if (this.room !== room) return;
-                this.room = null;
                 this.setStatus("disconnected", "Disconnected from match.");
             },
             onReconnecting: () => {

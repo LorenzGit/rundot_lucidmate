@@ -28,6 +28,7 @@ export function installBrowserQaContract(): void {
                 onlinePlayerCount: state.onlinePlayerCount,
                 onlineExperience: state.onlineExperience,
                 activeMatchKey: state.activeMatchKey,
+                socialBusy: state.socialBusy,
                 correspondenceMatches: state.correspondenceMatches,
             };
         },
@@ -148,6 +149,60 @@ export function installBrowserQaContract(): void {
             window.requestAnimationFrame(apply);
             window.setTimeout(apply, 300);
             window.setTimeout(apply, 900);
+        },
+        previewCorrespondenceGame() {
+            const now = Date.now();
+            const match = {
+                matchKey: "lm-preview-reactions-001",
+                pace: "daily" as const,
+                phase: "playing" as const,
+                color: "w" as const,
+                opponent: { id: "rival-mira", username: "Mira", avatarUrl: null },
+                turn: "w" as const,
+                roomCode: "DREAM1",
+                deadlineAt: now + 7 * 3_600_000,
+                updatedAt: now,
+                moveCount: 18,
+                lastMove: { from: 21, to: 36 },
+                result: null,
+                reason: null,
+                reaction: null,
+                rematchKey: null,
+                credited: false,
+                reactionsMuted: false,
+                unavailable: false,
+            };
+            const apply = () =>
+                store.patch({
+                    phase: "playing",
+                    opponentMode: "online",
+                    playerColor: "w",
+                    turn: "w",
+                    matchStatus: "playing",
+                    matchSummary: null,
+                    onlineExperience: "async",
+                    onlineStatus: "playing",
+                    onlineRoomCode: match.roomCode,
+                    onlineSeat: "w",
+                    onlinePlayerCount: 2,
+                    activeMatchKey: match.matchKey,
+                    activeMatchPace: match.pace,
+                    correspondenceMatches: [match],
+                });
+            apply();
+            window.requestAnimationFrame(apply);
+            window.setTimeout(apply, 300);
+        },
+        previewConnectionFailure() {
+            this.previewCorrespondenceGame();
+            const apply = () =>
+                store.patch({
+                    onlineStatus: "disconnected",
+                    onlineError: "The live connection paused.",
+                    thinking: false,
+                });
+            window.requestAnimationFrame(apply);
+            window.setTimeout(apply, 320);
         },
         controller() {
             return getRunController();

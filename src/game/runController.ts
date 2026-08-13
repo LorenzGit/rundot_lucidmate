@@ -29,7 +29,6 @@ export class RunController {
     /** Last server lastMove key we already animated/applied. */
     private lastAppliedKey: string | null = null;
     private pendingAsyncMoveKey: string | null = null;
-    private inboxTimer: ReturnType<typeof setTimeout> | null = null;
     private lastReactionKey: string | null = null;
 
     constructor(config?: Partial<MatchConfig>) {
@@ -82,10 +81,6 @@ export class RunController {
             onlineChess.setHandlers({});
             this.onlineWired = false;
         }
-        if (this.inboxTimer) {
-            clearTimeout(this.inboxTimer);
-            this.inboxTimer = null;
-        }
         this.scene = null;
     }
 
@@ -121,7 +116,11 @@ export class RunController {
             this.match.setPlayerColor(snap.you);
             store.patch({ playerColor: snap.you });
         }
-        const lock = snap.status === "waiting" || snap.status === "connecting" || snap.status === "error";
+        const lock =
+            snap.status === "waiting" ||
+            snap.status === "connecting" ||
+            snap.status === "error" ||
+            snap.status === "disconnected";
         this.match.setInteractionLocked(lock);
         if (snap.status === "disconnected" || snap.status === "error") {
             if (snap.error) store.patch({ toast: snap.error });
@@ -234,7 +233,7 @@ export class RunController {
             if (reactionKey !== this.lastReactionKey && state.reaction.from !== (seat ? state.seats[seat] : null)) {
                 const labels = {
                     nice_move: "Nice move",
-                    didnt_see_it: "Didn't see that",
+                    didnt_see_it: "Surprised",
                     good_game: "Good game",
                     rematch: "Rematch?",
                 } as const;
@@ -254,15 +253,8 @@ export class RunController {
             state.turn !== seat
         ) {
             this.pendingAsyncMoveKey = null;
-            store.patch({ toast: "Move sent — your games are waiting." });
-            this.inboxTimer = setTimeout(
-                () => {
-                    this.inboxTimer = null;
-                    void leaveOnlineMatch();
-                    store.patch({ phase: "menu", menuScreen: "main", matchSummary: null });
-                },
-                store.get().reducedMotion ? 120 : 650,
-            );
+            const opponent = socialMatch?.opponent?.username ?? "your friend";
+            store.patch({ toast: `Move sent — waiting for ${opponent}.` });
         }
 
         if (state.phase === "over" || this.match.isOver()) {
@@ -589,7 +581,9 @@ export async function startCorrespondenceMatch(input: {
     roomCode?: string | null;
     isNew?: boolean;
 }): Promise<boolean> {
+    const reconnectingInGame = store.get().phase === "playing" && store.get().activeMatchKey === input.matchKey;
     const reference = input.isNew ? null : correspondence.ensureReference(input.matchKey, input.pace);
+    if (!input.isNew) correspondence.clearUnavailable(input.matchKey);
     store.patch({
         opponentMode: "online",
         onlineExperience: "async",
@@ -623,20 +617,37 @@ export async function startCorrespondenceMatch(input: {
         toast: ok ? (snapshot.status === "waiting" ? "Board ready — tap the code to copy it." : null) : null,
     });
     if (!ok) {
-        if (!input.isNew) correspondence.markUnavailable(input.matchKey);
+        const connectionError = snapshot.error ?? "We couldn’t reopen this board. Try again in a moment.";
         await onlineChess.leave();
-        store.patch({
-            onlineStatus: "idle",
-            onlineError: null,
-            onlineRoomCode: null,
-            onlineSeat: null,
-            onlinePlayerCount: 0,
-            activeMatchKey: null,
-            activeMatchPace: null,
-            onlineExperience: "live",
-            thinking: false,
-            toast: null,
-        });
+        store.patch(
+            reconnectingInGame
+                ? {
+                      onlineStatus: "error",
+                      onlineError: connectionError,
+                      onlineRoomCode: reference?.roomCode ?? null,
+                      onlineSeat: reference?.color ?? null,
+                      onlinePlayerCount: reference?.opponent ? 2 : 1,
+                      activeMatchKey: input.matchKey,
+                      activeMatchPace: input.pace,
+                      onlineExperience: "async",
+                      thinking: false,
+                      socialBusy: false,
+                      toast: null,
+                  }
+                : {
+                      onlineStatus: "idle",
+                      onlineError: null,
+                      onlineRoomCode: null,
+                      onlineSeat: null,
+                      onlinePlayerCount: 0,
+                      activeMatchKey: null,
+                      activeMatchPace: null,
+                      onlineExperience: "live",
+                      thinking: false,
+                      socialBusy: false,
+                      toast: `${connectionError} Your saved board is safe.`,
+                  },
+        );
         return false;
     }
 

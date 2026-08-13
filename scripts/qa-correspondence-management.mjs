@@ -102,10 +102,17 @@ try {
     });
     const startedAt = Date.now();
     await offlinePage.locator('[data-match-key="lm-preview-waiting-only-001"] .inbox-match-open').click();
-    await offlinePage.locator('[data-match-key="lm-preview-waiting-only-001"].unavailable').waitFor();
+    await offlinePage.waitForFunction(
+        () => window.__LUCIDMATE_QA__.snapshot().phase === "menu" && !window.__LUCIDMATE_QA__.snapshot().socialBusy,
+    );
     assert.ok(Date.now() - startedAt < 2_000, "offline legacy board fails fast instead of timing out");
+    assert.equal(
+        await offlinePage.locator('[data-match-key="lm-preview-waiting-only-001"].unavailable').count(),
+        0,
+        "one failed attempt does not permanently poison a saved card",
+    );
+    await offlinePage.locator('[data-match-key="lm-preview-waiting-only-001"] .inbox-match-manage').click();
     await offlinePage.getByRole("dialog", { name: "Friend board" }).waitFor();
-    await offlinePage.getByText("We couldn’t find this game online.").waitFor();
     await offlinePage.getByRole("button", { name: "Remove this card" }).click();
     assert.equal(
         await offlinePage.locator('[data-match-key="lm-preview-waiting-only-001"]').count(),
@@ -114,7 +121,7 @@ try {
     );
 
     console.log(
-        "correspondence management QA passed: invite-code join, opposite seats, contextual recovery, end, cancel, and removal",
+        "correspondence management QA passed: invite-code join, opposite seats, non-destructive recovery, end, cancel, and removal",
     );
 } finally {
     await browser.close();

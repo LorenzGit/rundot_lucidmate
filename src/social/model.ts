@@ -5,11 +5,11 @@ export type CorrespondencePhase = "waiting" | "playing" | "over";
 export type CorrespondenceResult = "win" | "loss" | "draw";
 export type ChessReaction = "nice_move" | "didnt_see_it" | "good_game" | "rematch";
 
-export const CHESS_REACTIONS: ReadonlyArray<{ id: ChessReaction; label: string; glyph: string }> = [
-    { id: "nice_move", label: "Nice move", glyph: "✦" },
-    { id: "didnt_see_it", label: "Didn't see that", glyph: "◌" },
-    { id: "good_game", label: "Good game", glyph: "◇" },
-    { id: "rematch", label: "Rematch?", glyph: "↻" },
+export const CHESS_REACTIONS: ReadonlyArray<{ id: ChessReaction; label: string }> = [
+    { id: "nice_move", label: "Nice move" },
+    { id: "didnt_see_it", label: "Surprised" },
+    { id: "good_game", label: "Good game" },
+    { id: "rematch", label: "Rematch?" },
 ];
 
 export interface RivalIdentity {

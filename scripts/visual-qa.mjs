@@ -32,6 +32,8 @@ const screens = [
     { name: "stats", screen: "stats" },
     { name: "settings", screen: "settings" },
     { name: "game", screen: "game" },
+    { name: "reactions", screen: "game", reactions: true },
+    { name: "connection", screen: "game", connection: true },
 ];
 
 function note(message) {
@@ -115,6 +117,14 @@ try {
                 const offers = await page.locator(".shop-card").count();
                 if (offers !== 3) note(`${viewport.name}: expected 3 Run Bits offers, found ${offers}`);
             }
+            if (shot.reactions) {
+                await page.evaluate(() => globalThis.__LUCIDMATE_QA__.previewCorrespondenceGame());
+                await page.waitForSelector(".reaction-bar", { timeout: 10_000 });
+            }
+            if (shot.connection) {
+                await page.evaluate(() => globalThis.__LUCIDMATE_QA__.previewConnectionFailure());
+                await page.waitForSelector(".connection-card", { timeout: 10_000 });
+            }
             if (shot.screen === "game") {
                 await page.waitForSelector("canvas", { timeout: 15_000 });
                 await page.waitForTimeout(900);
@@ -124,7 +134,7 @@ try {
 
             const label = `${viewport.name}/${shot.name}`;
             const audit = await inspectLayout(page, label);
-            if (shot.screen === "main" && audit.version !== "v0.3.10") {
+            if (shot.screen === "main" && audit.version !== "v0.3.11") {
                 note(`${label}: visible version is "${audit.version ?? "missing"}"`);
             }
             await page.screenshot({ path: path.join(outputDir, `${viewport.name}-${shot.name}.png`) });
@@ -158,4 +168,6 @@ if (problems.length > 0) {
     for (const problem of problems) console.error(`- ${problem}`);
     process.exit(1);
 }
-console.log("Visual QA passed: 12 surfaces × 5 viewports, catalog cards, typography, overflow, and console gates.");
+console.log(
+    "Visual QA passed: 14 surfaces × 5 viewports, catalog cards, reactions, reconnect UI, typography, overflow, and console gates.",
+);

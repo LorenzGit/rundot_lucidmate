@@ -161,6 +161,23 @@ expect(
     "Playground multiplayer requires a configured hosted room server and version tag",
 );
 expect(/persistentKey: matchKey/.test(onlineClient), "saved boards must recover through their persistent match key");
+expect(
+    /joinRoomByCode<ChessProtocol>\(knownRoomCode\)/.test(onlineClient),
+    "saved boards rejoin the exact warm room first",
+);
+expect(/ROOM_STATE_TIMEOUT_MS = 12_000/.test(onlineClient), "cold room state has a realistic bounded wait");
+expect(
+    /onDisconnect:[\s\S]*?this\.setStatus\("disconnected"/.test(onlineClient) &&
+        !/onDisconnect:[\s\S]{0,160}?this\.room\s*=\s*null/.test(onlineClient),
+    "temporary disconnects retain the room so SDK reconnection can complete",
+);
+const runController = read("src/game/runController.ts");
+expect(!/inboxTimer/.test(runController), "correspondence moves must not schedule a forced menu redirect");
+expect(/Move sent — waiting for/.test(runController), "confirmed correspondence moves remain on the board");
+expect(
+    /reconnectingInGame[\s\S]*?onlineStatus:\s*"error"/.test(runController),
+    "failed retries retain the active board",
+);
 
 for (const file of [...sources, "index.html", "src/styles/app.css", "README.md"]) {
     if (!fs.existsSync(path.join(root, file))) continue;

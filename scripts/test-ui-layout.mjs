@@ -212,6 +212,10 @@ function assert(cond, msg) {
     assert(/PASS & PLAY/.test(hud) && /TO MOVE/.test(hud), "local HUD names the moving side");
     assert(/const isYourTurn =/.test(hud), "HUD derives the local player's active turn");
     assert(/helper-bar\$\{isYourTurn \? " your-turn"/.test(hud), "helper rail marks the local player's turn");
+    assert(/className="reaction-actions"/.test(hud), "reactions have a dedicated responsive action grid");
+    assert(/Send a friendly chess phrase/.test(hud), "reaction UI explains its purpose");
+    assert(/className="connection-card/.test(hud), "lost connections show a dedicated recovery card");
+    assert(/Your board is safe/.test(hud), "reconnect copy reassures the player that progress is preserved");
     assert(!/SHARE INVITE/.test(hud), "waiting board has no broken share-invite button");
 
     const challenge = fs.readFileSync(path.join(root, "src/ui/ChallengeScreen.tsx"), "utf8");

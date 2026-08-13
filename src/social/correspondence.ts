@@ -111,10 +111,10 @@ export const correspondence = {
         updateMatch({ ...match, reactionsMuted: !match.reactionsMuted });
     },
 
-    markUnavailable(matchKey: string): void {
+    clearUnavailable(matchKey: string): void {
         const match = store.get().correspondenceMatches.find((entry) => entry.matchKey === matchKey);
-        if (!match) return;
-        updateMatch({ ...match, roomCode: null, unavailable: true });
+        if (!match || !match.unavailable) return;
+        updateMatch({ ...match, unavailable: false });
     },
 
     removeReference(matchKey: string): void {

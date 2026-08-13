@@ -10,6 +10,7 @@ import {
     HINT_COST,
     UNDO_COST,
     leaveOnlineMatch,
+    startCorrespondenceMatch,
     startCorrespondenceRematch,
     startMatch,
 } from "../game/runController.ts";
@@ -26,6 +27,36 @@ import { copyPlainText } from "../systems/shareText.ts";
 import GearIcon from "./GearIcon.tsx";
 import SettingToggle from "./SettingToggle.tsx";
 import { resumeFromPause, usePauseGate } from "./usePauseGate.ts";
+
+function ReactionIcon({ id }: { id: (typeof CHESS_REACTIONS)[number]["id"] }) {
+    if (id === "nice_move") {
+        return (
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m12 3 1.5 5.5L19 10l-5.5 1.5L12 17l-1.5-5.5L5 10l5.5-1.5Z" />
+            </svg>
+        );
+    }
+    if (id === "didnt_see_it") {
+        return (
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M3 12s3.2-5 9-5 9 5 9 5-3.2 5-9 5-9-5-9-5Z" />
+                <circle cx="12" cy="12" r="2.2" />
+            </svg>
+        );
+    }
+    if (id === "good_game") {
+        return (
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m12 3 2.2 4.6 5 .7-3.6 3.5.9 5-4.5-2.4-4.5 2.4.9-5-3.6-3.5 5-.7Z" />
+            </svg>
+        );
+    }
+    return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M19 8V4l-2 2a7 7 0 1 0 1.6 9M19 4h-4" />
+        </svg>
+    );
+}
 
 async function copyRoomCode(code: string): Promise<void> {
     const value = code.trim();
@@ -112,6 +143,8 @@ export default function Hud() {
         ? (correspondenceMatches.find((match) => match.matchKey === activeMatchKey) ?? null)
         : null;
     const waitingOnline = isOnline && (onlineStatus === "waiting" || onlineStatus === "connecting") && !summary;
+    const connectionFailed =
+        isCorrespondence && (onlineStatus === "error" || onlineStatus === "disconnected") && !summary;
     const turnCopy = turnPresentation({
         turn,
         playerColor,
@@ -221,7 +254,31 @@ export default function Hud() {
                 </div>
             )}
 
-            {!summary && !waitingOnline && !isOnline && (
+            {connectionFailed && activeMatch && (
+                <section className="connection-card pointer-events-auto" role="alert">
+                    <p className="eyebrow">CONNECTION PAUSED</p>
+                    <h2>Your board is safe</h2>
+                    <p>We lost the live connection. Reopen the same saved board to continue.</p>
+                    <button
+                        type="button"
+                        className="play-button"
+                        onClick={() => {
+                            tapFeedback();
+                            void startCorrespondenceMatch({
+                                matchKey: activeMatch.matchKey,
+                                pace: activeMatch.pace,
+                            });
+                        }}
+                    >
+                        Reconnect
+                    </button>
+                    <button type="button" className="secondary-button" onClick={leave}>
+                        Back to Your Games
+                    </button>
+                </section>
+            )}
+
+            {!summary && !waitingOnline && !connectionFailed && !isOnline && (
                 <div className={`helper-bar${isYourTurn ? " your-turn" : ""}`}>
                     <HelperButton
                         label={t("HelperUndo")}
@@ -252,26 +309,36 @@ export default function Hud() {
                 </div>
             )}
 
-            {!summary && !waitingOnline && isCorrespondence && activeMatch && (
-                <fieldset className={`reaction-bar pointer-events-auto${isYourTurn ? " your-turn" : ""}`}>
-                    <legend>REACT</legend>
-                    {CHESS_REACTIONS.map((reaction) => (
-                        <button
-                            key={reaction.id}
-                            type="button"
-                            title={reaction.label}
-                            aria-label={reaction.label}
-                            onClick={() => {
-                                tapFeedback();
-                                if (!correspondence.react(reaction.id))
-                                    store.patch({ toast: "Reaction could not be sent." });
-                            }}
-                        >
-                            <b aria-hidden="true">{reaction.glyph}</b>
-                            <small>{reaction.label}</small>
-                        </button>
-                    ))}
-                </fieldset>
+            {!summary && !waitingOnline && !connectionFailed && isCorrespondence && activeMatch && (
+                <section
+                    className={`reaction-bar pointer-events-auto${isYourTurn ? " your-turn" : ""}`}
+                    aria-label="Send a friendly reaction"
+                >
+                    <header className="reaction-bar-head">
+                        <strong>REACTIONS</strong>
+                        <small>Send a friendly chess phrase</small>
+                    </header>
+                    <div className="reaction-actions">
+                        {CHESS_REACTIONS.map((reaction) => (
+                            <button
+                                key={reaction.id}
+                                type="button"
+                                title={reaction.label}
+                                aria-label={reaction.label}
+                                onClick={() => {
+                                    tapFeedback();
+                                    if (!correspondence.react(reaction.id))
+                                        store.patch({ toast: "Reaction could not be sent." });
+                                }}
+                            >
+                                <b>
+                                    <ReactionIcon id={reaction.id} />
+                                </b>
+                                <small>{reaction.label}</small>
+                            </button>
+                        ))}
+                    </div>
+                </section>
             )}
 
             {pendingPromotion && <PromotionCard />}
