@@ -28,6 +28,7 @@ export function applyDevelopmentScreenPreview(): void {
     const requested = params.get("screen") ?? pathScreen;
     const qa = params.get("qa") === "1" || qaPath;
     const socialPreview = params.get("socialPreview");
+    const matchmakingPreview = params.get("matchmaking") === "1";
     if (qa && store.get().correspondenceMatches.length === 0) {
         const now = Date.now();
         if (socialPreview === "waiting") {
@@ -53,6 +54,7 @@ export function applyDevelopmentScreenPreview(): void {
                         credited: false,
                         reactionsMuted: false,
                         unavailable: false,
+                        incoming: false,
                     },
                 ],
             });
@@ -79,6 +81,7 @@ export function applyDevelopmentScreenPreview(): void {
                         credited: false,
                         reactionsMuted: false,
                         unavailable: false,
+                        incoming: false,
                     },
                     {
                         matchKey: "lm-preview-waiting-002",
@@ -99,6 +102,7 @@ export function applyDevelopmentScreenPreview(): void {
                         credited: false,
                         reactionsMuted: false,
                         unavailable: false,
+                        incoming: false,
                     },
                     {
                         matchKey: "lm-preview-final-003",
@@ -119,6 +123,7 @@ export function applyDevelopmentScreenPreview(): void {
                         credited: true,
                         reactionsMuted: false,
                         unavailable: false,
+                        incoming: false,
                     },
                 ],
             });
@@ -130,7 +135,26 @@ export function applyDevelopmentScreenPreview(): void {
         return;
     }
     if (MENU_SCREENS.has(requested as MenuScreen)) {
-        store.patch({ phase: "menu", menuScreen: requested as MenuScreen, paused: false });
+        store.patch({
+            phase: "menu",
+            menuScreen: requested as MenuScreen,
+            paused: false,
+            matchmakingVisible: matchmakingPreview,
+            onlineStatus: matchmakingPreview ? "connecting" : store.get().onlineStatus,
+        });
+        if (requested === "rivals" && qa) {
+            const now = Date.now();
+            store.patch({
+                rivalDirectoryStatus: "ready",
+                rivalRecommendations: [
+                    { id: "rival-vela", username: "Vela", avatarUrl: null, lastSeenAt: now - 140_000 },
+                    { id: "rival-nova", username: "NovaKnight", avatarUrl: null, lastSeenAt: now - 3_600_000 },
+                    { id: "rival-kite", username: "Kite", avatarUrl: null, lastSeenAt: now - 82_000_000 },
+                    { id: "rival-io", username: "Io", avatarUrl: null, lastSeenAt: now - 96_000_000 },
+                    { id: "rival-ember", username: "Ember", avatarUrl: null, lastSeenAt: now - 190_000_000 },
+                ],
+            });
+        }
         return;
     }
     console.warn(`[dev] Unknown screen preview "${requested}".`);

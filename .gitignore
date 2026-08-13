@@ -17,6 +17,7 @@ game.config.playground.json
 
 # RUN local/operator state (keep reviewed source configs elsewhere)
 .rundot/
+.rundot-server-entry.tmp.ts
 rundot-session*
 player-snapshot*
 campaign-state*

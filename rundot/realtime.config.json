@@ -27,6 +27,20 @@
         "reconnectTimeout": 90,
         "tickInterval": 60
       }
+    },
+    {
+      "type": "lucidmate-rivals",
+      "file": "src/rooms/RivalsRoom.ts",
+      "export": "default",
+      "persistent": true,
+      "config": {
+        "maxPlayers": 200,
+        "idleTimeout": 300,
+        "autoPersist": true,
+        "persistInterval": 1000,
+        "allowReconnect": true,
+        "reconnectTimeout": 60
+      }
     }
   ]
 }

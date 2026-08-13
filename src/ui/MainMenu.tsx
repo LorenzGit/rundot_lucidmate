@@ -8,10 +8,12 @@ import {
     leaveOnlineMatch,
     startCorrespondenceMatch,
     startOnlineMatch,
+    startQuickMatch,
 } from "../game/runController.ts";
 import { correspondence } from "../social/correspondence.ts";
 import type { CorrespondenceMatch } from "../social/model.ts";
 import { paceLabel } from "../social/model.ts";
+import { rivalsClient } from "../social/rivalsClient.ts";
 import { store, useStore } from "../state/store.ts";
 import { dailySystems } from "../systems/dailySystems.ts";
 import { runtimeServices } from "../systems/runtimeServices.ts";
@@ -79,7 +81,7 @@ function MiniBoard({ match }: { match: CorrespondenceMatch }) {
 
 function dueCopy(match: CorrespondenceMatch): string {
     if (match.unavailable) return "Tap to reconnect";
-    if (match.phase === "waiting") return "Invite waiting";
+    if (match.phase === "waiting") return match.incoming ? "Tap to accept" : "Invite waiting";
     if (match.phase === "over") {
         if (match.reason === "cancelled") return "Match ended";
         if (match.result === "win") return "You won";
@@ -94,7 +96,7 @@ function dueCopy(match: CorrespondenceMatch): string {
 
 function matchStatus(match: CorrespondenceMatch, yourMove: boolean): string {
     if (match.unavailable) return "RECONNECT";
-    if (match.phase === "waiting") return "CHALLENGE";
+    if (match.phase === "waiting") return match.incoming ? "NEW CHALLENGE" : "CHALLENGE";
     if (yourMove) return "YOUR MOVE";
     return match.phase === "over" ? "FINAL" : "WAITING";
 }
@@ -104,11 +106,19 @@ function MatchCard({ match, onManage }: { match: CorrespondenceMatch; onManage: 
     const status = matchStatus(match, yourMove);
     const open = () => {
         cue(() => store.patch({ socialBusy: true }));
-        void startCorrespondenceMatch({ matchKey: match.matchKey, pace: match.pace }).then((ok) => {
-            if (!ok) {
-                store.patch({ socialBusy: false });
-            }
-        });
+        void (match.incoming ? rivalsClient.accept(match.matchKey) : Promise.resolve(true))
+            .then((accepted) =>
+                accepted
+                    ? startCorrespondenceMatch({
+                          matchKey: match.matchKey,
+                          pace: match.pace,
+                          roomCode: match.roomCode,
+                      })
+                    : false,
+            )
+            .then((ok) => {
+                if (!ok) store.patch({ socialBusy: false });
+            });
     };
     return (
         <article
@@ -156,6 +166,7 @@ function BoardActions({ match, onClose }: { match: CorrespondenceMatch; onClose:
     }, [busy, onClose]);
 
     const remove = () => {
+        if (match.incoming) void rivalsClient.cancelChallenge(match.matchKey);
         cue(() => correspondence.removeReference(match.matchKey));
         onClose();
     };
@@ -304,22 +315,21 @@ export default function MainMenu() {
     const recent = matches.filter((match) => match.phase === "over");
     const visible = [...yourMove, ...waiting, ...recent];
     const reward = dailySystems.rewardView();
-    const busy = state.socialBusy || state.onlineStatus === "connecting";
+    const busy = state.socialBusy || state.matchmakingVisible;
     const onlineReady = canUseAuthoritativeRealtime();
     const managedMatch = matches.find((match) => match.matchKey === managedMatchKey) ?? null;
 
     useEffect(() => {
-        if (store.get().onlineStatus !== "idle") {
-            void leaveOnlineMatch();
-        }
+        void (store.get().onlineStatus !== "idle" ? leaveOnlineMatch() : Promise.resolve()).then(() =>
+            rivalsClient.connect(),
+        );
     }, []);
 
     const findRival = () => {
         if (!onlineReady) return;
-        cue(() => store.patch({ socialBusy: true }));
+        cue(() => store.patch({ socialBusy: false }));
         audioManager.play("start");
-        void startOnlineMatch({ mode: "quick" }).then((ok) => {
-            store.patch({ socialBusy: false });
+        void startQuickMatch().then((ok) => {
             if (!ok) audioManager.play("reject");
         });
     };
@@ -384,7 +394,7 @@ export default function MainMenu() {
                     <button type="button" className="inbox-action" onClick={findRival} disabled={busy || !onlineReady}>
                         <span className="inbox-action-glyph">⌁</span>
                         <span>
-                            <strong>{busy ? "Finding a rival…" : "Find a live rival"}</strong>
+                            <strong>{state.matchmakingVisible ? "Finding a rival…" : "Find a live rival"}</strong>
                             <small>
                                 {onlineReady ? "Matched online, play now" : "Available when connected to RUN"}
                             </small>

@@ -14,7 +14,7 @@ Psychedelic chess for solo play, live rivals, and relaxed games with friends on 
 
 - Complete standard chess: castling, en passant, promotion, checkmate, stalemate, and the 50-move draw.
 - Solo play against Easy, Standard, or Expert AI; local pass-and-play; live matchmaking; persistent friend boards.
-- A clear match inbox, invite codes, turn deadlines, safe chess reactions, rematches, rivals, and weekly leagues.
+- A match inbox, player search, five recent-player recommendations, direct challenges, invite codes, turn deadlines, safe chess reactions, rematches, and weekly leagues.
 - Auras, mastery ranks, daily rewards, daily quests, streaks, and six cosmetic board themes.
 - Procedural pieces, living shader backdrops, particles, generated audio, reduced motion, and optional haptics.
 - Opt-in return reminders for daily rewards and correspondence turns.
@@ -38,7 +38,7 @@ For two-client multiplayer without multiple RUN accounts:
 npm run dev:multiplayer
 ```
 
-Open two private browser windows, create a friend board in one, then enter its six-character code in the other. This uses the local authoritative room server; real RUN identity, notifications, ads, and purchases still require the host.
+Open two private browser windows. Each tab gets a simulated player, so you can test live matchmaking, search for the other player under Rivals, send a direct challenge, accept it from the inbox, and play moves. This uses the local authoritative room server; real RUN identity and OS push delivery still require the host.
 
 ## Verification
 

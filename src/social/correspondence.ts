@@ -1,5 +1,6 @@
 import { onlineChess, type OnlineSessionSnapshot } from "../game/chess/onlineClient.ts";
 import type { ChessServerMessage } from "../game/chess/protocol.ts";
+import type { RivalInvitation } from "./rivalsProtocol.ts";
 import { getRunPlayerProfile, resolveLaunchIntent } from "../sdk/runSdk.ts";
 import { store } from "../state/store.ts";
 import { analytics } from "../systems/analytics/analyticsConfig.ts";
@@ -10,6 +11,7 @@ import {
     type CorrespondencePace,
     createMatchReference,
     isMatchKey,
+    type RivalIdentity,
     upsertMatch,
 } from "./model.ts";
 
@@ -56,6 +58,40 @@ export const correspondence = {
         return match;
     },
 
+    receiveInvitation(invitation: RivalInvitation): CorrespondenceMatch {
+        const previous = store.get().correspondenceMatches.find((match) => match.matchKey === invitation.matchKey);
+        const next: CorrespondenceMatch = {
+            ...(previous ?? createMatchReference(invitation.matchKey, invitation.pace)),
+            pace: invitation.pace,
+            phase: "waiting",
+            color: null,
+            opponent: invitation.from,
+            roomCode: invitation.roomCode,
+            updatedAt: invitation.createdAt,
+            unavailable: false,
+            incoming: true,
+        };
+        updateMatch(next);
+        return next;
+    },
+
+    createOutgoingInvitation(matchKey: string, pace: CorrespondencePace, opponent: RivalIdentity): CorrespondenceMatch {
+        const next: CorrespondenceMatch = {
+            ...createMatchReference(matchKey, pace),
+            opponent,
+            updatedAt: Date.now(),
+            incoming: false,
+        };
+        updateMatch(next);
+        return next;
+    },
+
+    markInvitationAccepted(matchKey: string): void {
+        const match = store.get().correspondenceMatches.find((entry) => entry.matchKey === matchKey);
+        if (!match || !match.incoming) return;
+        updateMatch({ ...match, incoming: false, updatedAt: Date.now() });
+    },
+
     sync(state: ServerState, session: OnlineSessionSnapshot): CorrespondenceMatch | null {
         if (state.experience !== "async") return null;
         const matchKey = state.matchKey ?? session.matchKey ?? store.get().activeMatchKey;
@@ -81,6 +117,7 @@ export const correspondence = {
             reaction: state.reaction,
             rematchKey: state.rematch?.matchKey ?? previous?.rematchKey ?? null,
             unavailable: false,
+            incoming: false,
         };
         if (previous?.phase === "waiting" && next.phase === "playing") {
             analytics.event("correspondence_match_started", { pace: next.pace });
@@ -118,6 +155,7 @@ export const correspondence = {
     },
 
     removeReference(matchKey: string): void {
+        if (!store.get().correspondenceMatches.some((entry) => entry.matchKey === matchKey)) return;
         store.patch({
             correspondenceMatches: store.get().correspondenceMatches.filter((entry) => entry.matchKey !== matchKey),
         });

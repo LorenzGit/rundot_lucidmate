@@ -16,6 +16,7 @@ import { restoreLocale } from "./systems/localization.ts";
 import { runtimeServices } from "./systems/runtimeServices.ts";
 import { saveSystem } from "./systems/save.ts";
 import { correspondence } from "./social/correspondence.ts";
+import { rivalsClient } from "./social/rivalsClient.ts";
 import { leaveOnlineMatch, startCorrespondenceMatch } from "./game/runController.ts";
 import App from "./ui/App.tsx";
 import ErrorBoundary from "./ui/ErrorBoundary.tsx";
@@ -96,8 +97,18 @@ async function boot() {
     // 6. Loading done — a challenge/turn link lands directly on its board.
     // The shared match key routes both players to the same persistent authority.
     const launchMatch = await correspondence.resolveLaunchMatch();
-    const launched = launchMatch ? await startCorrespondenceMatch(launchMatch) : false;
+    const launchReference = launchMatch
+        ? store.get().correspondenceMatches.find((match) => match.matchKey === launchMatch.matchKey)
+        : null;
+    const launchRoomCode = launchMatch?.roomCode ?? launchReference?.roomCode;
+    const launched = launchMatch
+        ? await startCorrespondenceMatch({
+              ...launchMatch,
+              ...(launchRoomCode === undefined ? {} : { roomCode: launchRoomCode }),
+          })
+        : false;
     if (!launched) store.patch({ phase: "menu" });
+    if (!launched) void rivalsClient.connect();
     if (import.meta.env.DEV) {
         const { applyDevelopmentScreenPreview } = await import("./dev/preview.ts");
         applyDevelopmentScreenPreview();
@@ -120,6 +131,7 @@ async function boot() {
             audioManager.setPaused(false);
             runtimeServices.resume();
             void returnReminders.refreshAll();
+            if (store.get().phase === "menu") rivalsClient.refresh();
         },
         onSleep: () => {
             analytics.sessionPause();
@@ -135,6 +147,7 @@ async function boot() {
             refreshRunCapabilities();
             runtimeServices.resume();
             void returnReminders.refreshAll();
+            if (store.get().phase === "menu") rivalsClient.refresh();
         },
         onQuit: () => {
             analytics.sessionEnd();
@@ -148,7 +161,9 @@ async function boot() {
         },
         onBackButton: () => {
             const state = store.get();
-            if (state.phase === "playing") {
+            if (state.matchmakingVisible) {
+                void import("./game/runController.ts").then(({ cancelQuickMatch }) => cancelQuickMatch());
+            } else if (state.phase === "playing") {
                 if (state.opponentMode === "online") void leaveOnlineMatch();
                 store.patch({ phase: "menu", menuScreen: "main", paused: false });
                 void saveSystem.flush();

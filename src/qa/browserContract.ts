@@ -29,6 +29,11 @@ export function installBrowserQaContract(): void {
                 onlineExperience: state.onlineExperience,
                 activeMatchKey: state.activeMatchKey,
                 socialBusy: state.socialBusy,
+                matchmakingVisible: state.matchmakingVisible,
+                rivalDirectoryStatus: state.rivalDirectoryStatus,
+                rivalRecommendations: state.rivalRecommendations,
+                rivalSearchResults: state.rivalSearchResults,
+                rivalInvitations: state.rivalInvitations,
                 correspondenceMatches: state.correspondenceMatches,
             };
         },
@@ -127,6 +132,7 @@ export function installBrowserQaContract(): void {
                 credited: false,
                 reactionsMuted: false,
                 unavailable: false,
+                incoming: false,
             };
             const apply = () =>
                 store.patch({
@@ -171,6 +177,7 @@ export function installBrowserQaContract(): void {
                 credited: false,
                 reactionsMuted: false,
                 unavailable: false,
+                incoming: false,
             };
             const apply = () =>
                 store.patch({

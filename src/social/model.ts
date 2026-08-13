@@ -43,6 +43,7 @@ export interface CorrespondenceMatch {
     credited: boolean;
     reactionsMuted: boolean;
     unavailable: boolean;
+    incoming: boolean;
 }
 
 export interface RivalSummary extends RivalIdentity {
@@ -89,6 +90,7 @@ export function createMatchReference(matchKey: string, pace: CorrespondencePace)
         credited: false,
         reactionsMuted: false,
         unavailable: false,
+        incoming: false,
     };
 }
 
@@ -184,6 +186,7 @@ export function sanitizeMatches(value: unknown): CorrespondenceMatch[] {
             credited: match.credited === true,
             reactionsMuted: match.reactionsMuted === true,
             unavailable: match.unavailable === true,
+            incoming: match.incoming === true,
         });
     }
     const unique = new Map(matches.map((match) => [match.matchKey, match]));

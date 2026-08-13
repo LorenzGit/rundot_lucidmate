@@ -90,6 +90,7 @@ export class OnlineChessClient {
     private onInfo: InfoHandler | null = null;
     private onStatus: StatusHandler | null = null;
     private stateListeners = new Set<(state: ServerState) => void>();
+    private connectGeneration = 0;
 
     setHandlers(opts: { onState?: StateHandler; onInfo?: InfoHandler; onStatus?: StatusHandler }): void {
         this.onState = opts.onState ?? null;
@@ -141,6 +142,7 @@ export class OnlineChessClient {
 
     async connect(mode: OnlineConnectMode, joinCode?: string): Promise<boolean> {
         await this.leave();
+        const generation = ++this.connectGeneration;
         this.error = null;
         this.you = null;
         this.phase = null;
@@ -180,8 +182,17 @@ export class OnlineChessClient {
             } else {
                 room = await RundotGameAPI.realtime.matchmakeRoom<ChessProtocol>(CHESS_ROOM_TYPE, {
                     criteria: { mode: "ranked-1v1" },
-                    matchmakeTimeoutMs: 45_000,
+                    // The public SDK has no AbortSignal. Short authoritative
+                    // windows bound server-side cancellation after the player
+                    // closes our search overlay; the controller transparently
+                    // requeues while the visible 45-second search is active.
+                    matchmakeTimeoutMs: 8_000,
                 });
+            }
+
+            if (generation !== this.connectGeneration) {
+                room.leave();
+                return false;
             }
 
             this.room = room;
@@ -189,7 +200,7 @@ export class OnlineChessClient {
             this.playerCount = room.players.length;
             this.bindRoom(room);
             room.send({ type: "ready" } satisfies ChessClientMessage);
-            await this.waitForState(() => true);
+            await this.waitForState(mode === "quick" ? (state) => state.phase === "playing" : () => true);
             this.setStatus(this.phase === "over" ? "over" : this.phase === "playing" ? "playing" : "waiting");
             return true;
         } catch (err) {
@@ -457,6 +468,7 @@ export class OnlineChessClient {
     }
 
     async leave(): Promise<void> {
+        this.connectGeneration += 1;
         const room = this.room;
         this.room = null;
         if (room) {

@@ -52,4 +52,8 @@ assert.equal(sanitized.length, 1, "malformed records dropped");
 assert.equal(sanitized[0].opponent.username.length, 40, "profile text bounded");
 assert.equal(sanitized[0].unavailable, false, "legacy boards remain available unless a reconnect fails");
 
+const incoming = sanitizeMatches([{ ...first, incoming: true }]);
+assert.equal(incoming[0].incoming, true, "incoming challenge state survives persistence");
+assert.equal(sanitizeMatches([{ ...first }])[0].incoming, false, "legacy boards default to outgoing");
+
 console.log("social model checks passed");

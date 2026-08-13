@@ -5354,6 +5354,328 @@ html[data-reduced-motion="true"] .board-actions-card {
     margin-top: 10px;
 }
 
+.rival-search {
+    display: grid;
+    gap: 8px;
+}
+
+.rival-search > label,
+.rival-section > header h2 {
+    margin: 0;
+    color: var(--accent);
+    font-size: max(0.64rem, 10px);
+    font-weight: 850;
+    letter-spacing: 0.16em;
+}
+
+.rival-search > div {
+    display: grid;
+    min-height: 50px;
+    grid-template-columns: 34px minmax(0, 1fr);
+    align-items: center;
+    border: 1px solid rgba(105, 205, 185, 0.42);
+    border-radius: 14px;
+    background: rgba(2, 15, 18, 0.7);
+}
+
+.rival-search > div > span {
+    color: #69cdb9;
+    font-size: 1.4rem;
+    text-align: center;
+}
+
+.rival-search input {
+    width: 100%;
+    min-width: 0;
+    height: 48px;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--lm-ink);
+    font: inherit;
+    font-size: max(0.82rem, 14px);
+    font-weight: 750;
+}
+
+.rival-search input::placeholder {
+    color: rgba(174, 187, 180, 0.58);
+}
+
+.rival-search > p {
+    margin: 0;
+    color: var(--lm-muted);
+    font-size: max(0.66rem, 11px);
+    line-height: 1.35;
+}
+
+.rival-section {
+    display: grid;
+    gap: 8px;
+}
+
+.rival-section > header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.rival-section > header span {
+    color: var(--lm-muted);
+    font-size: max(0.62rem, 10px);
+    font-weight: 800;
+    letter-spacing: 0.1em;
+}
+
+.rival-discovery-list {
+    display: grid;
+    gap: 7px;
+}
+
+.rival-discovery-card {
+    display: grid;
+    min-height: 68px;
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid rgba(195, 220, 207, 0.17);
+    border-radius: 16px;
+    background: linear-gradient(145deg, rgba(15, 39, 38, 0.96), rgba(5, 19, 22, 0.97));
+    padding: 9px 10px;
+}
+
+.rival-discovery-card > div {
+    min-width: 0;
+}
+
+.rival-discovery-card h3,
+.rival-discovery-card p {
+    overflow: hidden;
+    margin: 0;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.rival-discovery-card h3 {
+    color: var(--lm-ink);
+    font-size: max(0.84rem, 14px);
+}
+
+.rival-discovery-card p {
+    margin-top: 3px;
+    color: var(--lm-muted);
+    font-size: max(0.65rem, 11px);
+}
+
+.rival-discovery-card > button,
+.rival-card > button {
+    min-height: 42px;
+    border: 1px solid rgba(239, 200, 105, 0.46);
+    border-radius: 11px;
+    background: rgba(239, 200, 105, 0.1);
+    padding-inline: 11px;
+    color: #efc869;
+    font-size: max(0.62rem, 10px);
+    font-weight: 900;
+    letter-spacing: 0.06em;
+}
+
+.rival-inline-empty,
+.rival-status-note {
+    border: 1px dashed rgba(105, 205, 185, 0.34);
+    border-radius: 14px;
+    background: rgba(5, 23, 24, 0.72);
+    padding: 16px;
+    color: var(--lm-muted);
+    font-size: max(0.72rem, 12px);
+    line-height: 1.4;
+    text-align: center;
+}
+
+.rival-status-note.error {
+    border-color: rgba(240, 167, 155, 0.44);
+    color: #f4b2a7;
+}
+
+.rival-section.history {
+    padding-top: 4px;
+    border-top: 1px solid rgba(195, 220, 207, 0.12);
+}
+
+.matchmaking-backdrop {
+    position: absolute;
+    z-index: 80;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: max(20px, var(--safe-top)) max(20px, var(--safe-right)) max(20px, var(--safe-bottom))
+        max(20px, var(--safe-left));
+    background: rgba(0, 9, 12, 0.78);
+    backdrop-filter: blur(15px) saturate(0.82);
+}
+
+.matchmaking-card {
+    display: grid;
+    width: min(100%, 360px);
+    justify-items: center;
+    gap: 10px;
+    border: 1px solid rgba(239, 200, 105, 0.54);
+    border-radius: 28px;
+    background:
+        radial-gradient(circle at 50% -20%, rgba(105, 205, 185, 0.25), transparent 55%),
+        linear-gradient(145deg, rgba(13, 43, 42, 0.98), rgba(8, 16, 24, 0.99));
+    padding: 24px 22px 20px;
+    color: var(--lm-ink);
+    text-align: center;
+    box-shadow: 0 30px 90px rgba(0, 0, 0, 0.64);
+}
+
+.matchmaking-card > p,
+.matchmaking-card > h2,
+.matchmaking-card > span,
+.matchmaking-card > small {
+    margin: 0;
+}
+
+.matchmaking-card > p {
+    color: var(--accent);
+    font-size: max(0.66rem, 11px);
+    font-weight: 900;
+    letter-spacing: 0.18em;
+}
+
+.matchmaking-card > h2 {
+    font-size: clamp(1.4rem, 7vw, 2rem);
+}
+
+.matchmaking-card > span,
+.matchmaking-card > small {
+    max-width: 290px;
+    color: var(--lm-muted);
+    font-size: max(0.72rem, 12px);
+    line-height: 1.4;
+}
+
+.matchmaking-card > small {
+    font-size: max(0.65rem, 11px);
+}
+
+.matchmaking-card > button {
+    width: 100%;
+    min-height: 50px;
+    margin-top: 4px;
+    border: 1px solid rgba(195, 220, 207, 0.26);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.055);
+    color: var(--lm-ink);
+    font-weight: 900;
+    letter-spacing: 0.1em;
+}
+
+.matchmaking-orbit {
+    position: relative;
+    display: grid;
+    width: 78px;
+    height: 78px;
+    place-items: center;
+    border: 1px solid rgba(105, 205, 185, 0.55);
+    border-radius: 50%;
+    color: #69cdb9;
+    font-size: 2rem;
+}
+
+.matchmaking-orbit i {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 14px var(--accent);
+    animation: matchmaking-spin 1.6s linear infinite;
+    transform-origin: 0 39px;
+}
+
+.matchmaking-orbit svg {
+    width: 42px;
+    height: 42px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2;
+}
+
+.matchmaking-progress {
+    display: flex;
+    height: 14px;
+    align-items: center;
+    gap: 7px;
+}
+
+.matchmaking-progress i {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #69cdb9;
+    animation: matchmaking-pulse 1.1s ease-in-out infinite;
+}
+
+.matchmaking-progress i:nth-child(2) {
+    animation-delay: 140ms;
+}
+
+.matchmaking-progress i:nth-child(3) {
+    animation-delay: 280ms;
+}
+
+@keyframes matchmaking-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes matchmaking-pulse {
+    0%,
+    100% {
+        opacity: 0.28;
+        transform: scale(0.7);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.1);
+    }
+}
+
+html[data-reduced-motion="true"] .matchmaking-orbit i,
+html[data-reduced-motion="true"] .matchmaking-progress i {
+    animation: none;
+}
+
+@media (orientation: landscape) {
+    .matchmaking-card {
+        width: min(520px, calc(100dvw - 56px));
+        grid-template-columns: 92px minmax(0, 1fr);
+        justify-items: start;
+        gap: 5px 18px;
+        padding: 20px 24px;
+        text-align: left;
+    }
+
+    .matchmaking-orbit {
+        grid-row: 1 / span 5;
+        align-self: center;
+    }
+
+    .matchmaking-card > button {
+        grid-column: 2;
+        margin-top: 8px;
+    }
+
+    .matchmaking-progress {
+        display: none;
+    }
+}
+
 .league-crest {
     display: grid;
     grid-template-columns: 64px minmax(0, 1fr);

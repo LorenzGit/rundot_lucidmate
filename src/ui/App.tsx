@@ -19,6 +19,9 @@ import ChallengeScreen from "./ChallengeScreen.tsx";
 import RivalsScreen from "./RivalsScreen.tsx";
 import LeagueScreen from "./LeagueScreen.tsx";
 import MenuShaderBackground from "./MenuShaderBackground.tsx";
+import { cancelQuickMatch } from "../game/runController.ts";
+import { audioManager } from "../audio/audioManager.ts";
+import { runtimeServices } from "../systems/runtimeServices.ts";
 
 const DevelopmentTools = import.meta.env.DEV ? lazy(() => import("../dev/DevelopmentTools.tsx")) : null;
 
@@ -88,8 +91,46 @@ export default function App() {
                     <Hud />
                 </div>
             )}
+            <MatchmakingOverlay />
             <Toast />
             <DevelopmentToolsSlot />
+        </div>
+    );
+}
+
+function MatchmakingOverlay() {
+    const visible = useStore((state) => state.matchmakingVisible);
+    if (!visible) return null;
+    return (
+        <div className="matchmaking-backdrop" role="presentation">
+            <section className="matchmaking-card" role="dialog" aria-modal="true" aria-labelledby="matchmaking-title">
+                <span className="matchmaking-orbit" aria-hidden="true">
+                    <i />
+                    <svg viewBox="0 0 32 32" aria-hidden="true">
+                        <path d="M8 25h17M10 22h13l-1.2-4.1c-.7-2.4-2.6-4.2-5-4.8l-2.4-.7 3.7-2.9-1.5-4.4-3.1 2.4-3.2-.8.9 3.2C8.7 11.4 7.7 14 8.5 17l.7 2.5" />
+                        <circle cx="15.3" cy="8.5" r="1" />
+                    </svg>
+                </span>
+                <p>LIVE CHESS</p>
+                <h2 id="matchmaking-title">Finding a rival…</h2>
+                <span>Looking for another player who wants to play now.</span>
+                <div className="matchmaking-progress" aria-hidden="true">
+                    <i />
+                    <i />
+                    <i />
+                </div>
+                <small>This closes when you cancel. It never starts a match in the background.</small>
+                <button
+                    type="button"
+                    onClick={() => {
+                        audioManager.play("tap");
+                        void runtimeServices.haptic("light");
+                        void cancelQuickMatch();
+                    }}
+                >
+                    CANCEL SEARCH
+                </button>
+            </section>
         </div>
     );
 }

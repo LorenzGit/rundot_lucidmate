@@ -7,6 +7,7 @@ import type { OpponentMode } from "../game/chess/game.ts";
 import type { Color, GameStatus, MatchSummary } from "../game/chess/types.ts";
 import { DEFAULT_THEME, type ThemeId } from "../game/art/palette.ts";
 import type { CorrespondenceMatch, CorrespondencePace } from "../social/model.ts";
+import type { RivalDirectoryProfile, RivalInvitation } from "../social/rivalsProtocol.ts";
 
 export type MenuScreen =
     | "main"
@@ -69,6 +70,13 @@ export interface AppState {
     correspondenceMatches: CorrespondenceMatch[];
     profileName: string;
     socialBusy: boolean;
+    matchmakingVisible: boolean;
+    rivalDirectoryStatus: "idle" | "connecting" | "ready" | "error";
+    rivalDirectoryError: string | null;
+    rivalRecommendations: RivalDirectoryProfile[];
+    rivalSearchQuery: string;
+    rivalSearchResults: RivalDirectoryProfile[];
+    rivalInvitations: RivalInvitation[];
 
     /** Progress */
     auras: number;
@@ -149,6 +157,13 @@ let state: AppState = {
     correspondenceMatches: [],
     profileName: "Dreamer",
     socialBusy: false,
+    matchmakingVisible: false,
+    rivalDirectoryStatus: "idle",
+    rivalDirectoryError: null,
+    rivalRecommendations: [],
+    rivalSearchQuery: "",
+    rivalSearchResults: [],
+    rivalInvitations: [],
 
     auras: 40,
     matchesPlayed: 0,

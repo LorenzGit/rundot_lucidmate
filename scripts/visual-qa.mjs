@@ -24,6 +24,7 @@ const screens = [
     { name: "practice", screen: "practice" },
     { name: "challenge", screen: "challenge" },
     { name: "rivals", screen: "rivals" },
+    { name: "matchmaking", screen: "main", matchmaking: true },
     { name: "league", screen: "league" },
     { name: "dreams", screen: "dreams" },
     { name: "lounge", screen: "lounge", prepare: true },
@@ -106,7 +107,10 @@ try {
         });
 
         for (const shot of screens) {
-            await page.goto(`http://127.0.0.1:${port}/?screen=${shot.screen}&qa=1`, { waitUntil: "load" });
+            await page.goto(
+                `http://127.0.0.1:${port}/?screen=${shot.screen}&qa=1${shot.matchmaking ? "&matchmaking=1" : ""}`,
+                { waitUntil: "load" },
+            );
             await page.waitForFunction(() => globalThis.__LUCIDMATE_QA__ !== undefined, null, { timeout: 15_000 });
             if (shot.prepare) {
                 await page.evaluate(() => {
@@ -134,7 +138,7 @@ try {
 
             const label = `${viewport.name}/${shot.name}`;
             const audit = await inspectLayout(page, label);
-            if (shot.screen === "main" && audit.version !== "v0.3.12") {
+            if (shot.screen === "main" && audit.version !== "v0.4.1") {
                 note(`${label}: visible version is "${audit.version ?? "missing"}"`);
             }
             await page.screenshot({ path: path.join(outputDir, `${viewport.name}-${shot.name}.png`) });
@@ -169,5 +173,5 @@ if (problems.length > 0) {
     process.exit(1);
 }
 console.log(
-    "Visual QA passed: 14 surfaces × 5 viewports, catalog cards, reactions, reconnect UI, typography, overflow, and console gates.",
+    "Visual QA passed: 15 surfaces × 5 viewports, matchmaking, rivals, reactions, reconnect UI, typography, overflow, and console gates.",
 );
