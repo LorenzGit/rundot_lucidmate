@@ -192,6 +192,21 @@ export default class RivalsRoom extends GameRoom<RivalsProtocol> {
         this.invitations.set(invitation.matchKey, { to: target.id, invitation });
         this.save();
 
+        // The trusted room validated both identities and the durable invite.
+        // This keeps arbitrary notification targets out of client control.
+        void this.services.simulation
+            .executeRecipe(sender.id, "lucidmate_send_challenge_notification", {
+                targetId: target.id,
+                matchKey: invitation.matchKey,
+                pace: invitation.pace,
+            })
+            .catch((error: unknown) =>
+                this.log.warn("challenge notification unavailable", {
+                    target: target.id,
+                    error: error instanceof Error ? error.message : String(error),
+                }),
+            );
+
         this.sendTo(sender.id, {
             type: "challengeSent",
             requestId: payload.requestId.slice(0, 80),
@@ -199,25 +214,6 @@ export default class RivalsRoom extends GameRoom<RivalsProtocol> {
         });
         if (this.players.has(target.id)) {
             this.sendTo(target.id, { type: "challengeReceived", invitation });
-            void this.services.notifications
-                .send({
-                    recipientProfileIds: [target.id],
-                    template: "lucidmate_direct_challenge",
-                    params: { opponent: senderProfile.username },
-                    data: {
-                        route: "match",
-                        matchKey: invitation.matchKey,
-                        pace: invitation.pace,
-                    },
-                    fallbackTitle: `${senderProfile.username} challenged you`,
-                    fallbackBody: "A new Lucidmate board is waiting.",
-                })
-                .catch((error: unknown) =>
-                    this.log.warn("challenge notification unavailable", {
-                        target: target.id,
-                        error: error instanceof Error ? error.message : String(error),
-                    }),
-                );
             this.sendDirectory(target.id, "");
         }
     }

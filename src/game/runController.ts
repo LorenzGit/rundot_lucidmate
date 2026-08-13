@@ -17,10 +17,19 @@ import type { ChessScene } from "./scene/chessScene.ts";
 import { correspondence } from "../social/correspondence.ts";
 import type { CorrespondenceMatch, CorrespondencePace } from "../social/model.ts";
 import { rivalsClient } from "../social/rivalsClient.ts";
+import { getRunPlayerProfile } from "../sdk/runSdk.ts";
 
 export const UNDO_COST = 12;
 export const HINT_COST = 8;
-let quickMatchGeneration = 0;
+
+function correspondenceReservation(match: CorrespondenceMatch | null | undefined) {
+    const profile = getRunPlayerProfile();
+    if (!match?.opponent || !profile) return null;
+    const current = { id: profile.id, username: profile.username, avatarUrl: profile.avatarUrl };
+    return match.challenger
+        ? { challenger: current, recipient: match.opponent }
+        : { challenger: match.opponent, recipient: current };
+}
 
 export class RunController {
     match: ChessMatch;
@@ -531,7 +540,7 @@ export async function startOnlineMatch(opts: { mode: OnlineConnectMode; joinCode
         matchSummary: null,
         pendingPromotion: false,
         thinking: true,
-        toast: opts.mode === "join" ? "Joining room…" : opts.mode === "create" ? "Creating room…" : "Finding opponent…",
+        toast: opts.mode === "join" ? "Joining room…" : "Creating room…",
     });
 
     const ok = await onlineChess.connect(opts.mode, opts.joinCode);
@@ -570,75 +579,7 @@ export async function startOnlineMatch(opts: { mode: OnlineConnectMode; joinCode
     return true;
 }
 
-/** Queue in the Lucidmate lobby. Navigation stays blocked until paired or cancelled. */
-export async function startQuickMatch(): Promise<boolean> {
-    if (store.get().matchmakingVisible) return false;
-    const generation = ++quickMatchGeneration;
-    store.patch({
-        opponentMode: "online",
-        onlineMode: "quick",
-        onlineStatus: "connecting",
-        onlineError: null,
-        matchmakingVisible: true,
-        socialBusy: false,
-        toast: null,
-    });
-    void runtimeServices.haptic("medium");
-    await rivalsClient.disconnect();
-
-    const deadline = Date.now() + 45_000;
-    let matched = false;
-    while (generation === quickMatchGeneration && store.get().matchmakingVisible && Date.now() < deadline) {
-        matched = await onlineChess.connect("quick");
-        if (matched) break;
-    }
-    if (generation !== quickMatchGeneration || !store.get().matchmakingVisible) {
-        await onlineChess.leave();
-        return false;
-    }
-    if (!matched) {
-        const error = "No rival found yet. Try again, challenge someone by name, or play the computer.";
-        store.patch({
-            matchmakingVisible: false,
-            onlineStatus: "idle",
-            onlineError: error,
-            toast: error,
-        });
-        return false;
-    }
-    enterConnectedOnlineMatch();
-    store.patch({ matchmakingVisible: false });
-    return true;
-}
-
-function enterConnectedOnlineMatch(): void {
-    const snap = onlineChess.snapshot();
-    store.patch({
-        onlineStatus: snap.status,
-        onlineRoomCode: snap.roomCode,
-        onlineError: snap.error,
-        onlineSeat: snap.you,
-        onlinePlayerCount: snap.playerCount,
-        onlineExperience: "live",
-        activeMatchKey: null,
-        activeMatchPace: null,
-        toast: null,
-    });
-    startMatch({ opponent: "online", difficulty: store.get().difficulty, playerColor: snap.you ?? "w" });
-    store.patch({
-        onlineStatus: snap.status,
-        thinking: snap.status === "waiting" || snap.status === "connecting",
-    });
-}
-
-export async function cancelQuickMatch(): Promise<void> {
-    quickMatchGeneration += 1;
-    store.patch({ matchmakingVisible: false, onlineStatus: "idle", onlineError: null, toast: null });
-    await onlineChess.leave();
-    void runtimeServices.haptic("light");
-}
-
-/** Publish a durable named challenge. The board opens when either player taps it. */
+/** Publish a durable async challenge. The invited rival is White and moves first. */
 export async function challengeRival(target: { id: string; username: string }): Promise<boolean> {
     if (store.get().socialBusy) return false;
     const pace: CorrespondencePace = "daily";
@@ -660,7 +601,7 @@ export async function challengeRival(target: { id: string; username: string }): 
         phase: "menu",
         menuScreen: "main",
         socialBusy: false,
-        toast: `Challenge sent to ${result.target.username}.`,
+        toast: `Board sent to ${result.target.username} — they move first.`,
     });
     return true;
 }
@@ -697,6 +638,7 @@ export async function startCorrespondenceMatch(input: {
         input.matchKey,
         input.pace,
         input.roomCode ?? reference?.roomCode,
+        correspondenceReservation(reference),
     );
     const snapshot = onlineChess.snapshot();
     store.patch({
@@ -762,7 +704,12 @@ export async function startCorrespondenceMatch(input: {
 export async function endCorrespondenceMatch(match: CorrespondenceMatch): Promise<boolean> {
     await rivalsClient.disconnect();
     store.patch({ socialBusy: true, onlineError: null, toast: null });
-    const connected = await onlineChess.connectCorrespondence(match.matchKey, match.pace, match.roomCode);
+    const connected = await onlineChess.connectCorrespondence(
+        match.matchKey,
+        match.pace,
+        match.roomCode,
+        correspondenceReservation(match),
+    );
     if (!connected) {
         await onlineChess.leave();
         store.patch({
@@ -818,6 +765,5 @@ export async function leaveOnlineMatch(): Promise<void> {
         activeMatchPace: null,
         onlineExperience: "live",
         toast: null,
-        matchmakingVisible: false,
     });
 }

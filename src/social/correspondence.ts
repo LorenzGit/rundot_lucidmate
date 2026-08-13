@@ -70,6 +70,7 @@ export const correspondence = {
             updatedAt: invitation.createdAt,
             unavailable: false,
             incoming: true,
+            challenger: false,
         };
         updateMatch(next);
         return next;
@@ -81,6 +82,7 @@ export const correspondence = {
             opponent,
             updatedAt: Date.now(),
             incoming: false,
+            challenger: true,
         };
         updateMatch(next);
         return next;
@@ -89,7 +91,7 @@ export const correspondence = {
     markInvitationAccepted(matchKey: string): void {
         const match = store.get().correspondenceMatches.find((entry) => entry.matchKey === matchKey);
         if (!match || !match.incoming) return;
-        updateMatch({ ...match, incoming: false, updatedAt: Date.now() });
+        updateMatch({ ...match, incoming: false, challenger: false, updatedAt: Date.now() });
     },
 
     sync(state: ServerState, session: OnlineSessionSnapshot): CorrespondenceMatch | null {
@@ -118,6 +120,7 @@ export const correspondence = {
             rematchKey: state.rematch?.matchKey ?? previous?.rematchKey ?? null,
             unavailable: false,
             incoming: false,
+            challenger: previous?.challenger ?? false,
         };
         if (previous?.phase === "waiting" && next.phase === "playing") {
             analytics.event("correspondence_match_started", { pace: next.pace });

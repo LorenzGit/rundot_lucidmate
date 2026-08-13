@@ -8,7 +8,7 @@ const senderContext = await browser.newContext({ viewport: { width: 390, height:
 const recipientContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
 const sender = await senderContext.newPage();
 const recipient = await recipientContext.newPage();
-const rivalsUrl = "http://127.0.0.1:5195/?screen=rivals";
+const rivalsUrl = "http://localhost:5195/?screen=rivals";
 
 try {
     await sender.goto(rivalsUrl);
@@ -21,11 +21,11 @@ try {
     );
     assert.match(recipientProfile.id, /^dev-tab-/);
 
-    await sender.getByLabel("SEARCH LUCIDMATE PLAYERS").fill(recipientProfile.username);
+    await sender.getByLabel("FIND A PLAYER").fill(recipientProfile.username);
     const result = sender.locator(".rival-discovery-card", { hasText: recipientProfile.username });
     await result.waitFor();
     assert.equal(await result.count(), 1, "exact username search returns the intended player once");
-    await result.getByRole("button", { name: "CHALLENGE" }).click();
+    await result.getByRole("button", { name: `Challenge ${recipientProfile.username}` }).click();
 
     await recipient.waitForFunction(
         () => window.__LUCIDMATE_QA__.snapshot().correspondenceMatches.some((match) => match.incoming),
@@ -38,27 +38,40 @@ try {
     assert.ok(invitation, "recipient receives a durable invitation reference");
     assert.equal(invitation.opponent?.id.startsWith("dev-tab-"), true);
 
+    // The challenger may open first, but is still authoritatively reserved as
+    // Black. The invited player must always receive White and the first turn.
+    await sender.waitForFunction(
+        (matchKey) =>
+            window.__LUCIDMATE_QA__.snapshot().correspondenceMatches.some((match) => match.matchKey === matchKey),
+        invitation.matchKey,
+    );
+    await sender.locator(`[data-match-key="${invitation.matchKey}"] .inbox-match-open`).click();
+    await sender.waitForFunction(() => window.__LUCIDMATE_QA__.snapshot().onlineStatus === "waiting", null, {
+        timeout: 15_000,
+    });
+    assert.equal(
+        (await sender.evaluate(() => window.__LUCIDMATE_QA__.snapshot())).onlineSeat,
+        "b",
+        "challenger is Black even when opening first",
+    );
+
     await recipient.evaluate(() => window.__LUCIDMATE_QA__.forceMenu());
     const incomingCard = recipient.locator(`[data-match-key="${invitation.matchKey}"]`);
     await incomingCard.waitFor();
-    await incomingCard.getByText("NEW CHALLENGE").waitFor();
+    await incomingCard.getByText("YOUR FIRST MOVE").waitFor();
     fs.mkdirSync("tmp", { recursive: true });
     await recipient.screenshot({ path: "tmp/rivals-incoming-challenge.png" });
 
     await incomingCard.locator(".inbox-match-open").click();
-    await recipient.waitForFunction(
-        () => ["waiting", "playing"].includes(window.__LUCIDMATE_QA__.snapshot().onlineStatus),
-        null,
-        { timeout: 15_000 },
-    );
+    await recipient.waitForFunction(() => window.__LUCIDMATE_QA__.snapshot().onlineStatus === "playing", null, {
+        timeout: 15_000,
+    });
     assert.equal(
         (await recipient.evaluate(() => window.__LUCIDMATE_QA__.snapshot())).activeMatchKey,
         invitation.matchKey,
         "recipient opens the invited board",
     );
 
-    await sender.evaluate(() => window.__LUCIDMATE_QA__.forceMenu());
-    await sender.locator(`[data-match-key="${invitation.matchKey}"] .inbox-match-open`).click();
     await Promise.all([
         sender.waitForFunction(() => window.__LUCIDMATE_QA__.snapshot().onlineStatus === "playing", null, {
             timeout: 15_000,
@@ -69,11 +82,9 @@ try {
     ]);
     const senderState = await sender.evaluate(() => window.__LUCIDMATE_QA__.snapshot());
     const recipientState = await recipient.evaluate(() => window.__LUCIDMATE_QA__.snapshot());
-    assert.notEqual(
-        senderState.onlineSeat,
-        recipientState.onlineSeat,
-        "challenger and recipient occupy opposite seats",
-    );
+    assert.equal(senderState.onlineSeat, "b", "challenger is Black");
+    assert.equal(recipientState.onlineSeat, "w", "invited player is White");
+    assert.equal(recipientState.turn, "w", "invited player has the first turn");
     assert.equal(senderState.activeMatchKey, invitation.matchKey);
     assert.equal(recipientState.activeMatchKey, invitation.matchKey);
 
@@ -94,7 +105,7 @@ try {
     );
 
     console.log(
-        "rivals QA passed: exact search, named challenge, inbox delivery, acceptance, shared board, and clean reconnect",
+        "rivals QA passed: offline directory, named challenge, durable inbox delivery, recipient White/first turn, and clean reconnect",
     );
 } finally {
     await browser.close();

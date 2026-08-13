@@ -161,9 +161,7 @@ async function boot() {
         },
         onBackButton: () => {
             const state = store.get();
-            if (state.matchmakingVisible) {
-                void import("./game/runController.ts").then(({ cancelQuickMatch }) => cancelQuickMatch());
-            } else if (state.phase === "playing") {
+            if (state.phase === "playing") {
                 if (state.opponentMode === "online") void leaveOnlineMatch();
                 store.patch({ phase: "menu", menuScreen: "main", paused: false });
                 void saveSystem.flush();

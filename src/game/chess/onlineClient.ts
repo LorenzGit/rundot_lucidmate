@@ -12,10 +12,10 @@ import {
     type ChessServerMessage,
 } from "./protocol.ts";
 import type { Color, PieceType } from "./types.ts";
-import type { ChessReaction, CorrespondencePace } from "../../social/model.ts";
+import type { ChessReaction, CorrespondencePace, RivalIdentity } from "../../social/model.ts";
 import { describeJoinError } from "./joinErrors.ts";
 
-export type OnlineConnectMode = "quick" | "create" | "join";
+export type OnlineConnectMode = "create" | "join";
 
 export type OnlineSessionStatus = "idle" | "connecting" | "waiting" | "playing" | "over" | "error" | "disconnected";
 
@@ -171,22 +171,13 @@ export class OnlineChessClient {
                     return false;
                 }
                 room = await RundotGameAPI.realtime.joinRoomByCode<ChessProtocol>(code);
-            } else if (mode === "create") {
+            } else {
                 room = await RundotGameAPI.realtime.createRoom<ChessProtocol>(CHESS_ROOM_TYPE, {
                     createOptions: {
                         maxPlayers: MAX_PLAYERS,
                         isPrivate: true,
                         metadata: { game: "lucidmate", mode: "chess" },
                     },
-                });
-            } else {
-                room = await RundotGameAPI.realtime.matchmakeRoom<ChessProtocol>(CHESS_ROOM_TYPE, {
-                    criteria: { mode: "ranked-1v1" },
-                    // The public SDK has no AbortSignal. Short authoritative
-                    // windows bound server-side cancellation after the player
-                    // closes our search overlay; the controller transparently
-                    // requeues while the visible 45-second search is active.
-                    matchmakeTimeoutMs: 8_000,
                 });
             }
 
@@ -200,7 +191,7 @@ export class OnlineChessClient {
             this.playerCount = room.players.length;
             this.bindRoom(room);
             room.send({ type: "ready" } satisfies ChessClientMessage);
-            await this.waitForState(mode === "quick" ? (state) => state.phase === "playing" : () => true);
+            await this.waitForState(() => true);
             this.setStatus(this.phase === "over" ? "over" : this.phase === "playing" ? "playing" : "waiting");
             return true;
         } catch (err) {
@@ -217,6 +208,7 @@ export class OnlineChessClient {
         matchKey: string,
         pace: CorrespondencePace,
         knownRoomCode?: string | null,
+        reservation?: { challenger: RivalIdentity; recipient: RivalIdentity } | null,
     ): Promise<boolean> {
         await this.leave();
         this.error = null;
@@ -244,7 +236,7 @@ export class OnlineChessClient {
                 // Rejoin the exact warm room first. A previous 2.5-second state
                 // budget was too short for cold production connections.
                 const room = await RundotGameAPI.realtime.joinRoomByCode<ChessProtocol>(knownRoomCode);
-                await this.openCorrespondenceRoom(room, matchKey, pace);
+                await this.openCorrespondenceRoom(room, matchKey, pace, reservation);
                 this.finishConnection();
                 return true;
             } catch (error) {
@@ -260,7 +252,7 @@ export class OnlineChessClient {
                 criteria: { matchKey },
                 persistentKey: matchKey,
             });
-            await this.openCorrespondenceRoom(room, matchKey, pace);
+            await this.openCorrespondenceRoom(room, matchKey, pace, reservation);
             this.finishConnection();
             return true;
         } catch (error) {
@@ -279,13 +271,14 @@ export class OnlineChessClient {
         room: ServerRoom<ChessProtocol>,
         matchKey: string,
         pace: CorrespondencePace,
+        reservation?: { challenger: RivalIdentity; recipient: RivalIdentity } | null,
         timeoutMs = ROOM_STATE_TIMEOUT_MS,
     ): Promise<void> {
         this.room = room;
         this.roomCode = room.roomCode;
         this.playerCount = room.players.length;
         this.bindRoom(room);
-        room.send({ type: "configure", matchKey, pace } satisfies ChessClientMessage);
+        room.send({ type: "configure", matchKey, pace, ...reservation } satisfies ChessClientMessage);
         room.send({ type: "ready" } satisfies ChessClientMessage);
         await this.waitForState((state) => state.experience === "async" && state.matchKey === matchKey, timeoutMs);
     }

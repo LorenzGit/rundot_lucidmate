@@ -19,7 +19,13 @@ export type ChessClientMessage =
     | { type: "move"; from: number; to: number; promotion?: PieceType | null }
     | { type: "resign" }
     | { type: "ready" }
-    | { type: "configure"; matchKey: string; pace: CorrespondencePace }
+    | {
+          type: "configure";
+          matchKey: string;
+          pace: CorrespondencePace;
+          challenger?: RivalIdentity;
+          recipient?: RivalIdentity;
+      }
     | { type: "react"; reaction: ChessReaction }
     | { type: "rematch"; matchKey: string };
 

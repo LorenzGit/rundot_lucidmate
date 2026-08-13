@@ -1,0 +1,27 @@
+{
+  "recipes": {
+    "lucidmate_send_challenge_notification": {
+      "duration": 0,
+      "scope": "player",
+      "clientViewable": false,
+      "inputs": {
+        "targetId": { "type": "string" },
+        "matchKey": { "type": "string" },
+        "pace": { "type": "string" }
+      },
+      "beginEffects": [
+        {
+          "type": "send_notification",
+          "recipientProfileId": "{{inputs.targetId}}",
+          "title": "A LUCIDMATE challenge is waiting",
+          "body": "You play White and make the first move.",
+          "payload": {
+            "route": "match",
+            "matchKey": "{{inputs.matchKey}}",
+            "pace": "{{inputs.pace}}"
+          }
+        }
+      ]
+    }
+  }
+}

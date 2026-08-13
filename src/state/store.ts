@@ -55,7 +55,7 @@ export interface AppState {
     playerColor: Color;
 
     /** Online multiplayer surface */
-    onlineMode: "quick" | "create" | "join";
+    onlineMode: "create" | "join";
     onlineJoinCode: string;
     onlineStatus: "idle" | "connecting" | "waiting" | "playing" | "over" | "error" | "disconnected";
     onlineRoomCode: string | null;
@@ -70,7 +70,6 @@ export interface AppState {
     correspondenceMatches: CorrespondenceMatch[];
     profileName: string;
     socialBusy: boolean;
-    matchmakingVisible: boolean;
     rivalDirectoryStatus: "idle" | "connecting" | "ready" | "error";
     rivalDirectoryError: string | null;
     rivalRecommendations: RivalDirectoryProfile[];
@@ -143,7 +142,7 @@ let state: AppState = {
     difficulty: "trippy",
     playerColor: "w",
 
-    onlineMode: "quick",
+    onlineMode: "join",
     onlineJoinCode: "",
     onlineStatus: "idle",
     onlineRoomCode: null,
@@ -157,7 +156,6 @@ let state: AppState = {
     correspondenceMatches: [],
     profileName: "Dreamer",
     socialBusy: false,
-    matchmakingVisible: false,
     rivalDirectoryStatus: "idle",
     rivalDirectoryError: null,
     rivalRecommendations: [],

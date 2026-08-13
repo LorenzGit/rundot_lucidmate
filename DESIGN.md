@@ -4,9 +4,9 @@
 
 **Core loop:** Tap a piece → tap a legal square → capture fireworks → the cosmos (AI) answers → check pulses the board → mate pays auras.
 
-**Session:** 2–12 minutes live, or one move at a time across several days.
-Pass & play, AI (Easy / Standard / Expert; internally depth 1 / 2 / 3), live
-matchmaking, and durable friend correspondence all use standard chess.
+**Session:** 2–12 minutes solo/local, or one move at a time across several days.
+Pass & play, AI (Easy / Standard / Expert; internally depth 1 / 2 / 3), and
+durable friend correspondence all use standard chess.
 
 ## Rules
 
@@ -16,10 +16,10 @@ Standard chess: castling, en passant, promotion, check, checkmate, stalemate, 50
 
 - Server-authoritative `ChessRoom` (`src/rooms/ChessRoom.ts`); clients send move intents only.
 - Protocol: `src/game/chess/protocol.ts`.
-- **Live:** cross-instance RUN matchmaking in `lucidmate-chess`.
 - **Friend games:** persistent `lucidmate-correspondence` rooms keyed by an
   unguessable invite key. Daily allows 24 hours per move; Relaxed allows three
-  days. Absolute server deadlines settle after idle freeze/resume.
+  days. The invited player is White and moves first. Absolute server deadlines
+  settle after idle freeze/resume.
 - Home is a match inbox: Your Move, Waiting, Invitations, and recent results.
   Client storage contains match references only; the room owns board, seats,
   turn, clocks, result, reactions, and rematch offers.

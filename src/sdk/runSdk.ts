@@ -813,6 +813,28 @@ export interface RunPlayerProfile {
 }
 
 export function getRunPlayerProfile(): RunPlayerProfile | null {
+    // The SDK multiplayer preview deliberately gives every browser tab its own
+    // identity. Its regular mock Profile API does not, so use the same tab
+    // profile here or challenge seat reservations would name a different
+    // player from the one that actually joins the room.
+    if (import.meta.env.DEV) {
+        try {
+            const raw = sessionStorage.getItem("__rundot_fake_tab_profile__");
+            if (raw) {
+                const profile = JSON.parse(raw) as Partial<RunPlayerProfile>;
+                if (typeof profile.id === "string" && typeof profile.username === "string") {
+                    return {
+                        id: profile.id,
+                        username: profile.username.trim().slice(0, 40) || "Dreamer",
+                        avatarUrl: typeof profile.avatarUrl === "string" ? profile.avatarUrl : null,
+                        isAnonymous: false,
+                    };
+                }
+            }
+        } catch {
+            // Fall through to the SDK profile.
+        }
+    }
     if (!_ready) return null;
     try {
         const profile = RundotGameAPI.getProfile();

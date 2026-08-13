@@ -39,9 +39,12 @@ try {
         if (api.host) api.host._roomServerUrl = "";
     });
 
-    const liveRival = page.getByRole("button", { name: /Find a live rival/ });
-    assert.equal(await liveRival.isDisabled(), true, "live matchmaking is visibly disabled without a room server");
-    await page.getByText("Available when connected to RUN").waitFor();
+    const findRival = page.getByRole("button", { name: /Find a rival/ });
+    assert.equal(await findRival.isDisabled(), false, "async rival discovery stays understandable in preview");
+    await findRival.click();
+    await page.getByRole("heading", { name: "Pick a rival" }).waitFor();
+    await page.getByText(/No one needs to be online/).waitFor();
+    await page.getByRole("button", { name: "Back" }).click();
 
     const codeInput = page.getByTestId("join-code-input");
     assert.equal(await codeInput.isDisabled(), true, "room code input is disabled without a room server");

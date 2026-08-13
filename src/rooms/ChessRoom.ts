@@ -54,36 +54,23 @@ export default class ChessRoom extends GameRoom<ChessProtocol> {
         this.settleDeadline();
         let color = this.colorOf(player.id);
         if (!color && this.phase === "over") this.reject({ reason: "This match has ended" });
-        if (!color) {
+        if (!color && !this.correspondence) {
             if (!this.seats.w) color = "w";
             else if (!this.seats.b) color = "b";
             else this.reject({ reason: "This match already has two players" });
             this.seats[color] = player.id;
         }
-        this.profiles[color] = {
-            id: player.id,
-            username: player.username.trim().slice(0, 40) || "Dreamer",
-            avatarUrl: typeof player.avatarUrl === "string" ? player.avatarUrl.slice(0, 500) : null,
-        };
-
-        if (this.seats.w && this.seats.b && this.phase === "waiting") {
-            this.phase = "playing";
-            this.updatedAt = this.now();
-            this.deadlineAt = this.correspondence ? this.updatedAt + this.turnDurationMs() : null;
-            if (!this.correspondence) this.lock();
-            if (color === "b" && this.seats.w) {
-                void this.notify(
-                    this.seats.w,
-                    "lucidmate_challenge_accepted",
-                    `${player.username} joined your board.`,
-                    {
-                        route: "match",
-                        matchKey: this.matchKey ?? "",
-                        pace: this.pace ?? "daily",
-                    },
-                );
-            }
+        // Older code-based boards only reserved their creator. Preserve that
+        // flow while new directory challenges arrive with both seats reserved.
+        if (!color && this.correspondence && Boolean(this.seats.w) !== Boolean(this.seats.b)) {
+            color = this.seats.w ? "b" : "w";
+            this.seats[color] = player.id;
         }
+        if (!color && (this.seats.w || this.seats.b))
+            this.reject({ reason: "This board belongs to two other players" });
+        if (color) this.profiles[color] = this.identity(player);
+
+        this.beginWhenBothPlayersJoined(player.id);
 
         this.sendTo(player.id, this.stateMessage(player.id));
         // Let everyone know seats filled.
@@ -98,7 +85,7 @@ export default class ChessRoom extends GameRoom<ChessProtocol> {
         this.settleDeadline();
 
         if (payload.type === "configure") {
-            this.handleConfigure(sender.id, payload.matchKey, payload.pace);
+            this.handleConfigure(sender.id, payload.matchKey, payload.pace, payload.challenger, payload.recipient);
             return;
         }
         if (payload.type === "react") {
@@ -318,15 +305,79 @@ export default class ChessRoom extends GameRoom<ChessProtocol> {
         this.save();
     }
 
-    private handleConfigure(playerId: string, matchKey: string, pace: CorrespondencePace): void {
-        if (!this.correspondence || this.seats.w !== playerId || !isMatchKey(matchKey)) return;
-        if (this.matchKey && this.matchKey !== matchKey) return;
+    private handleConfigure(
+        playerId: string,
+        matchKey: string,
+        pace: CorrespondencePace,
+        challenger?: RivalIdentity,
+        recipient?: RivalIdentity,
+    ): void {
+        if (!this.correspondence || !isMatchKey(matchKey)) return;
+        if (this.matchKey && this.matchKey !== matchKey) {
+            this.sendTo(playerId, { type: "error", reason: "This invite points to a different board" });
+            return;
+        }
         if (pace !== "daily" && pace !== "relaxed") return;
+
+        if (!this.seats.w && !this.seats.b) {
+            const safeChallenger = this.safeIdentity(challenger);
+            const safeRecipient = this.safeIdentity(recipient);
+            if (
+                safeChallenger &&
+                safeRecipient &&
+                safeChallenger.id !== safeRecipient.id &&
+                (playerId === safeChallenger.id || playerId === safeRecipient.id)
+            ) {
+                // The invited player is reserved as White regardless of who opens
+                // the room first. That makes "they move first" authoritative.
+                this.seats = { w: safeRecipient.id, b: safeChallenger.id };
+                this.profiles = { w: safeRecipient, b: safeChallenger };
+            } else {
+                // Backward compatibility for old code-based invitations.
+                this.seats.w = playerId;
+            }
+        }
+        const color = this.colorOf(playerId);
+        if (!color) {
+            this.sendTo(playerId, { type: "error", reason: "This board belongs to two other players" });
+            return;
+        }
+        const player = this.players.get(playerId);
+        if (player) this.profiles[color] = this.identity(player);
         this.matchKey = matchKey;
         if (this.phase === "waiting") this.pace = pace;
         this.updatedAt = this.now();
+        this.beginWhenBothPlayersJoined(playerId);
         this.sendTo(playerId, this.stateMessage(playerId));
+        this.broadcast(this.stateMessage(null));
         this.save();
+    }
+
+    private beginWhenBothPlayersJoined(joiningPlayerId?: string): void {
+        if (!this.seats.w || !this.seats.b || this.phase !== "waiting") return;
+        const joined = (playerId: string) => playerId === joiningPlayerId || this.players.has(playerId);
+        if (!joined(this.seats.w) || !joined(this.seats.b)) return;
+        this.phase = "playing";
+        this.updatedAt = this.now();
+        this.deadlineAt = this.correspondence ? this.updatedAt + this.turnDurationMs() : null;
+        if (!this.correspondence) this.lock();
+    }
+
+    private identity(player: Player): RivalIdentity {
+        return {
+            id: player.id,
+            username: player.username.trim().slice(0, 40) || "Dreamer",
+            avatarUrl: typeof player.avatarUrl === "string" ? player.avatarUrl.slice(0, 500) : null,
+        };
+    }
+
+    private safeIdentity(value: RivalIdentity | undefined): RivalIdentity | null {
+        if (!value || typeof value.id !== "string" || typeof value.username !== "string") return null;
+        return {
+            id: value.id.slice(0, 128),
+            username: value.username.trim().slice(0, 40) || "Dreamer",
+            avatarUrl: typeof value.avatarUrl === "string" ? value.avatarUrl.slice(0, 500) : null,
+        };
     }
 
     private handleReaction(playerId: string, reaction: ChessReaction): void {

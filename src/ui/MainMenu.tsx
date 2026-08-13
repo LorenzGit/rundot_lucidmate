@@ -8,7 +8,6 @@ import {
     leaveOnlineMatch,
     startCorrespondenceMatch,
     startOnlineMatch,
-    startQuickMatch,
 } from "../game/runController.ts";
 import { correspondence } from "../social/correspondence.ts";
 import type { CorrespondenceMatch } from "../social/model.ts";
@@ -81,7 +80,7 @@ function MiniBoard({ match }: { match: CorrespondenceMatch }) {
 
 function dueCopy(match: CorrespondenceMatch): string {
     if (match.unavailable) return "Tap to reconnect";
-    if (match.phase === "waiting") return match.incoming ? "Tap to accept" : "Invite waiting";
+    if (match.phase === "waiting") return match.incoming ? "You play White" : "Waiting for their first move";
     if (match.phase === "over") {
         if (match.reason === "cancelled") return "Match ended";
         if (match.result === "win") return "You won";
@@ -96,7 +95,7 @@ function dueCopy(match: CorrespondenceMatch): string {
 
 function matchStatus(match: CorrespondenceMatch, yourMove: boolean): string {
     if (match.unavailable) return "RECONNECT";
-    if (match.phase === "waiting") return match.incoming ? "NEW CHALLENGE" : "CHALLENGE";
+    if (match.phase === "waiting") return match.incoming ? "YOUR FIRST MOVE" : "CHALLENGE SENT";
     if (yourMove) return "YOUR MOVE";
     return match.phase === "over" ? "FINAL" : "WAITING";
 }
@@ -315,7 +314,7 @@ export default function MainMenu() {
     const recent = matches.filter((match) => match.phase === "over");
     const visible = [...yourMove, ...waiting, ...recent];
     const reward = dailySystems.rewardView();
-    const busy = state.socialBusy || state.matchmakingVisible;
+    const busy = state.socialBusy;
     const onlineReady = canUseAuthoritativeRealtime();
     const managedMatch = matches.find((match) => match.matchKey === managedMatchKey) ?? null;
 
@@ -325,14 +324,7 @@ export default function MainMenu() {
         );
     }, []);
 
-    const findRival = () => {
-        if (!onlineReady) return;
-        cue(() => store.patch({ socialBusy: false }));
-        audioManager.play("start");
-        void startQuickMatch().then((ok) => {
-            if (!ok) audioManager.play("reject");
-        });
-    };
+    const findRival = () => cue(() => store.patch({ menuScreen: "rivals", rivalDirectoryError: null }));
 
     const code = state.onlineJoinCode.trim().toUpperCase();
     const validCode = /^[A-Z0-9]{6}$/.test(code);
@@ -391,12 +383,12 @@ export default function MainMenu() {
                             <small>{onlineReady ? "Play over a day or three" : "See how friend games work"}</small>
                         </span>
                     </button>
-                    <button type="button" className="inbox-action" onClick={findRival} disabled={busy || !onlineReady}>
+                    <button type="button" className="inbox-action" onClick={findRival}>
                         <span className="inbox-action-glyph">⌁</span>
                         <span>
-                            <strong>{state.matchmakingVisible ? "Finding a rival…" : "Find a live rival"}</strong>
+                            <strong>Find a rival</strong>
                             <small>
-                                {onlineReady ? "Matched online, play now" : "Available when connected to RUN"}
+                                {onlineReady ? "Choose a player · they move first" : "Browse async opponents in RUN"}
                             </small>
                         </span>
                     </button>

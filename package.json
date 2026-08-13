@@ -1,6 +1,6 @@
 {
   "name": "lucidmate",
-  "version": "0.4.1",
+  "version": "0.4.4",
   "description": "LUCIDMATE — Neon chess for RUN.world, built with PixiJS 8 (WebGPU-first).",
   "private": true,
   "license": "SEE LICENSE IN LICENSE.md",
@@ -25,7 +25,7 @@
     "lint": "biome lint src scripts vite.config.js --diagnostic-level=error --max-diagnostics=none",
     "typecheck": "tsc --noEmit",
     "test": "node scripts/test-noise-random.mjs && node scripts/test-social-model.mjs && node scripts/test-online-errors.ts && node scripts/test-platform-systems.ts && node scripts/check-safe-area.ts && node scripts/simulate.mjs && node scripts/check-game.mjs && node scripts/test-ui-layout.mjs",
-    "test:multiplayer": "node scripts/qa-live-matchmaking.mjs && node scripts/qa-rivals-flow.mjs && node scripts/qa-correspondence-turn-flow.mjs && node scripts/qa-correspondence-management.mjs",
+    "test:multiplayer": "node scripts/qa-rivals-flow.mjs && node scripts/qa-correspondence-turn-flow.mjs && node scripts/qa-correspondence-management.mjs",
     "test:ui": "node scripts/test-ui-layout.mjs",
     "simulate": "node scripts/simulate.mjs",
     "visual-qa": "node scripts/visual-qa.mjs",

@@ -44,6 +44,8 @@ export interface CorrespondenceMatch {
     reactionsMuted: boolean;
     unavailable: boolean;
     incoming: boolean;
+    /** True for the player who sent the challenge; the recipient is always White. */
+    challenger: boolean;
 }
 
 export interface RivalSummary extends RivalIdentity {
@@ -91,6 +93,7 @@ export function createMatchReference(matchKey: string, pace: CorrespondencePace)
         reactionsMuted: false,
         unavailable: false,
         incoming: false,
+        challenger: true,
     };
 }
 
@@ -187,6 +190,7 @@ export function sanitizeMatches(value: unknown): CorrespondenceMatch[] {
             reactionsMuted: match.reactionsMuted === true,
             unavailable: match.unavailable === true,
             incoming: match.incoming === true,
+            challenger: typeof match.challenger === "boolean" ? match.challenger : match.incoming !== true,
         });
     }
     const unique = new Map(matches.map((match) => [match.matchKey, match]));

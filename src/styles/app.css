@@ -1117,9 +1117,9 @@ svg.gear-icon {
     .helper-bar {
         left: auto;
         right: calc(var(--box-x) + max(calc(26 * var(--u)), var(--safe-right)));
-        bottom: calc(var(--box-y) + 8px);
+        bottom: calc(var(--box-y) + max(10px, var(--safe-bottom)));
         width: var(--rail-width);
-        height: calc(74 * var(--u));
+        height: max(48px, calc(74 * var(--u)));
         grid-template-columns: repeat(2, minmax(0, 1fr));
         align-items: stretch;
         gap: 6px;
@@ -1133,7 +1133,7 @@ svg.gear-icon {
     }
     .helper-button,
     .helper-btn {
-        min-height: 40px;
+        min-height: 44px;
         width: 100%;
     }
 }
@@ -5297,24 +5297,81 @@ html[data-reduced-motion="true"] .board-actions-card {
 }
 
 .rival-card {
+    --rival-tone: #f4c95d;
+    --rival-tone-soft: #fff0ae;
     display: grid;
     min-height: 82px;
-    grid-template-columns: 46px minmax(0, 1fr) auto;
+    grid-template-columns: 50px minmax(0, 1fr) auto;
     align-items: center;
     gap: 10px;
     padding: 11px;
 }
 
+.rival-avatar-shell {
+    --rival-tone: #f4c95d;
+    --rival-tone-soft: #fff0ae;
+    position: relative;
+    display: grid;
+    width: 50px;
+    height: 50px;
+    place-items: center;
+    flex: none;
+    border: 3px solid rgba(255, 255, 255, 0.78);
+    border-radius: 18px;
+    background: linear-gradient(145deg, var(--rival-tone-soft), var(--rival-tone));
+    box-shadow:
+        0 4px 0 color-mix(in srgb, var(--rival-tone) 45%, #092126),
+        0 8px 18px color-mix(in srgb, var(--rival-tone) 18%, transparent);
+    transform: rotate(-3deg);
+}
+
+.rival-avatar-shell[data-tone="mint"],
+.rival-discovery-card[data-tone="mint"] {
+    --rival-tone: #55d7bb;
+    --rival-tone-soft: #bff5d9;
+}
+
+.rival-avatar-shell[data-tone="coral"],
+.rival-discovery-card[data-tone="coral"] {
+    --rival-tone: #f58b79;
+    --rival-tone-soft: #ffd1a4;
+}
+
+.rival-avatar-shell[data-tone="sky"],
+.rival-discovery-card[data-tone="sky"] {
+    --rival-tone: #70c7e8;
+    --rival-tone-soft: #c7eff7;
+}
+
+.rival-avatar-shell[data-tone="berry"],
+.rival-discovery-card[data-tone="berry"] {
+    --rival-tone: #e882b5;
+    --rival-tone-soft: #ffc6d9;
+}
+
 .rival-avatar {
     display: grid;
-    width: 44px;
-    height: 44px;
+    width: 100%;
+    height: 100%;
     place-items: center;
-    border: 1px solid var(--accent-2);
+    border-radius: 14px;
+    object-fit: cover;
+    color: #10282b;
+    font-size: 1.3rem;
+    font-weight: 950;
+    text-shadow: 0 1px rgba(255, 255, 255, 0.62);
+}
+
+.rival-avatar-shell > i {
+    position: absolute;
+    right: -5px;
+    bottom: -5px;
+    width: 14px;
+    height: 14px;
+    border: 3px solid #082022;
     border-radius: 50%;
-    background: color-mix(in srgb, var(--accent-2) 15%, #181020);
-    color: #fff8ed;
-    font-weight: 900;
+    background: #6fdf7b;
+    box-shadow: 0 0 9px rgba(111, 223, 123, 0.5);
 }
 
 .rival-card > div {
@@ -5359,6 +5416,136 @@ html[data-reduced-motion="true"] .board-actions-card {
     gap: 8px;
 }
 
+.rival-directory {
+    display: grid;
+    gap: 14px;
+}
+
+.rival-how-it-works {
+    position: relative;
+    display: grid;
+    min-height: 148px;
+    grid-template-columns: minmax(120px, 0.88fr) minmax(0, 1.12fr);
+    align-items: center;
+    gap: 6px;
+    overflow: hidden;
+    border: 2px solid rgba(255, 241, 182, 0.72);
+    border-radius: 28px;
+    background:
+        radial-gradient(circle at 0 100%, rgba(255, 122, 104, 0.82), transparent 49%),
+        radial-gradient(circle at 100% 0, rgba(88, 211, 187, 0.82), transparent 48%),
+        linear-gradient(135deg, #f6d26f, #eca66d 58%, #6fd8bd);
+    padding: 9px 13px 10px 8px;
+    color: #102426;
+    box-shadow:
+        0 5px 0 rgba(75, 44, 31, 0.72),
+        0 15px 32px rgba(0, 0, 0, 0.3);
+}
+
+.rival-how-it-works::after {
+    content: "";
+    position: absolute;
+    top: -32px;
+    right: -26px;
+    width: 96px;
+    height: 96px;
+    border: 2px solid rgba(255, 255, 255, 0.22);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.rival-party-art {
+    position: relative;
+    display: grid;
+    place-items: center;
+}
+
+.rival-party-graphic {
+    width: min(100%, 156px);
+    overflow: visible;
+}
+
+.rival-party-orbit {
+    fill: none;
+    stroke: rgba(16, 36, 38, 0.4);
+    stroke-dasharray: 4 7;
+    stroke-width: 2;
+}
+
+.rival-party-piece circle {
+    fill: rgba(255, 250, 221, 0.9);
+    stroke: rgba(16, 36, 38, 0.88);
+    stroke-width: 2.5;
+}
+
+.rival-party-piece path {
+    fill: none;
+    stroke: #102426;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2.7;
+}
+
+.rival-party-piece circle:not(:first-child) {
+    fill: #102426;
+    stroke: none;
+}
+
+.rival-party-piece.piece-one > circle:first-child {
+    fill: #ffe482;
+}
+
+.rival-party-piece.piece-two > circle:first-child {
+    fill: #8ce0ce;
+}
+
+.rival-party-spark {
+    fill: #fff9db;
+    stroke: #102426;
+    stroke-width: 1.5;
+}
+
+.rival-party-copy {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    min-width: 0;
+    gap: 5px;
+}
+
+.rival-party-copy > span {
+    font-size: max(0.62rem, 10px);
+    font-weight: 950;
+    letter-spacing: 0.14em;
+}
+
+.rival-party-copy strong {
+    max-width: 190px;
+    font-size: max(1.02rem, 17px);
+    font-weight: 950;
+    line-height: 1.05;
+}
+
+.rival-party-copy p {
+    max-width: 220px;
+    margin: 0;
+    color: rgba(16, 36, 38, 0.82);
+    font-size: max(0.7rem, 12px);
+    font-weight: 750;
+    line-height: 1.28;
+}
+
+.rival-search.social-panel {
+    border-color: rgba(103, 215, 193, 0.4);
+    border-radius: 22px;
+    background:
+        radial-gradient(circle at 95% 10%, rgba(81, 205, 183, 0.14), transparent 40%),
+        linear-gradient(145deg, rgba(13, 46, 44, 0.98), rgba(5, 24, 26, 0.98));
+    box-shadow:
+        0 4px 0 rgba(2, 12, 14, 0.55),
+        0 12px 28px rgba(0, 0, 0, 0.2);
+}
+
 .rival-search > label,
 .rival-section > header h2 {
     margin: 0;
@@ -5370,18 +5557,28 @@ html[data-reduced-motion="true"] .board-actions-card {
 
 .rival-search > div {
     display: grid;
-    min-height: 50px;
-    grid-template-columns: 34px minmax(0, 1fr);
+    min-height: 52px;
+    grid-template-columns: 42px minmax(0, 1fr);
     align-items: center;
-    border: 1px solid rgba(105, 205, 185, 0.42);
-    border-radius: 14px;
-    background: rgba(2, 15, 18, 0.7);
+    border: 2px solid rgba(105, 205, 185, 0.52);
+    border-radius: 16px;
+    background: rgba(246, 255, 245, 0.1);
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.22);
 }
 
 .rival-search > div > span {
+    display: grid;
+    place-items: center;
     color: #69cdb9;
-    font-size: 1.4rem;
-    text-align: center;
+}
+
+.rival-search > div > span svg {
+    width: 23px;
+    height: 23px;
+    fill: none;
+    stroke: currentcolor;
+    stroke-linecap: round;
+    stroke-width: 2;
 }
 
 .rival-search input {
@@ -5413,6 +5610,13 @@ html[data-reduced-motion="true"] .board-actions-card {
     gap: 8px;
 }
 
+.rival-section.featured {
+    border-radius: 22px;
+    background: rgba(6, 26, 27, 0.5);
+    padding: 11px;
+    box-shadow: inset 0 0 0 1px rgba(188, 228, 211, 0.09);
+}
+
 .rival-section > header {
     display: flex;
     align-items: center;
@@ -5429,19 +5633,28 @@ html[data-reduced-motion="true"] .board-actions-card {
 
 .rival-discovery-list {
     display: grid;
-    gap: 7px;
+    gap: 10px;
 }
 
 .rival-discovery-card {
+    --rival-tone: #f4c95d;
+    --rival-tone-soft: #fff0ae;
+    position: relative;
     display: grid;
-    min-height: 68px;
-    grid-template-columns: 44px minmax(0, 1fr) auto;
+    min-height: 78px;
+    grid-template-columns: 50px minmax(0, 1fr) auto;
     align-items: center;
-    gap: 10px;
-    border: 1px solid rgba(195, 220, 207, 0.17);
-    border-radius: 16px;
-    background: linear-gradient(145deg, rgba(15, 39, 38, 0.96), rgba(5, 19, 22, 0.97));
-    padding: 9px 10px;
+    gap: 11px;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--rival-tone) 46%, rgba(195, 220, 207, 0.18));
+    border-radius: 20px;
+    background:
+        radial-gradient(circle at 4% 50%, color-mix(in srgb, var(--rival-tone) 21%, transparent), transparent 31%),
+        linear-gradient(135deg, rgba(18, 54, 51, 0.98), rgba(5, 23, 26, 0.98));
+    padding: 11px 11px 13px;
+    box-shadow:
+        0 4px 0 color-mix(in srgb, var(--rival-tone) 20%, #041316),
+        0 10px 22px rgba(0, 0, 0, 0.18);
 }
 
 .rival-discovery-card > div {
@@ -5458,36 +5671,76 @@ html[data-reduced-motion="true"] .board-actions-card {
 
 .rival-discovery-card h3 {
     color: var(--lm-ink);
-    font-size: max(0.84rem, 14px);
+    font-size: max(0.9rem, 15px);
+    font-weight: 900;
+}
+
+@media (max-width: 430px) {
+    .rival-discovery-card h3 {
+        overflow-wrap: anywhere;
+        text-overflow: clip;
+        white-space: normal;
+    }
 }
 
 .rival-discovery-card p {
     margin-top: 3px;
-    color: var(--lm-muted);
+    color: color-mix(in srgb, var(--rival-tone-soft) 54%, var(--lm-muted));
     font-size: max(0.65rem, 11px);
+    font-weight: 700;
 }
 
 .rival-discovery-card > button,
 .rival-card > button {
-    min-height: 42px;
-    border: 1px solid rgba(239, 200, 105, 0.46);
-    border-radius: 11px;
-    background: rgba(239, 200, 105, 0.1);
-    padding-inline: 11px;
-    color: #efc869;
+    min-height: 44px;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-radius: 14px;
+    background: linear-gradient(145deg, var(--rival-tone-soft), var(--rival-tone));
+    padding-inline: 12px;
+    color: #102426;
     font-size: max(0.62rem, 10px);
     font-weight: 900;
     letter-spacing: 0.06em;
+    box-shadow: 0 3px 0 color-mix(in srgb, var(--rival-tone) 40%, #082022);
+}
+
+.rival-discovery-card > button {
+    display: flex;
+    min-width: 78px;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+.rival-discovery-card > button svg {
+    width: 17px;
+    height: 17px;
+    fill: none;
+    stroke: currentcolor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2.4;
+}
+
+.rival-discovery-card > button:active:not(:disabled) {
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 color-mix(in srgb, var(--rival-tone) 40%, #082022);
+}
+
+.rival-discovery-card > button:disabled {
+    filter: saturate(0.7);
+    opacity: 0.76;
 }
 
 .rival-inline-empty,
 .rival-status-note {
-    border: 1px dashed rgba(105, 205, 185, 0.34);
-    border-radius: 14px;
-    background: rgba(5, 23, 24, 0.72);
-    padding: 16px;
-    color: var(--lm-muted);
+    border: 1px solid rgba(244, 201, 93, 0.42);
+    border-radius: 17px;
+    background: linear-gradient(135deg, rgba(69, 57, 28, 0.78), rgba(8, 37, 37, 0.84));
+    padding: 13px 16px;
+    color: #e5dcc5;
     font-size: max(0.72rem, 12px);
+    font-weight: 700;
     line-height: 1.4;
     text-align: center;
 }
@@ -5498,182 +5751,115 @@ html[data-reduced-motion="true"] .board-actions-card {
 }
 
 .rival-section.history {
-    padding-top: 4px;
-    border-top: 1px solid rgba(195, 220, 207, 0.12);
+    padding-top: 9px;
+    border-top: 1px solid rgba(244, 201, 93, 0.18);
 }
 
-.matchmaking-backdrop {
-    position: absolute;
-    z-index: 80;
-    inset: 0;
-    display: grid;
-    place-items: center;
-    padding: max(20px, var(--safe-top)) max(20px, var(--safe-right)) max(20px, var(--safe-bottom))
-        max(20px, var(--safe-left));
-    background: rgba(0, 9, 12, 0.78);
-    backdrop-filter: blur(15px) saturate(0.82);
-}
+@media (max-width: 370px) {
+    .rival-how-it-works {
+        grid-template-columns: 112px minmax(0, 1fr);
+        padding-left: 2px;
+    }
 
-.matchmaking-card {
-    display: grid;
-    width: min(100%, 360px);
-    justify-items: center;
-    gap: 10px;
-    border: 1px solid rgba(239, 200, 105, 0.54);
-    border-radius: 28px;
-    background:
-        radial-gradient(circle at 50% -20%, rgba(105, 205, 185, 0.25), transparent 55%),
-        linear-gradient(145deg, rgba(13, 43, 42, 0.98), rgba(8, 16, 24, 0.99));
-    padding: 24px 22px 20px;
-    color: var(--lm-ink);
-    text-align: center;
-    box-shadow: 0 30px 90px rgba(0, 0, 0, 0.64);
-}
+    .rival-party-copy strong {
+        font-size: 16px;
+    }
 
-.matchmaking-card > p,
-.matchmaking-card > h2,
-.matchmaking-card > span,
-.matchmaking-card > small {
-    margin: 0;
-}
+    .rival-discovery-card {
+        grid-template-columns: 46px minmax(0, 1fr) 48px;
+        gap: 8px;
+    }
 
-.matchmaking-card > p {
-    color: var(--accent);
-    font-size: max(0.66rem, 11px);
-    font-weight: 900;
-    letter-spacing: 0.18em;
-}
+    .rival-avatar-shell {
+        width: 46px;
+        height: 46px;
+    }
 
-.matchmaking-card > h2 {
-    font-size: clamp(1.4rem, 7vw, 2rem);
-}
+    .rival-discovery-card > button {
+        min-width: 48px;
+        padding-inline: 10px;
+    }
 
-.matchmaking-card > span,
-.matchmaking-card > small {
-    max-width: 290px;
-    color: var(--lm-muted);
-    font-size: max(0.72rem, 12px);
-    line-height: 1.4;
-}
-
-.matchmaking-card > small {
-    font-size: max(0.65rem, 11px);
-}
-
-.matchmaking-card > button {
-    width: 100%;
-    min-height: 50px;
-    margin-top: 4px;
-    border: 1px solid rgba(195, 220, 207, 0.26);
-    border-radius: 14px;
-    background: rgba(255, 255, 255, 0.055);
-    color: var(--lm-ink);
-    font-weight: 900;
-    letter-spacing: 0.1em;
-}
-
-.matchmaking-orbit {
-    position: relative;
-    display: grid;
-    width: 78px;
-    height: 78px;
-    place-items: center;
-    border: 1px solid rgba(105, 205, 185, 0.55);
-    border-radius: 50%;
-    color: #69cdb9;
-    font-size: 2rem;
-}
-
-.matchmaking-orbit i {
-    position: absolute;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--accent);
-    box-shadow: 0 0 14px var(--accent);
-    animation: matchmaking-spin 1.6s linear infinite;
-    transform-origin: 0 39px;
-}
-
-.matchmaking-orbit svg {
-    width: 42px;
-    height: 42px;
-    fill: none;
-    stroke: currentColor;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    stroke-width: 2;
-}
-
-.matchmaking-progress {
-    display: flex;
-    height: 14px;
-    align-items: center;
-    gap: 7px;
-}
-
-.matchmaking-progress i {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: #69cdb9;
-    animation: matchmaking-pulse 1.1s ease-in-out infinite;
-}
-
-.matchmaking-progress i:nth-child(2) {
-    animation-delay: 140ms;
-}
-
-.matchmaking-progress i:nth-child(3) {
-    animation-delay: 280ms;
-}
-
-@keyframes matchmaking-spin {
-    to {
-        transform: rotate(360deg);
+    .rival-discovery-card > button span {
+        display: none;
     }
 }
 
-@keyframes matchmaking-pulse {
-    0%,
-    100% {
-        opacity: 0.28;
-        transform: scale(0.7);
+@media (min-width: 700px) and (orientation: portrait), (min-width: 1100px) {
+    .rival-discovery-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
-    50% {
-        opacity: 1;
-        transform: scale(1.1);
-    }
-}
-
-html[data-reduced-motion="true"] .matchmaking-orbit i,
-html[data-reduced-motion="true"] .matchmaking-progress i {
-    animation: none;
 }
 
 @media (orientation: landscape) {
-    .matchmaking-card {
-        width: min(520px, calc(100dvw - 56px));
-        grid-template-columns: 92px minmax(0, 1fr);
-        justify-items: start;
-        gap: 5px 18px;
-        padding: 20px 24px;
-        text-align: left;
+    .rival-directory {
+        width: 100%;
+        grid-template-columns: minmax(280px, 0.78fr) minmax(390px, 1.22fr);
+        align-items: start;
     }
 
-    .matchmaking-orbit {
-        grid-row: 1 / span 5;
-        align-self: center;
+    .rival-how-it-works,
+    .rival-search,
+    .rival-status-note {
+        grid-column: 1;
     }
 
-    .matchmaking-card > button {
+    .rival-section.featured {
         grid-column: 2;
-        margin-top: 8px;
+        grid-row: 1 / span 3;
     }
 
-    .matchmaking-progress {
-        display: none;
+    .rival-section.history {
+        grid-column: 1 / -1;
     }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    html:not([data-reduced-motion="true"]) .piece-one {
+        animation: rival-piece-bob 2.8s ease-in-out infinite;
+    }
+
+    html:not([data-reduced-motion="true"]) .piece-two {
+        animation: rival-piece-bob 2.8s 260ms ease-in-out infinite reverse;
+    }
+
+    html:not([data-reduced-motion="true"]) .rival-party-spark {
+        animation: rival-spark-pop 1.8s ease-in-out infinite alternate;
+        transform-origin: center;
+        transform-box: fill-box;
+    }
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .rival-discovery-card {
+        transition:
+            transform 150ms ease,
+            border-color 150ms ease;
+    }
+
+    .rival-discovery-card:hover {
+        z-index: 1;
+        border-color: var(--rival-tone);
+        transform: translateY(-2px) rotate(-0.25deg);
+    }
+}
+
+@keyframes rival-piece-bob {
+    50% {
+        transform: translateY(-4px) rotate(2deg);
+    }
+}
+
+@keyframes rival-spark-pop {
+    to {
+        opacity: 0.58;
+        transform: scale(0.75) rotate(20deg);
+    }
+}
+
+html[data-reduced-motion="true"] .rival-party-piece,
+html[data-reduced-motion="true"] .rival-party-spark {
+    animation: none !important;
 }
 
 .league-crest {
@@ -6101,7 +6287,7 @@ html[data-reduced-motion="true"] .matchmaking-progress i {
     --lm-line: rgba(195, 220, 207, 0.17);
 }
 
-.subscreen .social-panel,
+.subscreen .social-panel:not(.rival-how-it-works):not(.rival-search),
 .subscreen .challenge-safety,
 .subscreen .social-note,
 .subscreen .social-empty,

@@ -28,7 +28,6 @@ export function applyDevelopmentScreenPreview(): void {
     const requested = params.get("screen") ?? pathScreen;
     const qa = params.get("qa") === "1" || qaPath;
     const socialPreview = params.get("socialPreview");
-    const matchmakingPreview = params.get("matchmaking") === "1";
     if (qa && store.get().correspondenceMatches.length === 0) {
         const now = Date.now();
         if (socialPreview === "waiting") {
@@ -55,6 +54,7 @@ export function applyDevelopmentScreenPreview(): void {
                         reactionsMuted: false,
                         unavailable: false,
                         incoming: false,
+                        challenger: true,
                     },
                 ],
             });
@@ -82,6 +82,7 @@ export function applyDevelopmentScreenPreview(): void {
                         reactionsMuted: false,
                         unavailable: false,
                         incoming: false,
+                        challenger: false,
                     },
                     {
                         matchKey: "lm-preview-waiting-002",
@@ -103,6 +104,7 @@ export function applyDevelopmentScreenPreview(): void {
                         reactionsMuted: false,
                         unavailable: false,
                         incoming: false,
+                        challenger: false,
                     },
                     {
                         matchKey: "lm-preview-final-003",
@@ -124,6 +126,7 @@ export function applyDevelopmentScreenPreview(): void {
                         reactionsMuted: false,
                         unavailable: false,
                         incoming: false,
+                        challenger: false,
                     },
                 ],
             });
@@ -139,8 +142,6 @@ export function applyDevelopmentScreenPreview(): void {
             phase: "menu",
             menuScreen: requested as MenuScreen,
             paused: false,
-            matchmakingVisible: matchmakingPreview,
-            onlineStatus: matchmakingPreview ? "connecting" : store.get().onlineStatus,
         });
         if (requested === "rivals" && qa) {
             const now = Date.now();
