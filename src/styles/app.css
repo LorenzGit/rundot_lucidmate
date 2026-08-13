@@ -4098,6 +4098,10 @@ html[data-reduced-motion="true"] .daily-beacon-orbit::after {
     .game-hud .hud-score {
         max-width: none;
     }
+
+    .game-hud .hud-score strong {
+        font-size: max(13px, calc(22 * var(--u)));
+    }
 }
 
 /* Keep the small-phone menu fully above the fold; button labels remain plain. */
@@ -5579,6 +5583,38 @@ html[data-reduced-motion="true"] .board-actions-card {
 }
 
 @media (orientation: landscape) {
+    /* Keep transient feedback inside the control rail. A full-width toast
+       crossed both the board and the reaction panel on short desktops. */
+    .toast {
+        right: calc(var(--box-x) + max(calc(26 * var(--u)), var(--safe-right)));
+        bottom: calc(var(--box-y) + max(196px, calc(280 * var(--u))));
+        left: auto;
+        width: var(--rail-width);
+        min-height: 0;
+        box-sizing: border-box;
+        padding: 9px 11px;
+    }
+
+    .online-banner {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 1px;
+        justify-items: center;
+        padding-block: 5px;
+    }
+
+    .online-banner-label {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* The turn card already communicates both colour and turn ownership. */
+    .online-banner-seat,
+    .online-banner-count {
+        display: none;
+    }
+
     .inbox-menu {
         display: grid;
         width: 100%;

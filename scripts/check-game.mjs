@@ -178,6 +178,12 @@ expect(
     /reconnectingInGame[\s\S]*?onlineStatus:\s*"error"/.test(runController),
     "failed retries retain the active board",
 );
+expect(/onlineStateHydrated/.test(runController), "reconnect hydration is distinct from a newly received move");
+const chessScene = read("src/game/scene/chessScene.ts");
+expect(
+    /private relayout\(\)[\s\S]*?this\.moving = false;[\s\S]*?this\.repositionPieces\(\)/.test(chessScene),
+    "resize atomically cancels stale motion and reflows every piece",
+);
 
 for (const file of [...sources, "index.html", "src/styles/app.css", "README.md"]) {
     if (!fs.existsSync(path.join(root, file))) continue;

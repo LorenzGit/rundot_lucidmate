@@ -26,6 +26,7 @@ export class RunController {
     private aiTimer: ReturnType<typeof setTimeout> | null = null;
     private finished = false;
     private onlineWired = false;
+    private onlineStateHydrated = false;
     /** Last server lastMove key we already animated/applied. */
     private lastAppliedKey: string | null = null;
     private pendingAsyncMoveKey: string | null = null;
@@ -138,7 +139,7 @@ export class RunController {
         const board = wireToBoard(state.board);
         const nextKey = this.moveKey(state.lastMove);
         const isNewMove = nextKey !== null && nextKey !== this.lastAppliedKey;
-        const prevKey = this.lastAppliedKey;
+        const wasHydrated = this.onlineStateHydrated;
 
         const lastMove: Move | null = state.lastMove
             ? {
@@ -168,7 +169,6 @@ export class RunController {
             applyTurn = state.winner === "w" ? "b" : "w";
         }
 
-        const snapBefore = this.match.snapshot();
         const auth =
             seat != null
                 ? {
@@ -205,28 +205,21 @@ export class RunController {
         this.match.setInteractionLocked(state.phase !== "playing");
 
         if (this.scene) {
-            if (isNewMove && nextLast && prevKey !== null) {
-                // Opponent (or confirmed) reply — animate the last server move.
+            if (!wasHydrated) {
+                // Initial room hydration already contains the final board. Replaying
+                // its last move against a fresh scene creates duplicate pieces.
+                this.scene.syncFromMatch();
+            } else if (isNewMove && nextLast) {
+                // Animate only moves received after an authoritative board exists.
                 this.scene.applyExternalMove(nextLast);
                 this.playMoveFeedback(nextLast);
-            } else if (isNewMove && nextLast && prevKey === null && snapBefore.history.length === 0) {
-                // First move of the game: animate if we didn't just play it ourselves.
-                const weJustPlayed =
-                    seat &&
-                    nextLast.color === seat &&
-                    snapBefore.history.some((m) => m.from === nextLast.from && m.to === nextLast.to);
-                if (!weJustPlayed) {
-                    this.scene.applyExternalMove(nextLast);
-                    this.playMoveFeedback(nextLast);
-                } else {
-                    this.scene.syncFromMatch();
-                }
             } else {
-                this.scene.syncFromMatch();
+                this.scene.refreshOnly();
             }
         }
 
         this.lastAppliedKey = nextKey;
+        this.onlineStateHydrated = true;
         const socialMatch = correspondence.sync(state, onlineChess.snapshot());
         if (state.reaction && socialMatch && !socialMatch.reactionsMuted) {
             const reactionKey = `${state.reaction.from}-${state.reaction.id}-${state.reaction.at}`;

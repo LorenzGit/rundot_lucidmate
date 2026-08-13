@@ -50,6 +50,17 @@ interface AmbientSpark {
     radius: number;
 }
 
+export interface SceneGeometrySnapshot {
+    moving: boolean;
+    selected: number | null;
+    boardPieces: number;
+    renderedPieces: number;
+    layerChildren: number;
+    misalignedSquares: number[];
+    layout: BoardLayout;
+    stageScale: number;
+}
+
 export class ChessScene {
     private readonly app: Application;
     private readonly stage: Stage;
@@ -86,6 +97,7 @@ export class ChessScene {
     private ambient: AmbientSpark[] = [];
     private ambientSpawn = 0;
     private lastStatus = "";
+    private qaMotionDurationScale = 1;
 
     constructor(opts: ChessSceneOptions) {
         this.app = opts.app;
@@ -263,7 +275,11 @@ export class ChessScene {
         this.statusText.y = this.layout.originY - 36;
         this.paintStage();
         this.paintBoard();
-        if (!this.moving) this.repositionPieces();
+        // Move tweens capture coordinates from the previous board geometry.
+        // Resize atomically cancels that decorative motion and rebuilds from
+        // authoritative match state so no sprite can remain on the old grid.
+        this.moving = false;
+        this.repositionPieces();
     }
 
     private paintStage(): void {
@@ -360,9 +376,10 @@ export class ChessScene {
     }
 
     private rebuildPieces(opts?: { animateIn?: boolean }): void {
-        // Drop in-flight tweens that might still touch destroyed piece roots.
+        // Drop in-flight tweens and destroy every layer child, including the
+        // flying sprite temporarily removed from `pieces` during animation.
         this.tweens.clear();
-        for (const sprite of this.pieces.values()) sprite.root.destroy({ children: true });
+        for (const child of this.pieceLayer.removeChildren()) child.destroy({ children: true });
         this.pieces.clear();
         const snap = this.match.snapshot();
         let delay = 0;
@@ -448,7 +465,7 @@ export class ChessScene {
         flying.scale.set(1);
         flying.alpha = 1;
 
-        const duration = move.capture ? 260 : 220;
+        const duration = (move.capture ? 260 : 220) * this.qaMotionDurationScale;
         const lift = this.layout.cell * 0.28;
         let trailTick = 0;
 
@@ -628,6 +645,33 @@ export class ChessScene {
     refreshOnly(): void {
         this.paintBoard();
         this.updateStatusLabel();
+    }
+
+    /** Development QA only: widen the resize race without changing game state. */
+    setMotionDurationScaleForQa(scale: number): void {
+        this.qaMotionDurationScale = Math.max(1, Math.min(12, scale));
+    }
+
+    /** Development QA: prove every rendered piece occupies its current square after a resize. */
+    geometrySnapshot(): SceneGeometrySnapshot {
+        const snap = this.match.snapshot();
+        const misalignedSquares: number[] = [];
+        for (const [sq, sprite] of this.pieces) {
+            const expected = squareToLocal(this.layout, sq, this.flipped());
+            if (Math.abs(sprite.root.x - expected.x) > 0.5 || Math.abs(sprite.root.y - expected.y) > 0.5) {
+                misalignedSquares.push(sq);
+            }
+        }
+        return {
+            moving: this.moving,
+            selected: snap.selected,
+            boardPieces: snap.board.filter(Boolean).length,
+            renderedPieces: this.pieces.size,
+            layerChildren: this.pieceLayer.children.length,
+            misalignedSquares,
+            layout: { ...this.layout },
+            stageScale: this.stage.scale(),
+        };
     }
 
     private spawnAmbient(dt: number): void {

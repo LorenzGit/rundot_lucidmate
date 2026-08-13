@@ -210,6 +210,9 @@ export function installBrowserQaContract(): void {
         scene() {
             return getChessScene();
         },
+        sceneGeometry() {
+            return getChessScene()?.geometrySnapshot() ?? null;
+        },
     };
     (window as unknown as { __LUCIDMATE_QA__?: typeof api }).__LUCIDMATE_QA__ = api;
 }
