@@ -2,13 +2,7 @@
  * Server-authoritative LUCIDMATE chess room.
  * Clients send move intents; server validates with the shared rules engine.
  */
-import {
-    GameRoom,
-    type GameMessage,
-    type LeaveReason,
-    type NotificationSendRequest,
-    type Player,
-} from "@series-inc/rundot-game-sdk/mp-server";
+import { GameRoom, type GameMessage, type LeaveReason, type Player } from "@series-inc/rundot-game-sdk/mp-server";
 import { cloneCastling, fullCastling, startingBoard } from "../game/chess/board.ts";
 import { applyMove, generateLegalMoves, findMove, inCheck } from "../game/chess/moves.ts";
 import { boardToWire, type ChessProtocol, type ChessServerMessage, type WireBoard } from "../game/chess/protocol.ts";
@@ -23,37 +17,10 @@ import {
 } from "../social/model.ts";
 
 const DAY_MS = 86_400_000;
-const REACTION_COOLDOWN_MS = 5_000;
-
 type SocialNotificationRecipe =
     | "lucidmate_send_move_notification"
     | "lucidmate_send_reaction_notification"
     | "lucidmate_send_rematch_notification";
-
-const SOCIAL_NOTIFICATION_COPY: Record<
-    SocialNotificationRecipe,
-    {
-        template: string;
-        fallbackTitle: string;
-        fallbackBody: (params: Record<string, string>) => string;
-    }
-> = {
-    lucidmate_send_move_notification: {
-        template: "lucidmate_your_move",
-        fallbackTitle: "Your move in LUCIDMATE",
-        fallbackBody: (params) => `${params.opponent ?? "Your opponent"} moved. Your board is waiting.`,
-    },
-    lucidmate_send_reaction_notification: {
-        template: "lucidmate_reaction",
-        fallbackTitle: "A rival reacted",
-        fallbackBody: (params) => `${params.opponent ?? "Your rival"}: ${params.reaction ?? "New reaction"}`,
-    },
-    lucidmate_send_rematch_notification: {
-        template: "lucidmate_rematch",
-        fallbackTitle: "Rematch?",
-        fallbackBody: (params) => `${params.opponent ?? "Your rival"} wants another game.`,
-    },
-};
 
 export default class ChessRoom extends GameRoom<ChessProtocol> {
     private board: Board = startingBoard();
@@ -75,7 +42,7 @@ export default class ChessRoom extends GameRoom<ChessProtocol> {
     private moveCount = 0;
     private captureCount = 0;
     private checkCount = 0;
-    private reaction: { id: ChessReaction; from: string; at: number } | null = null;
+    private reaction: { id: ChessReaction; from: string; at: number; moveCount: number } | null = null;
     private rematch: { matchKey: string; offeredBy: string } | null = null;
 
     private get correspondence(): boolean {
@@ -222,7 +189,9 @@ export default class ChessRoom extends GameRoom<ChessProtocol> {
             const recipient = this.seats[this.turn];
             if (recipient) {
                 const mover = this.profiles[opposite(this.turn)]?.username ?? "Your opponent";
-                await this.notify(sender.id, recipient, "lucidmate_send_move_notification", { opponent: mover });
+                await this.notify(sender.id, recipient, "lucidmate_send_move_notification", `turn_${this.moveCount}`, {
+                    opponent: mover,
+                });
             }
         }
     }
@@ -317,7 +286,25 @@ export default class ChessRoom extends GameRoom<ChessProtocol> {
         this.moveCount = typeof snapshot.moveCount === "number" ? Math.max(0, snapshot.moveCount | 0) : 0;
         this.captureCount = typeof snapshot.captureCount === "number" ? Math.max(0, snapshot.captureCount | 0) : 0;
         this.checkCount = typeof snapshot.checkCount === "number" ? Math.max(0, snapshot.checkCount | 0) : 0;
-        this.reaction = (snapshot.reaction as { id: ChessReaction; from: string; at: number } | null) ?? null;
+        const savedReaction = snapshot.reaction as Partial<{
+            id: ChessReaction;
+            from: string;
+            at: number;
+            moveCount: number;
+        }> | null;
+        this.reaction =
+            savedReaction &&
+            CHESS_REACTIONS.some((entry) => entry.id === savedReaction.id) &&
+            typeof savedReaction.from === "string" &&
+            typeof savedReaction.at === "number" &&
+            typeof savedReaction.moveCount === "number"
+                ? {
+                      id: savedReaction.id as ChessReaction,
+                      from: savedReaction.from,
+                      at: savedReaction.at,
+                      moveCount: Math.max(0, savedReaction.moveCount | 0),
+                  }
+                : null;
         this.rematch = (snapshot.rematch as { matchKey: string; offeredBy: string } | null) ?? null;
         this.settleDeadline();
     }
@@ -415,14 +402,19 @@ export default class ChessRoom extends GameRoom<ChessProtocol> {
     }
 
     private async handleReaction(playerId: string, reaction: ChessReaction): Promise<void> {
-        if (!this.correspondence || !this.colorOf(playerId)) return;
+        const color = this.colorOf(playerId);
+        if (!this.correspondence || this.phase !== "playing" || !color) return;
         if (!CHESS_REACTIONS.some((entry) => entry.id === reaction)) return;
-        const now = this.now();
-        if (this.reaction?.from === playerId && now - this.reaction.at < REACTION_COOLDOWN_MS) {
-            this.sendTo(playerId, { type: "error", reason: "Give the reaction a moment" });
+        if (color !== this.turn) {
+            this.sendTo(playerId, { type: "error", reason: "Reactions unlock on your turn" });
             return;
         }
-        this.reaction = { id: reaction, from: playerId, at: now };
+        const now = this.now();
+        if (this.reaction?.from === playerId && this.reaction.moveCount === this.moveCount) {
+            this.sendTo(playerId, { type: "error", reason: "You already reacted this turn" });
+            return;
+        }
+        this.reaction = { id: reaction, from: playerId, at: now, moveCount: this.moveCount };
         this.updatedAt = now;
         this.broadcast(this.stateMessage(null));
         this.save();
@@ -430,10 +422,16 @@ export default class ChessRoom extends GameRoom<ChessProtocol> {
         const recipient = this.otherPlayer(playerId);
         const label = CHESS_REACTIONS.find((entry) => entry.id === reaction)?.label ?? "New reaction";
         if (recipient) {
-            await this.notify(playerId, recipient, "lucidmate_send_reaction_notification", {
-                opponent: this.profileOf(playerId)?.username ?? "Your rival",
-                reaction: label,
-            });
+            await this.notify(
+                playerId,
+                recipient,
+                "lucidmate_send_reaction_notification",
+                `reaction_${this.moveCount}_${reaction}`,
+                {
+                    opponent: this.profileOf(playerId)?.username ?? "Your rival",
+                    reaction: label,
+                },
+            );
         }
     }
 
@@ -446,7 +444,7 @@ export default class ChessRoom extends GameRoom<ChessProtocol> {
         this.save();
         const recipient = this.otherPlayer(playerId);
         if (recipient) {
-            await this.notify(playerId, recipient, "lucidmate_send_rematch_notification", {
+            await this.notify(playerId, recipient, "lucidmate_send_rematch_notification", `rematch_${matchKey}`, {
                 opponent: this.profileOf(playerId)?.username ?? "Your rival",
             });
         }
@@ -490,53 +488,28 @@ export default class ChessRoom extends GameRoom<ChessProtocol> {
         actor: string,
         recipient: string,
         recipe: SocialNotificationRecipe,
+        eventKey: string,
         params: Record<string, string>,
     ): Promise<void> {
         if (!this.matchKey || !this.pace) return;
-        const copy = SOCIAL_NOTIFICATION_COPY[recipe];
-        const request: NotificationSendRequest = {
-            recipientProfileIds: [recipient],
-            template: copy.template,
-            params,
-            data: {
-                route: "match",
-                matchKey: this.matchKey,
-                pace: this.pace,
-            },
-            fallbackTitle: copy.fallbackTitle,
-            fallbackBody: copy.fallbackBody(params),
-        };
-
-        // The room broker creates both the offline push and the durable RUN
-        // inbox row for a player who still holds a live room membership.
-        if (this.players.has(recipient)) {
-            try {
-                await this.services.notifications.send(request);
-                return;
-            } catch (error) {
-                this.log.warn("room notification unavailable", {
-                    recipient,
-                    template: copy.template,
-                    error: error instanceof Error ? error.message : String(error),
-                });
-                return;
-            }
-        }
 
         try {
-            // After the reconnect window, correspondence rivals are no longer
-            // live room members. The protected recipe preserves delivery to
-            // that server-validated reserved seat.
+            // A protected server recipe can always target the validated rival,
+            // including after their live room membership has expired. Existing
+            // servers send the plain push; Venus #3849 additionally persists the
+            // supplied room context as a deep-linked inbox row.
             await this.services.simulation.executeRecipe(actor, recipe, {
                 targetId: recipient,
                 matchKey: this.matchKey,
                 pace: this.pace,
+                eventKey,
                 ...params,
             });
         } catch (error) {
             this.log.warn("social notification unavailable", {
                 recipient,
                 recipe,
+                eventKey,
                 error: error instanceof Error ? error.message : String(error),
             });
         }

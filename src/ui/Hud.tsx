@@ -162,6 +162,11 @@ export default function Hud() {
         opponentMode !== "local" &&
         turn === playerColor &&
         (matchStatus === "playing" || matchStatus === "check");
+    const canReact =
+        isCorrespondence &&
+        activeMatch?.phase === "playing" &&
+        isYourTurn &&
+        activeMatch.reactionUsedAtMove !== activeMatch.moveCount;
 
     const leave = useCallback(() => {
         tapFeedback();
@@ -324,11 +329,8 @@ export default function Hud() {
                 </div>
             )}
 
-            {!summary && !waitingOnline && !connectionFailed && isCorrespondence && activeMatch && (
-                <section
-                    className={`reaction-bar pointer-events-auto${isYourTurn ? " your-turn" : ""}`}
-                    aria-label="Send a friendly reaction"
-                >
+            {!summary && !waitingOnline && !connectionFailed && canReact && (
+                <section className="reaction-bar pointer-events-auto your-turn" aria-label="Send a friendly reaction">
                     <header className="reaction-bar-head">
                         <strong>REACTIONS</strong>
                         <small>Send a friendly chess phrase</small>

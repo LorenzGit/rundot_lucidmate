@@ -74,12 +74,13 @@ autoplay. These are browser features, not additional SDK namespaces.
 - Analytics never controls ownership, eligibility, or rewards.
 - The Settings five-second alert uses typed local `submitMessageAsync` and
   proves only permission/scheduling on that phone. Accepted correspondence
-  moves first await the room notification broker, which creates an offline push
-  and durable RUN inbox row for a current member. If an async rival has left
-  the live roster, a protected `send_inbox_message` recipe targets the reserved
-  seat instead. Both paths carry the exact match key; delivery failure is logged
-  and never rolls back the move. Real push still requires two RUN identities
-  and a disconnected device test.
+  moves and reactions await a protected `send_inbox_message` recipe targeting
+  the server-validated rival. Before Venus #3849, that effect sends the plain
+  remote push and safely ignores the extra `roomNotification` context. Once
+  #3849 is deployed, the same exact-match and event-key metadata also creates a
+  durable, deep-linked RUN inbox row. Delivery failure is logged and never
+  rolls back the move. Real push still requires two RUN identities and a
+  disconnected-device test.
 - Haptics are optional feedback and never the only feedback.
 - Haptics use root `triggerHapticAsync()` plus
   `system.getDevice().haptics`; there is no runtime `haptics` namespace in SDK

@@ -60,6 +60,18 @@ try {
     assert.equal(afterMove.activeMatchKey, matchKey, "active saved board remains attached after the move");
     assert.equal(afterMove.onlineStatus, "playing", "room connection remains active after the move");
 
+    const niceMove = white.locator('.reaction-bar button[aria-label="Nice move"]');
+    await niceMove.waitFor({ state: "visible" });
+    await niceMove.click();
+    await white.locator(".reaction-bar").waitFor({ state: "hidden" });
+    assert.equal(
+        (await white.evaluate(() => window.__LUCIDMATE_QA__.snapshot())).correspondenceMatches.find(
+            (match) => match.matchKey === matchKey,
+        )?.reactionUsedAtMove,
+        1,
+        "reaction controls hide after the authoritative send",
+    );
+
     assert.equal(
         await white.evaluate((key) => window.__LUCIDMATE_QA__.openCorrespondence(key, "daily"), matchKey),
         true,
@@ -95,6 +107,7 @@ try {
         false,
         "transient reconnect does not poison the saved card",
     );
+    assert.equal(await white.locator(".reaction-bar").count(), 0, "reconnect preserves the one-reaction turn lock");
 
     await white.waitForFunction(() => window.__LUCIDMATE_QA__.sceneGeometry() !== null);
     const hydrated = await white.evaluate(() => window.__LUCIDMATE_QA__.sceneGeometry());
@@ -107,6 +120,14 @@ try {
     await white.evaluate(() => window.__LUCIDMATE_QA__.scene().setMotionDurationScaleForQa(10));
     assert.equal(await black.evaluate(() => window.__LUCIDMATE_QA__.sendOnlineMove(6, 21)), true, "g1-f3 sends");
     await white.waitForFunction(() => window.__LUCIDMATE_QA__.sceneGeometry()?.moving === true);
+    await white.locator(".reaction-bar").waitFor({ state: "visible" });
+    assert.equal(
+        (await white.evaluate(() => window.__LUCIDMATE_QA__.snapshot())).correspondenceMatches.find(
+            (match) => match.matchKey === matchKey,
+        )?.moveCount,
+        3,
+        "reaction controls return on the player's next turn",
+    );
     const beforeResize = await white.evaluate(() => window.__LUCIDMATE_QA__.sceneGeometry());
     assert.ok(beforeResize, "portrait scene exposes geometry before resize");
     await white.setViewportSize({ width: 956, height: 440 });
@@ -158,15 +179,11 @@ try {
     assert.equal(landscapeUi.headlineFits, true, "landscape turn headline is not clipped");
     assert.equal(landscapeUi.opponentFits, true, "landscape opponent name is not clipped");
     assert.ok(landscapeUi.toast, "move confirmation remains visible");
-    assert.ok(landscapeUi.reactions, "landscape reaction panel remains visible");
-    assert.ok(
-        landscapeUi.toast.bottom <= landscapeUi.reactions.top,
-        `landscape toast stays clear of the reaction panel (${JSON.stringify(landscapeUi)})`,
-    );
+    assert.equal(landscapeUi.reactions, null, "reaction panel hides while waiting for the opponent");
     fs.mkdirSync("tmp", { recursive: true });
     await white.screenshot({ path: "tmp/correspondence-resize.png" });
 
-    console.log("correspondence turn-flow QA passed: move stays open, reconnect restores state, resize reflows pieces");
+    console.log("correspondence turn-flow QA passed: reconnect, one reaction per turn, and resize-safe pieces");
 } finally {
     await browser.close();
 }

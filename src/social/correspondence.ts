@@ -102,6 +102,9 @@ export const correspondence = {
         const color = session.you;
         const opponentColor = color === "w" ? "b" : color === "b" ? "w" : null;
         const opponent = opponentColor ? state.players[opponentColor] : null;
+        const playerId = color ? state.seats[color] : null;
+        const reactionUsedAtMove =
+            state.reaction?.from === playerId ? state.reaction.moveCount : (previous?.reactionUsedAtMove ?? null);
         const next: CorrespondenceMatch = {
             ...(previous ?? createMatchReference(matchKey, state.pace ?? session.pace ?? "daily")),
             pace: state.pace ?? session.pace ?? previous?.pace ?? "daily",
@@ -117,6 +120,7 @@ export const correspondence = {
             result: resultFor(state, color),
             reason: state.reason,
             reaction: state.reaction,
+            reactionUsedAtMove,
             rematchKey: state.rematch?.matchKey ?? previous?.rematchKey ?? null,
             unavailable: false,
             incoming: false,

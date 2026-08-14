@@ -56,4 +56,19 @@ const incoming = sanitizeMatches([{ ...first, incoming: true }]);
 assert.equal(incoming[0].incoming, true, "incoming challenge state survives persistence");
 assert.equal(sanitizeMatches([{ ...first }])[0].incoming, false, "legacy boards default to outgoing");
 
+const reacted = sanitizeMatches([
+    {
+        ...first,
+        reaction: { id: "nice_move", from: "player-1", at: 100, moveCount: 4 },
+        reactionUsedAtMove: 4,
+    },
+])[0];
+assert.equal(reacted.reaction.moveCount, 4, "reaction turn survives persistence");
+assert.equal(reacted.reactionUsedAtMove, 4, "local reaction lock survives persistence");
+assert.equal(
+    sanitizeMatches([{ ...first, reaction: { id: "nice_move", from: "player-1", at: 100 } }])[0].reaction,
+    null,
+    "legacy reactions without an authoritative turn cannot lock the controls",
+);
+
 console.log("social model checks passed");

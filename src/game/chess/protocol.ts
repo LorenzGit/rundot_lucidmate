@@ -55,7 +55,7 @@ export type ChessServerMessage =
           moveCount: number;
           captureCount: number;
           checkCount: number;
-          reaction: { id: ChessReaction; from: string; at: number } | null;
+          reaction: { id: ChessReaction; from: string; at: number; moveCount: number } | null;
           rematch: { matchKey: string; offeredBy: string } | null;
       }
     | { type: "error"; reason: string }

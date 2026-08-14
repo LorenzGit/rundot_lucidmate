@@ -22,6 +22,7 @@ export interface CorrespondenceReaction {
     id: ChessReaction;
     from: string;
     at: number;
+    moveCount: number;
 }
 
 export interface CorrespondenceMatch {
@@ -39,6 +40,8 @@ export interface CorrespondenceMatch {
     result: CorrespondenceResult | null;
     reason: string | null;
     reaction: CorrespondenceReaction | null;
+    /** Authoritative ply on which this player last reacted. */
+    reactionUsedAtMove: number | null;
     rematchKey: string | null;
     credited: boolean;
     reactionsMuted: boolean;
@@ -88,6 +91,7 @@ export function createMatchReference(matchKey: string, pace: CorrespondencePace)
         result: null,
         reason: null,
         reaction: null,
+        reactionUsedAtMove: null,
         rematchKey: null,
         credited: false,
         reactionsMuted: false,
@@ -154,7 +158,13 @@ function reaction(value: unknown): CorrespondenceReaction | null {
     if (!value || typeof value !== "object") return null;
     const candidate = value as Partial<CorrespondenceReaction>;
     if (!isChessReaction(candidate.id) || typeof candidate.from !== "string") return null;
-    return { id: candidate.id, from: candidate.from.slice(0, 128), at: integer(candidate.at) };
+    if (typeof candidate.moveCount !== "number" || !Number.isFinite(candidate.moveCount)) return null;
+    return {
+        id: candidate.id,
+        from: candidate.from.slice(0, 128),
+        at: integer(candidate.at),
+        moveCount: integer(candidate.moveCount),
+    };
 }
 
 export function sanitizeMatches(value: unknown): CorrespondenceMatch[] {
@@ -185,6 +195,7 @@ export function sanitizeMatches(value: unknown): CorrespondenceMatch[] {
             result: winnerResult ? (match.result as CorrespondenceResult) : null,
             reason: typeof match.reason === "string" ? match.reason.slice(0, 40) : null,
             reaction: reaction(match.reaction),
+            reactionUsedAtMove: match.reactionUsedAtMove == null ? null : integer(match.reactionUsedAtMove),
             rematchKey: isMatchKey(match.rematchKey) ? match.rematchKey : null,
             credited: match.credited === true,
             reactionsMuted: match.reactionsMuted === true,

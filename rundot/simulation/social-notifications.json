@@ -7,7 +7,8 @@
       "inputs": {
         "targetId": { "type": "string" },
         "matchKey": { "type": "string" },
-        "pace": { "type": "string" }
+        "pace": { "type": "string" },
+        "eventKey": { "type": "string" }
       },
       "beginEffects": [
         {
@@ -19,6 +20,11 @@
             "route": "match",
             "matchKey": "{{inputs.matchKey}}",
             "pace": "{{inputs.pace}}"
+          },
+          "roomNotification": {
+            "sourceType": "realtime_room",
+            "roomId": "{{inputs.matchKey}}",
+            "notificationKey": "{{inputs.eventKey}}"
           },
           "as": "delivery"
         }
@@ -32,7 +38,8 @@
         "targetId": { "type": "string" },
         "opponent": { "type": "string" },
         "matchKey": { "type": "string" },
-        "pace": { "type": "string" }
+        "pace": { "type": "string" },
+        "eventKey": { "type": "string" }
       },
       "beginEffects": [
         {
@@ -44,6 +51,11 @@
             "route": "match",
             "matchKey": "{{inputs.matchKey}}",
             "pace": "{{inputs.pace}}"
+          },
+          "roomNotification": {
+            "sourceType": "room_turn",
+            "roomId": "{{inputs.matchKey}}",
+            "notificationKey": "{{inputs.eventKey}}"
           },
           "as": "delivery"
         }
@@ -58,7 +70,8 @@
         "opponent": { "type": "string" },
         "reaction": { "type": "string" },
         "matchKey": { "type": "string" },
-        "pace": { "type": "string" }
+        "pace": { "type": "string" },
+        "eventKey": { "type": "string" }
       },
       "beginEffects": [
         {
@@ -74,6 +87,11 @@
             "matchKey": "{{inputs.matchKey}}",
             "pace": "{{inputs.pace}}"
           },
+          "roomNotification": {
+            "sourceType": "room_message",
+            "roomId": "{{inputs.matchKey}}",
+            "notificationKey": "{{inputs.eventKey}}"
+          },
           "as": "delivery"
         }
       ]
@@ -86,7 +104,8 @@
         "targetId": { "type": "string" },
         "opponent": { "type": "string" },
         "matchKey": { "type": "string" },
-        "pace": { "type": "string" }
+        "pace": { "type": "string" },
+        "eventKey": { "type": "string" }
       },
       "beginEffects": [
         {
@@ -98,6 +117,11 @@
             "route": "match",
             "matchKey": "{{inputs.matchKey}}",
             "pace": "{{inputs.pace}}"
+          },
+          "roomNotification": {
+            "sourceType": "room_end",
+            "roomId": "{{inputs.matchKey}}",
+            "notificationKey": "{{inputs.eventKey}}"
           },
           "as": "delivery"
         }

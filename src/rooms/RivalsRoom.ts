@@ -199,6 +199,7 @@ export default class RivalsRoom extends GameRoom<RivalsProtocol> {
                 targetId: target.id,
                 matchKey: invitation.matchKey,
                 pace: invitation.pace,
+                eventKey: `challenge_${invitation.matchKey}`,
             })
             .catch((error: unknown) =>
                 this.log.warn("challenge notification unavailable", {

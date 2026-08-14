@@ -6,6 +6,7 @@ import { chromium } from "playwright-core";
 import { createServer } from "vite";
 
 const root = process.cwd();
+const appVersion = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8")).version;
 const outputDir = path.join(root, "tmp", "visual-qa");
 const port = 5397;
 const problems = [];
@@ -134,7 +135,7 @@ try {
 
             const label = `${viewport.name}/${shot.name}`;
             const audit = await inspectLayout(page, label);
-            if (shot.screen === "main" && audit.version !== "v1.0.16") {
+            if (shot.screen === "main" && audit.version !== `v${appVersion}`) {
                 note(`${label}: visible version is "${audit.version ?? "missing"}"`);
             }
             await page.screenshot({ path: path.join(outputDir, `${viewport.name}-${shot.name}.png`) });
