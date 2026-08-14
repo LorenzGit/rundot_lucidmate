@@ -137,20 +137,31 @@ try {
     assert.equal(recipientState.activeMatchKey, activeInvitation.matchKey);
 
     await recipient.evaluate(() => window.__LUCIDMATE_QA__.forceMenu());
-    await recipient.waitForFunction(
-        (matchKey) => {
-            const state = window.__LUCIDMATE_QA__.snapshot();
-            const match = state.correspondenceMatches.find((entry) => entry.matchKey === matchKey);
-            return (
-                state.rivalDirectoryStatus === "ready" &&
-                !state.rivalInvitations.some((invite) => invite.matchKey === matchKey) &&
-                match?.phase === "playing" &&
-                match.incoming === false
-            );
-        },
-        activeInvitation.matchKey,
-        { timeout: 15_000 },
-    );
+    try {
+        await recipient.waitForFunction(
+            (matchKey) => {
+                const state = window.__LUCIDMATE_QA__.snapshot();
+                const match = state.correspondenceMatches.find((entry) => entry.matchKey === matchKey);
+                return (
+                    state.rivalDirectoryStatus === "ready" &&
+                    !state.rivalInvitations.some((invite) => invite.matchKey === matchKey) &&
+                    match?.phase === "playing" &&
+                    match.incoming === false
+                );
+            },
+            activeInvitation.matchKey,
+            { timeout: 15_000 },
+        );
+    } catch (error) {
+        console.error(
+            "recipient did not settle the accepted invitation",
+            JSON.stringify({
+                matchKey: activeInvitation.matchKey,
+                state: await recipient.evaluate(() => window.__LUCIDMATE_QA__.snapshot()),
+            }),
+        );
+        throw error;
+    }
 
     console.log(
         "rivals QA passed: acknowledged unopened cancellation, named challenge, durable inbox delivery, recipient White/first turn, and clean reconnect",

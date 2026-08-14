@@ -688,6 +688,10 @@ export async function startCorrespondenceMatch(input: {
     // A failed preview/server connection must never leave a phantom card.
     // Persist the reference only after the authoritative room accepts it.
     correspondence.ensureReference(input.matchKey, input.pace);
+    // Persist the authoritative room state before React mounts the board scene.
+    // Otherwise a fast return to the lobby can leave an accepted invitation
+    // looking like it is still waiting even though both players are connected.
+    if (snapshot.lastState) correspondence.sync(snapshot.lastState, snapshot);
     startMatch({ opponent: "online", difficulty: store.get().difficulty, playerColor: snapshot.you ?? "w" });
     store.patch({
         onlineExperience: "async",

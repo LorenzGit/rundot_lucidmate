@@ -435,6 +435,83 @@ export async function setNotificationPreference(enabled: boolean): Promise<Notif
     }
 }
 
+/**
+ * Result of the Settings delivery diagnostic. `push_only` is retained as a
+ * defensive outcome even though the server normally writes the inbox row
+ * before asking Braze to schedule the push.
+ */
+export type NotificationSelfTestResult = "scheduled" | "push_only" | "inbox_only" | "unavailable" | "failed";
+
+type RemotePushSubmitApi = {
+    submitMessageAsync(input: {
+        channels: ["push"];
+        title: string;
+        body: string;
+        delaySeconds: number;
+        collapseKey: string;
+        payload: Record<string, unknown>;
+    }): Promise<{
+        results: Array<{
+            channel: "push" | "inbox" | "local" | "rcs";
+            status: "scheduled" | "skipped";
+        }>;
+    }>;
+};
+
+/**
+ * Exercises the real RUN/Braze remote-push route and its durable inbox copy.
+ * The `push` channel is present in the matching Venus host change but not yet
+ * in this game's published 5.24 type package, so the compatibility boundary
+ * is deliberately isolated here until the next SDK package is released.
+ */
+export async function requestNotificationSelfTest(): Promise<NotificationSelfTestResult> {
+    if (!capabilities.notifications) return "unavailable";
+    try {
+        const notifications = RundotGameAPI.notifications as unknown as RemotePushSubmitApi;
+        const result = await withTimeout(
+            notifications.submitMessageAsync({
+                channels: ["push"],
+                title: "Lucidmate alert test",
+                body: "Your RUN push alerts are working. Your next move will find you too.",
+                delaySeconds: 5,
+                collapseKey: "lucidmate-settings-alert-test",
+                payload: { source: "lucidmate_settings_test", screen: "settings" },
+            }),
+            8_000,
+            "notifications.selfTest",
+        );
+        const pushScheduled = result.results.some(
+            (channel) => channel.channel === "push" && channel.status === "scheduled",
+        );
+        const inboxScheduled = result.results.some(
+            (channel) => channel.channel === "inbox" && channel.status === "scheduled",
+        );
+        if (pushScheduled && inboxScheduled) return "scheduled";
+        if (pushScheduled) return "push_only";
+        if (inboxScheduled) return "inbox_only";
+        return "failed";
+    } catch (error) {
+        console.warn("[runSdk] notification self-test failed", error);
+        return "failed";
+    }
+}
+
+/** Show a native RUN toast while the game remains foregrounded. */
+export async function showInAppNotificationTest(message: string): Promise<boolean> {
+    if (!_ready || !sdkNamespace("popups")) return false;
+    try {
+        await withTimeout(
+            RundotGameAPI.popups.showToast(message, { duration: 4_000, variant: "success" }),
+            5_000,
+            "popups.showToast",
+        );
+        return true;
+    } catch (error) {
+        console.warn("[runSdk] in-app notification test failed", error);
+        return false;
+    }
+}
+
 export type HapticStyle = "light" | "medium" | "heavy" | "success" | "warning" | "error";
 
 export async function triggerHaptic(style: HapticStyle): Promise<boolean> {

@@ -76,6 +76,20 @@ SettingsSfxVolume,SFX volume,Volume dos efeitos,Volumen de efectos
 SettingsHaptics,Haptics,Vibração,Vibración
 SettingsReducedMotion,Reduced motion,Menos movimento,Menos movimiento
 SettingsNotifications,Notifications,Notificações,Notificaciones
+SettingsTestAlerts,ALERT LAB,LABORATÓRIO DE ALERTAS,LABORATORIO DE ALERTAS
+SettingsTestTitle,Make sure Lucidmate can find you.,Confirme que o Lucidmate consegue encontrar você.,Confirma que Lucidmate puede encontrarte.
+SettingsTestCopy,A real RUN push arrives in 5 seconds and a copy appears in your RUN inbox.,Uma notificação real da RUN chega em 5 segundos e uma cópia aparece na caixa de entrada da RUN.,Una notificación real de RUN llega en 5 segundos y una copia aparece en tu buzón de RUN.
+SettingsTestDisclaimer,Tap the test and close RUN immediately. If iOS asks first then allow notifications and tap again.,Toque no teste e feche a RUN imediatamente. Se o iOS perguntar primeiro permita notificações e toque novamente.,Toca la prueba y cierra RUN de inmediato. Si iOS pregunta primero permite notificaciones y vuelve a tocar.
+SettingsTestPhone,PUSH + INBOX · 5 SEC,PUSH + CAIXA · 5 S,PUSH + BUZÓN · 5 S
+SettingsTestInApp,SHOW IN-APP,MOSTRAR NO APP,MOSTRAR EN APP
+NotificationTestScheduling,SCHEDULING…,AGENDANDO…,PROGRAMANDO…
+NotificationTestStarting,Contacting RUN…,Conectando à RUN…,Conectando con RUN…
+NotificationTestScheduled,Scheduled. Close RUN now.,Agendado. Feche a RUN agora.,Programado. Cierra RUN ahora.
+NotificationTestPushOnly,Push scheduled but the inbox copy is unavailable.,Push agendado mas a cópia da caixa está indisponível.,Push programado pero la copia del buzón no está disponible.
+NotificationTestInboxOnly,Inbox works but the push could not be scheduled.,A caixa funciona mas o push não pôde ser agendado.,El buzón funciona pero no se pudo programar el push.
+NotificationTestUnavailable,Alert testing is available inside the RUN app.,O teste de alertas está disponível no app RUN.,La prueba de alertas está disponible dentro de la app RUN.
+NotificationTestFailed,Nothing was scheduled. Check your connection and RUN notification permission.,Nada foi agendado. Verifique a conexão e a permissão de notificações da RUN.,No se programó nada. Revisa tu conexión y el permiso de notificaciones de RUN.
+NotificationTestInAppMessage,Lucidmate in-app alerts are working.,Os alertas do Lucidmate no app estão funcionando.,Las alertas de Lucidmate dentro de la app funcionan.
 SettingsQuality,Graphics quality,Qualidade gráfica,Calidad gráfica
 SettingsUnavailable,Not available right now,Indisponível agora,No disponible ahora
 NotificationFailed,Could not update notification preference,Não foi possível atualizar as notificações,No se pudo actualizar la preferencia

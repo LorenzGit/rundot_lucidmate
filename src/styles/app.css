@@ -848,6 +848,128 @@ svg.gear-icon {
     color: var(--amber);
 }
 
+.notification-test-card {
+    position: relative;
+    overflow: hidden;
+    flex: none;
+    margin-top: 18px;
+    border: 1px solid rgba(82, 211, 191, 0.42);
+    border-radius: var(--radius-md);
+    background:
+        radial-gradient(circle at 92% 4%, rgba(255, 205, 91, 0.22), transparent 34%),
+        linear-gradient(145deg, rgba(7, 45, 42, 0.97), rgba(14, 28, 32, 0.98));
+    padding: 16px;
+    box-shadow:
+        var(--edge),
+        var(--lift),
+        0 18px 44px rgba(0, 0, 0, 0.24);
+}
+.notification-test-card::after {
+    position: absolute;
+    right: -42px;
+    top: -48px;
+    width: 116px;
+    height: 116px;
+    border: 1px solid rgba(255, 205, 91, 0.23);
+    border-radius: 50%;
+    content: "";
+    pointer-events: none;
+}
+.notification-test-heading {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.notification-test-heading .eyebrow {
+    margin: 0 0 3px;
+    color: var(--amber);
+}
+.notification-test-heading h3 {
+    margin: 0;
+    color: var(--lamp);
+    font-size: 17px;
+    font-weight: 500;
+    line-height: 1.2;
+}
+.notification-test-icon {
+    display: grid;
+    width: 48px;
+    height: 48px;
+    place-items: center;
+    flex: none;
+    border: 1px solid rgba(82, 211, 191, 0.75);
+    border-radius: 50%;
+    background: rgba(3, 21, 23, 0.62);
+    color: #74e0d0;
+    box-shadow: 0 0 24px rgba(82, 211, 191, 0.18);
+}
+.notification-test-icon svg {
+    width: 30px;
+    fill: none;
+    stroke: currentcolor;
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.notification-test-ping {
+    stroke: var(--amber);
+}
+.notification-test-copy,
+.notification-test-disclaimer,
+.notification-test-status {
+    position: relative;
+    z-index: 1;
+    margin: 12px 0 0;
+    font-size: 12px;
+    line-height: 1.45;
+}
+.notification-test-copy {
+    color: var(--chalk);
+}
+.notification-test-disclaimer {
+    border-left: 3px solid var(--amber);
+    background: rgba(255, 205, 91, 0.08);
+    padding: 8px 10px;
+    color: var(--chalk-dim);
+}
+.notification-test-actions {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+    gap: 8px;
+    margin-top: 12px;
+}
+.notification-test-actions button {
+    min-height: 46px;
+    border: 1px solid rgba(82, 211, 191, 0.42);
+    border-radius: var(--radius-sm);
+    background: rgba(7, 25, 27, 0.82);
+    padding: 0 10px;
+    color: var(--chalk);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.055em;
+}
+.notification-test-actions .notification-test-primary {
+    border-color: rgba(255, 205, 91, 0.72);
+    background: linear-gradient(135deg, #f6c75f, #8ed9c5);
+    color: #102421;
+    box-shadow: 0 4px 0 rgba(49, 34, 18, 0.7);
+}
+.notification-test-actions button:active:not(:disabled) {
+    transform: translateY(2px);
+}
+.notification-test-actions button:disabled {
+    opacity: 0.62;
+}
+.notification-test-status {
+    color: #9de6da;
+    font-weight: 600;
+}
+
 /* --------------------------------------------------------------------------
    In-run HUD
 --------------------------------------------------------------------------- */

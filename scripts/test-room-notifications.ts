@@ -103,6 +103,8 @@ for (const recipe of [
     assert.ok(inbox.templates[effect.template], `${recipe} references a shipped inbox template`);
     assert.equal(effect.payload.route, "match", `${recipe} deep-links to a match`);
     assert.equal(effect.payload.matchKey, "{{inputs.matchKey}}", `${recipe} routes to the exact board`);
+    assert.equal(effect.roomNotification.roomId, "{{inputs.matchKey}}", `${recipe} persists against the board`);
+    assert.ok(effect.roomNotification.notificationKey, `${recipe} has an idempotent inbox event key`);
 }
 
-console.log("room notifications: offline alerts use inbox templates with exact-board routing");
+console.log("room notifications: offline alerts persist and use exact-board routing");

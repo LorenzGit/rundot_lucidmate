@@ -20,6 +20,11 @@
             "matchKey": "{{inputs.matchKey}}",
             "pace": "{{inputs.pace}}"
           },
+          "roomNotification": {
+            "sourceType": "realtime_room",
+            "roomId": "{{inputs.matchKey}}",
+            "notificationKey": "challenge"
+          },
           "as": "delivery"
         }
       ]
@@ -44,6 +49,11 @@
             "route": "match",
             "matchKey": "{{inputs.matchKey}}",
             "pace": "{{inputs.pace}}"
+          },
+          "roomNotification": {
+            "sourceType": "room_turn",
+            "roomId": "{{inputs.matchKey}}",
+            "notificationKey": "turn"
           },
           "as": "delivery"
         }
@@ -74,6 +84,11 @@
             "matchKey": "{{inputs.matchKey}}",
             "pace": "{{inputs.pace}}"
           },
+          "roomNotification": {
+            "sourceType": "room_message",
+            "roomId": "{{inputs.matchKey}}",
+            "notificationKey": "reaction"
+          },
           "as": "delivery"
         }
       ]
@@ -98,6 +113,11 @@
             "route": "match",
             "matchKey": "{{inputs.matchKey}}",
             "pace": "{{inputs.pace}}"
+          },
+          "roomNotification": {
+            "sourceType": "room_end",
+            "roomId": "{{inputs.matchKey}}",
+            "notificationKey": "rematch"
           },
           "as": "delivery"
         }

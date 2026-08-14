@@ -2,6 +2,11 @@ import { useState } from "react";
 import { audioManager } from "../audio/audioManager.ts";
 import { type AppState, store, useStore } from "../state/store.ts";
 import { LOCALES, selectLocale, t } from "../systems/localization.ts";
+import {
+    requestNotificationSelfTest,
+    showInAppNotificationTest,
+    type NotificationSelfTestResult,
+} from "../sdk/runSdk.ts";
 import { updateNotificationPreference } from "../systems/notificationPreference.ts";
 import { runtimeServices } from "../systems/runtimeServices.ts";
 import { saveSystem } from "../systems/save.ts";
@@ -20,6 +25,8 @@ function persist(patch: Partial<AppState>, cue = true): void {
 export default function SettingsScreen() {
     const state = useStore((value) => value);
     const [notificationBusy, setNotificationBusy] = useState(false);
+    const [notificationTestBusy, setNotificationTestBusy] = useState(false);
+    const [notificationTestStatus, setNotificationTestStatus] = useState<string | null>(null);
     const turnAlertsOn = state.notificationsEnabled && state.notificationsConsent === "granted";
 
     const notificationToggle = async (enabled: boolean) => {
@@ -48,6 +55,49 @@ export default function SettingsScreen() {
         audioManager.play("reward");
         const sent = await runtimeServices.haptic("success");
         store.patch({ toast: sent ? t("HapticSent") : t("HapticUnsupported") });
+    };
+
+    const testNotifications = async () => {
+        await audioManager.unlock();
+        setNotificationTestBusy(true);
+        setNotificationTestStatus("NotificationTestStarting");
+        audioManager.play("tap");
+        void runtimeServices.haptic("light");
+
+        if (!turnAlertsOn) {
+            const preference = await updateNotificationPreference(true);
+            if (preference !== "enabled") {
+                setNotificationTestStatus(
+                    preference === "unavailable" ? "NotificationTestUnavailable" : "NotificationTestFailed",
+                );
+                setNotificationTestBusy(false);
+                audioManager.play("reject");
+                void runtimeServices.haptic("error");
+                return;
+            }
+        }
+
+        const result: NotificationSelfTestResult = await requestNotificationSelfTest();
+        const statusKey: Record<NotificationSelfTestResult, string> = {
+            scheduled: "NotificationTestScheduled",
+            push_only: "NotificationTestPushOnly",
+            inbox_only: "NotificationTestInboxOnly",
+            unavailable: "NotificationTestUnavailable",
+            failed: "NotificationTestFailed",
+        };
+        setNotificationTestStatus(statusKey[result]);
+        setNotificationTestBusy(false);
+        const success = result === "scheduled";
+        audioManager.play(success ? "reward" : result === "failed" ? "reject" : "tap");
+        void runtimeServices.haptic(success ? "success" : result === "failed" ? "error" : "warning");
+    };
+
+    const testInAppNotification = async () => {
+        await audioManager.unlock();
+        audioManager.play("tap");
+        void runtimeServices.haptic("light");
+        const shown = await showInAppNotificationTest(t("NotificationTestInAppMessage"));
+        if (!shown) store.patch({ toast: t("NotificationTestUnavailable") });
     };
 
     return (
@@ -155,6 +205,46 @@ export default function SettingsScreen() {
                     </div>
                 </div>
             </div>
+            <section className="notification-test-card" aria-labelledby="notification-test-heading">
+                <div className="notification-test-heading">
+                    <span className="notification-test-icon" aria-hidden="true">
+                        <svg viewBox="0 0 48 48" aria-hidden="true">
+                            <path d="M24 8c-7 0-12 5.3-12 12v6.2L8.5 31v3h31v-3L36 26.2V20c0-6.7-5-12-12-12Z" />
+                            <path d="M19 38c1.2 2 2.8 3 5 3s3.8-1 5-3" />
+                            <path
+                                className="notification-test-ping"
+                                d="M37 9c2 1.5 3.3 3.7 3.8 6.2M11 9c-2 1.5-3.3 3.7-3.8 6.2"
+                            />
+                        </svg>
+                    </span>
+                    <div>
+                        <p className="eyebrow" id="notification-test-heading">
+                            {t("SettingsTestAlerts")}
+                        </p>
+                        <h3>{t("SettingsTestTitle")}</h3>
+                    </div>
+                </div>
+                <p className="notification-test-copy">{t("SettingsTestCopy")}</p>
+                <p className="notification-test-disclaimer">{t("SettingsTestDisclaimer")}</p>
+                <div className="notification-test-actions">
+                    <button
+                        type="button"
+                        className="notification-test-primary"
+                        disabled={notificationTestBusy}
+                        onClick={() => void testNotifications()}
+                    >
+                        {notificationTestBusy ? t("NotificationTestScheduling") : t("SettingsTestPhone")}
+                    </button>
+                    <button type="button" onClick={() => void testInAppNotification()}>
+                        {t("SettingsTestInApp")}
+                    </button>
+                </div>
+                {notificationTestStatus ? (
+                    <p className="notification-test-status" role="status">
+                        {t(notificationTestStatus)}
+                    </p>
+                ) : null}
+            </section>
             <p className="safety-note">{t("NotificationConsentNote")}</p>
         </MenuScreenLayout>
     );

@@ -181,7 +181,10 @@ export const correspondence = {
         if (!intent || (intent.kind !== "share" && intent.kind !== "notification" && intent.kind !== "deeplink")) {
             return null;
         }
-        const matchKey = intent.params.matchKey;
+        // Push taps carry matchKey directly. Durable RUN inbox rows also expose
+        // their canonical roomId; Lucidmate deliberately stores the match key
+        // there so both entry paths reopen the exact same board.
+        const matchKey = intent.params.matchKey ?? intent.params.roomId;
         if (!isMatchKey(matchKey)) return null;
         const pace = intent.params.pace === "relaxed" ? "relaxed" : "daily";
         this.ensureReference(matchKey, pace);
