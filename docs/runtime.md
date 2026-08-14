@@ -74,10 +74,12 @@ autoplay. These are browser features, not additional SDK namespaces.
 - Analytics never controls ownership, eligibility, or rewards.
 - The Settings five-second alert uses typed local `submitMessageAsync` and
   proves only permission/scheduling on that phone. Accepted correspondence
-  moves await the protected `lucidmate_send_move_notification` recipe, which
-  writes through the inbox broker to the validated opponent with the exact
-  match key. Broker failure is logged and never rolls back the move. Real push
-  still requires two RUN identities and a disconnected device test.
+  moves first await the room notification broker, which creates an offline push
+  and durable RUN inbox row for a current member. If an async rival has left
+  the live roster, a protected `send_inbox_message` recipe targets the reserved
+  seat instead. Both paths carry the exact match key; delivery failure is logged
+  and never rolls back the move. Real push still requires two RUN identities
+  and a disconnected device test.
 - Haptics are optional feedback and never the only feedback.
 - Haptics use root `triggerHapticAsync()` plus
   `system.getDevice().haptics`; there is no runtime `haptics` namespace in SDK

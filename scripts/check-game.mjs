@@ -197,8 +197,10 @@ expect(
 );
 expect(/onlineStateHydrated/.test(runController), "reconnect hydration is distinct from a newly received move");
 expect(
-    /lucidmate_send_move_notification/.test(roomServer) && /services\.simulation\.executeRecipe/.test(roomServer),
-    "offline turn alerts must use a validated any-player server recipe",
+    /services\.notifications\.send/.test(roomServer) &&
+        /lucidmate_send_move_notification/.test(roomServer) &&
+        /services\.simulation\.executeRecipe/.test(roomServer),
+    "offline turn alerts must use the room broker with a validated any-player fallback",
 );
 const chessScene = read("src/game/scene/chessScene.ts");
 expect(

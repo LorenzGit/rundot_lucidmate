@@ -1,10 +1,17 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { Clock, Logger, type GameRoomProps, type RoomProtocol } from "@series-inc/rundot-game-sdk/mp-server";
+import {
+    Clock,
+    Logger,
+    type GameRoomProps,
+    type NotificationSendRequest,
+    type RoomProtocol,
+} from "@series-inc/rundot-game-sdk/mp-server";
 import ChessRoom from "../src/rooms/ChessRoom.ts";
 
 const messages: Array<{ to: string | null; type: string; data: unknown }> = [];
+const notificationCalls: NotificationSendRequest[] = [];
 const simulationCalls: Array<{ actor: string; recipe: string; input: Record<string, unknown> }> = [];
 let releaseFirstMoveNotification: (() => void) | null = null;
 const firstMoveNotification = new Promise<void>((resolve) => {
@@ -42,20 +49,20 @@ new RoomHarness({
     log: new Logger({ roomId: "notification-room", roomType: "lucidmate-correspondence" }),
     services: {
         notifications: {
-            send: async () => {
-                assert.fail("async match alerts must not use the current-room-only notification service");
+            send: async (request) => {
+                notificationCalls.push(request);
+                if (request.template === "lucidmate_your_move" && notificationCalls.length === 1) {
+                    await firstMoveNotification;
+                }
+                if (request.template === "lucidmate_your_move" && rejectNextMoveNotification) {
+                    rejectNextMoveNotification = false;
+                    throw new Error("notification broker unavailable");
+                }
             },
         },
         simulation: {
             executeRecipe: async (actor, recipe, input = {}) => {
                 simulationCalls.push({ actor, recipe, input });
-                if (recipe === "lucidmate_send_move_notification" && simulationCalls.length === 1) {
-                    await firstMoveNotification;
-                }
-                if (recipe === "lucidmate_send_move_notification" && rejectNextMoveNotification) {
-                    rejectNextMoveNotification = false;
-                    throw new Error("notification broker unavailable");
-                }
                 return {};
             },
             getState: async () => ({}),
@@ -86,9 +93,10 @@ await protocol.handleMessage(recipient.id, "configure", { matchKey, pace: "daily
 
 // Illegal moves never generate alerts.
 await protocol.handleMessage(recipient.id, "move", { from: 12, to: 36, promotion: null });
+assert.equal(notificationCalls.length, 0);
 assert.equal(simulationCalls.length, 0);
 
-// The room must await the broker recipe. Fire-and-forget work can be dropped
+// The room must await the broker. Fire-and-forget work can be dropped
 // when an idle correspondence room freezes immediately after a move.
 let firstMoveHandled = false;
 const firstMoveRequest = protocol.handleMessage(recipient.id, "move", { from: 12, to: 28, promotion: null });
@@ -101,16 +109,21 @@ releaseFirstMoveNotification?.();
 await firstMoveRequest;
 assert.equal(firstMoveHandled, true);
 
-assert.deepEqual(simulationCalls[0], {
-    actor: recipient.id,
-    recipe: "lucidmate_send_move_notification",
-    input: { targetId: challenger.id, matchKey, pace: "daily", opponent: recipient.username },
+assert.deepEqual(notificationCalls[0], {
+    recipientProfileIds: [challenger.id],
+    template: "lucidmate_your_move",
+    params: { opponent: recipient.username },
+    data: { route: "match", matchKey, pace: "daily" },
+    fallbackTitle: "Your move in LUCIDMATE",
+    fallbackBody: `${recipient.username} moved. Your board is waiting.`,
 });
+assert.equal(simulationCalls.length, 0);
 
 // Broker failure is logged, but it never rolls back an already accepted move.
 rejectNextMoveNotification = true;
 await protocol.handleMessage(challenger.id, "move", { from: 52, to: 36, promotion: null });
-assert.equal(simulationCalls[1]?.recipe, "lucidmate_send_move_notification");
+assert.equal(notificationCalls[1]?.template, "lucidmate_your_move");
+assert.equal(simulationCalls.length, 0);
 const latestState = messages.findLast((message) => message.type === "state")?.data as
     | { turn?: string; moveCount?: number }
     | undefined;
@@ -122,8 +135,8 @@ assert.equal(latestState?.moveCount, 2);
 // by the room-only notification service.
 await protocol.handleLeave(challenger.id, "leave");
 await protocol.handleMessage(recipient.id, "react", { reaction: "nice_move" });
-assert.equal(simulationCalls[2]?.recipe, "lucidmate_send_reaction_notification");
-assert.equal(simulationCalls[2]?.input.targetId, challenger.id);
+assert.equal(simulationCalls[0]?.recipe, "lucidmate_send_reaction_notification");
+assert.equal(simulationCalls[0]?.input.targetId, challenger.id);
 
 const config = JSON.parse(fs.readFileSync("rundot/simulation/social-notifications.json", "utf8"));
 const inbox = JSON.parse(fs.readFileSync("rundot/inbox.config.json", "utf8"));
@@ -139,8 +152,7 @@ for (const recipe of [
     assert.ok(inbox.templates[effect.template], `${recipe} references a shipped inbox template`);
     assert.equal(effect.payload.route, "match", `${recipe} deep-links to a match`);
     assert.equal(effect.payload.matchKey, "{{inputs.matchKey}}", `${recipe} routes to the exact board`);
-    assert.equal(effect.roomNotification.roomId, "{{inputs.matchKey}}", `${recipe} persists against the board`);
-    assert.ok(effect.roomNotification.notificationKey, `${recipe} has an idempotent inbox event key`);
+    assert.equal("roomNotification" in effect, false, `${recipe} contains only documented inbox-effect fields`);
 }
 
-console.log("room notifications: offline alerts persist and use exact-board routing");
+console.log("room notifications: room broker first, any-player inbox fallback, exact-board routing");
