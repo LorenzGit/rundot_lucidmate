@@ -5,12 +5,13 @@ import { Clock, Logger, type GameRoomProps, type RoomProtocol } from "@series-in
 import ChessRoom from "../src/rooms/ChessRoom.ts";
 
 const messages: Array<{ to: string | null; type: string; data: unknown }> = [];
+const notificationCalls: Array<Record<string, unknown>> = [];
 const simulationCalls: Array<{ actor: string; recipe: string; input: Record<string, unknown> }> = [];
 let releaseFirstMoveNotification: (() => void) | null = null;
 const firstMoveNotification = new Promise<void>((resolve) => {
     releaseFirstMoveNotification = resolve;
 });
-let rejectNextMoveNotification = false;
+let rejectNextDirectMoveNotification = false;
 const players = new Map();
 const protocol = {
     broadcast: (type: string, data: unknown) => messages.push({ to: null, type, data }),
@@ -42,21 +43,21 @@ new RoomHarness({
     log: new Logger({ roomId: "notification-room", roomType: "lucidmate-correspondence" }),
     services: {
         notifications: {
-            send: async () => {
-                throw new Error("direct room notification path should not be used");
+            send: async (request) => {
+                notificationCalls.push(request as unknown as Record<string, unknown>);
+                const moveCalls = notificationCalls.filter((call) => call.template === "lucidmate_your_move");
+                if (request.template === "lucidmate_your_move" && moveCalls.length === 1) {
+                    await firstMoveNotification;
+                }
+                if (request.template === "lucidmate_your_move" && rejectNextDirectMoveNotification) {
+                    rejectNextDirectMoveNotification = false;
+                    throw new Error("notification broker unavailable");
+                }
             },
         },
         simulation: {
             executeRecipe: async (actor, recipe, input = {}) => {
                 simulationCalls.push({ actor, recipe, input });
-                const moveCalls = simulationCalls.filter((call) => call.recipe === "lucidmate_send_move_notification");
-                if (recipe === "lucidmate_send_move_notification" && moveCalls.length === 1) {
-                    await firstMoveNotification;
-                }
-                if (recipe === "lucidmate_send_move_notification" && rejectNextMoveNotification) {
-                    rejectNextMoveNotification = false;
-                    throw new Error("notification broker unavailable");
-                }
                 return {};
             },
             getState: async () => ({}),
@@ -88,6 +89,7 @@ await protocol.handleMessage(recipient.id, "configure", { matchKey, pace: "daily
 // Illegal moves never generate alerts.
 await protocol.handleMessage(recipient.id, "move", { from: 12, to: 36, promotion: null });
 assert.equal(simulationCalls.length, 0);
+assert.equal(notificationCalls.length, 0);
 
 // The room must await the broker. Fire-and-forget work can be dropped
 // when an idle correspondence room freezes immediately after a move.
@@ -102,37 +104,43 @@ releaseFirstMoveNotification?.();
 await firstMoveRequest;
 assert.equal(firstMoveHandled, true);
 
-assert.deepEqual(simulationCalls[0], {
-    actor: recipient.id,
-    recipe: "lucidmate_send_move_notification",
-    input: {
-        targetId: challenger.id,
+assert.deepEqual(notificationCalls[0], {
+    recipientProfileIds: [challenger.id],
+    template: "lucidmate_your_move",
+    params: { opponent: recipient.username },
+    data: {
+        route: "match",
         matchKey,
         pace: "daily",
         eventKey: "turn_1",
-        opponent: recipient.username,
+        turn: 1,
     },
+    fallbackTitle: "Your move in LUCIDMATE",
+    fallbackBody: `${recipient.username} moved. Your board is waiting.`,
 });
+assert.equal(simulationCalls.length, 0, "current room members use the SDK-native notification bridge");
 // Reactions are available only to the player whose turn it is.
 await protocol.handleMessage(recipient.id, "react", { reaction: "nice_move" });
-assert.equal(simulationCalls.length, 1, "out-of-turn reaction is rejected");
+assert.equal(notificationCalls.length, 1, "out-of-turn reaction is rejected");
 const outOfTurnError = messages.findLast((message) => message.to === recipient.id && message.type === "error")?.data as
     | { reason: string }
     | undefined;
 assert.equal(outOfTurnError?.reason, "Reactions unlock on your turn");
 await protocol.handleMessage(challenger.id, "react", { reaction: "nice_move" });
-assert.equal(simulationCalls[1]?.recipe, "lucidmate_send_reaction_notification");
-assert.equal(simulationCalls[1]?.input.eventKey, "reaction_1_nice_move");
+assert.equal(notificationCalls[1]?.template, "lucidmate_reaction");
+const firstReactionData = notificationCalls[1]?.data as Record<string, unknown> | undefined;
+assert.equal(firstReactionData?.eventKey, "reaction_1_nice_move");
 await protocol.handleMessage(challenger.id, "react", { reaction: "good_game" });
-assert.equal(simulationCalls.length, 2, "a second reaction in the same turn is rejected");
+assert.equal(notificationCalls.length, 2, "a second reaction in the same turn is rejected");
 const duplicateReactionError = messages.findLast((message) => message.to === challenger.id && message.type === "error")
     ?.data as { reason: string } | undefined;
 assert.equal(duplicateReactionError?.reason, "You already reacted this turn");
 
 // Delivery failure is logged, but it never rolls back an already accepted move.
-rejectNextMoveNotification = true;
+rejectNextDirectMoveNotification = true;
 await protocol.handleMessage(challenger.id, "move", { from: 52, to: 36, promotion: null });
-assert.equal(simulationCalls[2]?.recipe, "lucidmate_send_move_notification");
+assert.equal(notificationCalls[2]?.template, "lucidmate_your_move");
+assert.equal(simulationCalls[0]?.recipe, "lucidmate_send_move_notification", "protected recipe backs up direct push");
 const latestState = messages.findLast((message) => message.type === "state")?.data as
     | { turn?: string; moveCount?: number }
     | undefined;
@@ -143,16 +151,17 @@ assert.equal(latestState?.moveCount, 2);
 // room membership expires.
 await protocol.handleLeave(challenger.id, "leave");
 await protocol.handleMessage(recipient.id, "react", { reaction: "nice_move" });
-assert.equal(simulationCalls[3]?.recipe, "lucidmate_send_reaction_notification");
-assert.equal(simulationCalls[3]?.input.targetId, challenger.id);
-assert.equal(simulationCalls[3]?.input.eventKey, "reaction_2_nice_move");
+assert.equal(simulationCalls[1]?.recipe, "lucidmate_send_reaction_notification");
+assert.equal(simulationCalls[1]?.input.targetId, challenger.id);
+assert.equal(simulationCalls[1]?.input.eventKey, "reaction_2_nice_move");
 
 await protocol.handleMessage(recipient.id, "move", { from: 6, to: 21, promotion: null });
-assert.equal(simulationCalls[4]?.input.eventKey, "turn_3");
+assert.equal(simulationCalls[2]?.input.eventKey, "turn_3");
 assert.equal((await protocol.handleJoin(challenger)).accepted, true);
 await protocol.handleMessage(challenger.id, "configure", { matchKey, pace: "daily", challenger, recipient });
 await protocol.handleMessage(challenger.id, "react", { reaction: "good_game" });
-assert.equal(simulationCalls[5]?.input.eventKey, "reaction_3_good_game", "reaction unlocks on the next turn");
+const nextTurnReactionData = notificationCalls[3]?.data as Record<string, unknown> | undefined;
+assert.equal(nextTurnReactionData?.eventKey, "reaction_3_good_game", "reaction unlocks on the next turn");
 
 const config = JSON.parse(fs.readFileSync("rundot/simulation/social-notifications.json", "utf8"));
 const inbox = JSON.parse(fs.readFileSync("rundot/inbox.config.json", "utf8"));
@@ -174,7 +183,11 @@ for (const recipe of [
         "{{inputs.eventKey}}",
         `${recipe} deduplicates the exact event`,
     );
-    assert.equal(config.recipes[recipe].inputs.eventKey.type, "string", `${recipe} requires a stable event key`);
+    assert.equal(
+        "inputs" in config.recipes[recipe],
+        false,
+        `${recipe} must not declare message parameters as inventory entities`,
+    );
 }
 
 console.log("room notifications: protected push delivery, exact-board routing, one reaction per turn");

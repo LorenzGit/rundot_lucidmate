@@ -23,8 +23,8 @@
         "idleTimeout": 300,
         "autoPersist": true,
         "persistInterval": 1000,
-        "allowReconnect": true,
-        "reconnectTimeout": 90,
+        "allowReconnect": false,
+        "reconnectTimeout": 0,
         "tickInterval": 60
       }
     },

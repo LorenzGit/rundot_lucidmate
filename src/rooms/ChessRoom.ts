@@ -493,6 +493,53 @@ export default class ChessRoom extends GameRoom<ChessProtocol> {
     ): Promise<void> {
         if (!this.matchKey || !this.pace) return;
 
+        if (this.players.has(recipient)) {
+            const template =
+                recipe === "lucidmate_send_move_notification"
+                    ? "lucidmate_your_move"
+                    : recipe === "lucidmate_send_reaction_notification"
+                      ? "lucidmate_reaction"
+                      : "lucidmate_rematch";
+            const fallbackTitle =
+                recipe === "lucidmate_send_move_notification"
+                    ? "Your move in LUCIDMATE"
+                    : recipe === "lucidmate_send_reaction_notification"
+                      ? "A rival reacted"
+                      : "Rematch?";
+            const fallbackBody =
+                recipe === "lucidmate_send_move_notification"
+                    ? `${params.opponent ?? "Your opponent"} moved. Your board is waiting.`
+                    : recipe === "lucidmate_send_reaction_notification"
+                      ? `${params.opponent ?? "Your rival"}: ${params.reaction ?? "New reaction"}`
+                      : `${params.opponent ?? "Your rival"} wants another game.`;
+            try {
+                await this.services.notifications.send({
+                    recipientProfileIds: [recipient],
+                    template,
+                    params,
+                    data: {
+                        route: "match",
+                        matchKey: this.matchKey,
+                        pace: this.pace,
+                        eventKey,
+                        ...(recipe === "lucidmate_send_move_notification"
+                            ? { turn: this.moveCount }
+                            : { messageId: eventKey }),
+                    },
+                    fallbackTitle,
+                    fallbackBody,
+                });
+                return;
+            } catch (error) {
+                this.log.warn("room notification unavailable; trying protected recipe", {
+                    recipient,
+                    template,
+                    eventKey,
+                    error: error instanceof Error ? error.message : String(error),
+                });
+            }
+        }
+
         try {
             // A protected server recipe can always target the validated rival,
             // including after their live room membership has expired. Existing

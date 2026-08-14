@@ -227,6 +227,11 @@ function assert(cond, msg) {
     assert(/Send a friendly chess phrase/.test(hud), "reaction UI explains its purpose");
     assert(/className="connection-card/.test(hud), "lost connections show a dedicated recovery card");
     assert(/Your board is safe/.test(hud), "reconnect copy reassures the player that progress is preserved");
+    assert(/const reconnectingSavedBoard =/.test(hud), "background resume identifies saved-board recovery");
+    assert(
+        /const showOnlineWaitCard = waitingOnline && !reconnectingSavedBoard/.test(hud),
+        "background resume reconnects without a blocking modal",
+    );
     assert(/shareCorrespondenceInvite/.test(hud), "waiting friend board exposes the SDK share-link action");
 
     const controller = fs.readFileSync(path.join(root, "src/game/runController.ts"), "utf8");

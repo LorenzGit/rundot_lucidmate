@@ -4,12 +4,6 @@
       "duration": 0,
       "scope": "player",
       "clientViewable": false,
-      "inputs": {
-        "targetId": { "type": "string" },
-        "matchKey": { "type": "string" },
-        "pace": { "type": "string" },
-        "eventKey": { "type": "string" }
-      },
       "beginEffects": [
         {
           "type": "send_inbox_message",
@@ -34,13 +28,6 @@
       "duration": 0,
       "scope": "player",
       "clientViewable": false,
-      "inputs": {
-        "targetId": { "type": "string" },
-        "opponent": { "type": "string" },
-        "matchKey": { "type": "string" },
-        "pace": { "type": "string" },
-        "eventKey": { "type": "string" }
-      },
       "beginEffects": [
         {
           "type": "send_inbox_message",
@@ -65,14 +52,6 @@
       "duration": 0,
       "scope": "player",
       "clientViewable": false,
-      "inputs": {
-        "targetId": { "type": "string" },
-        "opponent": { "type": "string" },
-        "reaction": { "type": "string" },
-        "matchKey": { "type": "string" },
-        "pace": { "type": "string" },
-        "eventKey": { "type": "string" }
-      },
       "beginEffects": [
         {
           "type": "send_inbox_message",
@@ -100,13 +79,6 @@
       "duration": 0,
       "scope": "player",
       "clientViewable": false,
-      "inputs": {
-        "targetId": { "type": "string" },
-        "opponent": { "type": "string" },
-        "matchKey": { "type": "string" },
-        "pace": { "type": "string" },
-        "eventKey": { "type": "string" }
-      },
       "beginEffects": [
         {
           "type": "send_inbox_message",

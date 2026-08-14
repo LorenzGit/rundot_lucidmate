@@ -34,6 +34,7 @@ const screens = [
     { name: "settings", screen: "settings" },
     { name: "game", screen: "game" },
     { name: "reactions", screen: "game", reactions: true },
+    { name: "reconnecting", screen: "game", socialPreview: "reconnecting" },
     { name: "connection", screen: "game", connection: true },
 ];
 
@@ -107,7 +108,10 @@ try {
         });
 
         for (const shot of screens) {
-            await page.goto(`http://127.0.0.1:${port}/?screen=${shot.screen}&qa=1`, { waitUntil: "load" });
+            const socialPreview = shot.socialPreview ? `&socialPreview=${shot.socialPreview}` : "";
+            await page.goto(`http://127.0.0.1:${port}/?screen=${shot.screen}&qa=1${socialPreview}`, {
+                waitUntil: "load",
+            });
             await page.waitForFunction(() => globalThis.__LUCIDMATE_QA__ !== undefined, null, { timeout: 15_000 });
             if (shot.prepare) {
                 await page.evaluate(() => {
@@ -125,6 +129,15 @@ try {
             if (shot.connection) {
                 await page.evaluate(() => globalThis.__LUCIDMATE_QA__.previewConnectionFailure());
                 await page.waitForSelector(".connection-card", { timeout: 10_000 });
+            }
+            if (shot.socialPreview === "reconnecting") {
+                await page.waitForFunction(
+                    () =>
+                        document.querySelector(".hud-score")?.textContent?.includes("CONNECTING") === true &&
+                        document.querySelector(".online-wait-card") === null,
+                    undefined,
+                    { timeout: 10_000 },
+                );
             }
             if (shot.screen === "game") {
                 await page.waitForSelector("canvas", { timeout: 15_000 });
@@ -170,5 +183,5 @@ if (problems.length > 0) {
     process.exit(1);
 }
 console.log(
-    "Visual QA passed: 14 surfaces × 5 viewports, async rivals, reactions, reconnect UI, typography, overflow, and console gates.",
+    `Visual QA passed: ${screens.length} surfaces × ${viewports.length} viewports, async rivals, reactions, reconnect UI, typography, overflow, and console gates.`,
 );

@@ -151,6 +151,10 @@ const realtime = readJson("rundot/realtime.config.json");
 const correspondenceRoom = realtime.rooms.find((room) => room.type === "lucidmate-correspondence");
 expect(correspondenceRoom?.persistent === true, "correspondence room must remain persistent across deploys");
 expect(correspondenceRoom?.config?.maxPlayers === 2, "correspondence room must be strictly two-player");
+expect(
+    correspondenceRoom?.config?.allowReconnect === false && correspondenceRoom?.config?.reconnectTimeout === 0,
+    "async rooms release suspended sockets immediately so a fresh iOS webview can reclaim its saved seat",
+);
 const socialModel = read("src/social/model.ts");
 expect(/CHESS_REACTIONS/.test(socialModel), "multiplayer reactions need an explicit safe allowlist");
 const rivalsClient = read("src/social/rivalsClient.ts");
@@ -188,6 +192,12 @@ expect(
         !/onDisconnect:[\s\S]{0,160}?this\.room\s*=\s*null/.test(onlineClient),
     "temporary disconnects retain the room so SDK reconnection can complete",
 );
+expect(
+    /DUPLICATE_SESSION_RETRY_MS/.test(onlineClient) &&
+        /isDuplicateSessionError/.test(onlineClient) &&
+        /void this\.connectCorrespondence\(matchKey, pace, roomCode\)/.test(onlineClient),
+    "async resume retries the same board without exposing a duplicate-session failure",
+);
 const runController = read("src/game/runController.ts");
 expect(!/inboxTimer/.test(runController), "correspondence moves must not schedule a forced menu redirect");
 expect(/Move sent — waiting for/.test(runController), "confirmed correspondence moves remain on the board");
@@ -198,10 +208,18 @@ expect(
 expect(/onlineStateHydrated/.test(runController), "reconnect hydration is distinct from a newly received move");
 expect(
     /lucidmate_send_move_notification/.test(roomServer) &&
+        /services\.notifications\.send/.test(roomServer) &&
         /services\.simulation\.executeRecipe/.test(roomServer) &&
         /eventKey/.test(roomServer),
-    "offline turn alerts must use a validated, event-keyed protected recipe",
+    "turn alerts use the native room bridge with an event-keyed protected fallback",
 );
+const socialNotifications = readJson("rundot/simulation/social-notifications.json");
+for (const [recipeId, recipe] of Object.entries(socialNotifications.recipes ?? {})) {
+    expect(
+        !("inputs" in recipe),
+        `${recipeId} message parameters must not be declared as simulation inventory entities`,
+    );
+}
 expect(
     /this\.reaction\.moveCount === this\.moveCount/.test(roomServer) && /color !== this\.turn/.test(roomServer),
     "the room must enforce one reaction on the sender's turn",

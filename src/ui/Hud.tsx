@@ -145,6 +145,8 @@ export default function Hud() {
         ? (correspondenceMatches.find((match) => match.matchKey === activeMatchKey) ?? null)
         : null;
     const waitingOnline = isOnline && (onlineStatus === "waiting" || onlineStatus === "connecting") && !summary;
+    const reconnectingSavedBoard = isCorrespondence && Boolean(activeMatch) && onlineStatus === "connecting";
+    const showOnlineWaitCard = waitingOnline && !reconnectingSavedBoard;
     const connectionFailed =
         isCorrespondence && (onlineStatus === "error" || onlineStatus === "disconnected") && !summary;
     const turnCopy = turnPresentation({
@@ -231,9 +233,9 @@ export default function Hud() {
                 </div>
             )}
 
-            {waitingOnline && (
+            {showOnlineWaitCard && (
                 <div className="online-wait-card pointer-events-auto" role="status">
-                    <p className="eyebrow">Online match</p>
+                    <p className="eyebrow">ONLINE MATCH</p>
                     <h2>{onlineStatus === "connecting" ? "Connecting…" : "Waiting for opponent"}</h2>
                     {onlineRoomCode && (
                         <button
@@ -255,19 +257,22 @@ export default function Hud() {
                                 : "No room code is available. Return to the menu and create a new board."
                             : "Share the code with a friend, or keep this open for a quick match."}
                     </p>
-                    {isCorrespondence && activeMatch?.roomCode && !activeMatch.opponent && (
-                        <button
-                            type="button"
-                            className="online-share-invite"
-                            disabled={socialBusy}
-                            onClick={() => {
-                                tapFeedback();
-                                void shareCorrespondenceInvite(activeMatch);
-                            }}
-                        >
-                            Share invite link
-                        </button>
-                    )}
+                    {isCorrespondence &&
+                        onlineStatus !== "connecting" &&
+                        activeMatch?.roomCode &&
+                        !activeMatch.opponent && (
+                            <button
+                                type="button"
+                                className="online-share-invite"
+                                disabled={socialBusy}
+                                onClick={() => {
+                                    tapFeedback();
+                                    void shareCorrespondenceInvite(activeMatch);
+                                }}
+                            >
+                                Share invite link
+                            </button>
+                        )}
                     <button type="button" className="secondary-button" onClick={leave}>
                         Cancel
                     </button>

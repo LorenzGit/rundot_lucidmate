@@ -29,7 +29,12 @@ export function applyDevelopmentScreenPreview(): void {
     const qa = params.get("qa") === "1" || qaPath;
     const socialPreview = params.get("socialPreview");
     if (qa && params.get("pieceStyle") === "candy") store.patch({ selectedPieceStyle: "candy" });
-    if (qa && (socialPreview === "waiting" || store.get().correspondenceMatches.length === 0)) {
+    if (
+        qa &&
+        (socialPreview === "waiting" ||
+            socialPreview === "reconnecting" ||
+            store.get().correspondenceMatches.length === 0)
+    ) {
         const now = Date.now();
         if (socialPreview === "waiting") {
             store.patch({
@@ -141,6 +146,33 @@ export function applyDevelopmentScreenPreview(): void {
     if (requested === "game") {
         const waitingMatch =
             socialPreview === "waiting" ? store.get().correspondenceMatches.find((match) => !match.opponent) : null;
+        const reconnectingMatch =
+            socialPreview === "reconnecting" ? store.get().correspondenceMatches.find((match) => match.opponent) : null;
+        if (reconnectingMatch?.color) {
+            const reconnectingColor = reconnectingMatch.color;
+            const apply = () =>
+                store.patch({
+                    phase: "playing",
+                    menuScreen: "main",
+                    paused: false,
+                    opponentMode: "online",
+                    playerColor: reconnectingColor,
+                    turn: reconnectingMatch.turn,
+                    matchStatus: "playing",
+                    onlineExperience: "async",
+                    onlineStatus: "connecting",
+                    onlineRoomCode: reconnectingMatch.roomCode,
+                    onlineSeat: reconnectingColor,
+                    onlinePlayerCount: 2,
+                    activeMatchKey: reconnectingMatch.matchKey,
+                    activeMatchPace: reconnectingMatch.pace,
+                });
+            apply();
+            window.requestAnimationFrame(apply);
+            window.setTimeout(apply, 300);
+            window.setTimeout(apply, 900);
+            return;
+        }
         if (waitingMatch?.color) {
             store.patch({
                 phase: "playing",

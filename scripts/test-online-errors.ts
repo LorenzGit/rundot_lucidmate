@@ -33,5 +33,16 @@ assert.equal(
     describeCorrespondenceError(new Error("The match did not send its board state.")),
     "The board is taking too long to wake up. Try again in a moment.",
 );
+assert.equal(
+    describeCorrespondenceError(
+        new Error("Duplicate session for player secret-id: this identity is already in the room"),
+    ),
+    "RUN is still closing the previous connection. Return to Your Games and reopen this board in a moment.",
+);
+assert.equal(
+    describeCorrespondenceError(new Error("Duplicate session for player secret-id")).includes("secret-id"),
+    false,
+    "connection errors never expose a player id",
+);
 
 console.log("online error copy checks passed");

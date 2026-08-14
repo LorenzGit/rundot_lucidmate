@@ -13,7 +13,7 @@ import {
 } from "./protocol.ts";
 import type { Color, PieceType } from "./types.ts";
 import type { ChessReaction, CorrespondencePace, RivalIdentity } from "../../social/model.ts";
-import { describeCorrespondenceError, describeJoinError } from "./joinErrors.ts";
+import { describeCorrespondenceError, describeJoinError, isDuplicateSessionError } from "./joinErrors.ts";
 
 export type OnlineConnectMode = "create" | "join";
 
@@ -39,6 +39,7 @@ type ServerState = Extract<ChessServerMessage, { type: "state" }>;
 
 const MAX_PLAYERS = 2;
 const ROOM_STATE_TIMEOUT_MS = 12_000;
+const DUPLICATE_SESSION_RETRY_MS = [750, 1_500, 3_000, 5_000, 8_000, 12_000] as const;
 
 function realtimeAvailable(): boolean {
     try {
@@ -92,6 +93,7 @@ export class OnlineChessClient {
     private stateListeners = new Set<(state: ServerState) => void>();
     private stateErrorListeners = new Set<(error: Error) => void>();
     private connectGeneration = 0;
+    private correspondenceConnect: { matchKey: string; promise: Promise<boolean> } | null = null;
 
     setHandlers(opts: { onState?: StateHandler; onInfo?: InfoHandler; onStatus?: StatusHandler }): void {
         this.onState = opts.onState ?? null;
@@ -220,6 +222,22 @@ export class OnlineChessClient {
         knownRoomCode?: string | null,
         reservation?: { challenger: RivalIdentity; recipient: RivalIdentity } | null,
     ): Promise<boolean> {
+        if (this.correspondenceConnect?.matchKey === matchKey) return this.correspondenceConnect.promise;
+        const promise = this.connectCorrespondenceNow(matchKey, pace, knownRoomCode, reservation);
+        this.correspondenceConnect = { matchKey, promise };
+        try {
+            return await promise;
+        } finally {
+            if (this.correspondenceConnect?.promise === promise) this.correspondenceConnect = null;
+        }
+    }
+
+    private async connectCorrespondenceNow(
+        matchKey: string,
+        pace: CorrespondencePace,
+        knownRoomCode?: string | null,
+        reservation?: { challenger: RivalIdentity; recipient: RivalIdentity } | null,
+    ): Promise<boolean> {
         if (
             this.room &&
             this.experience === "async" &&
@@ -228,7 +246,9 @@ export class OnlineChessClient {
         ) {
             return this.recoverCorrespondenceRoom(this.room, matchKey, pace, reservation);
         }
-        await this.leave();
+        if (this.room?.connectionState === "disconnected") this.releaseRoom();
+        else await this.leave();
+        const generation = ++this.connectGeneration;
         this.error = null;
         this.you = null;
         this.phase = null;
@@ -250,38 +270,82 @@ export class OnlineChessClient {
 
         let lastError: unknown = null;
         if (knownRoomCode) {
-            try {
-                // Rejoin the exact warm room first. A previous 2.5-second state
-                // budget was too short for cold production connections.
-                const room = await RundotGameAPI.realtime.joinRoomByCode<ChessProtocol>(knownRoomCode);
-                await this.openCorrespondenceRoom(room, matchKey, pace, reservation);
-                this.finishConnection();
+            const exact = await this.openCorrespondenceWithRetry(
+                () => RundotGameAPI.realtime.joinRoomByCode<ChessProtocol>(knownRoomCode),
+                matchKey,
+                pace,
+                reservation,
+                generation,
+            );
+            if (exact.ok) {
                 return true;
-            } catch (error) {
-                lastError = error;
-                this.releaseRoom();
+            }
+            if (exact.aborted) return false;
+            lastError = exact.error;
+            // A duplicate means the iOS-suspended socket is still inside the
+            // server grace window. The bounded retries above are the recovery;
+            // opening through the persistent key would hit the same seat again.
+            if (isDuplicateSessionError(lastError)) {
+                this.setStatus("error", describeCorrespondenceError(lastError));
+                return false;
             }
         }
 
-        try {
-            // If the invitation handle expired, the stable key resumes the
-            // durable board across room-server restarts and deployments.
-            const room = await RundotGameAPI.realtime.joinOrCreateRoom<ChessProtocol>(CORRESPONDENCE_ROOM_TYPE, {
-                // The persistent key is authoritative in production. The
-                // equality criterion also prevents older/local room routers
-                // from reusing an unrelated open correspondence room.
-                criteria: { matchKey },
-                persistentKey: matchKey,
-            });
-            await this.openCorrespondenceRoom(room, matchKey, pace, reservation);
-            this.finishConnection();
+        const persistent = await this.openCorrespondenceWithRetry(
+            () =>
+                RundotGameAPI.realtime.joinOrCreateRoom<ChessProtocol>(CORRESPONDENCE_ROOM_TYPE, {
+                    // The persistent key is authoritative in production. The
+                    // equality criterion also prevents older/local room routers
+                    // from reusing an unrelated open correspondence room.
+                    criteria: { matchKey },
+                    persistentKey: matchKey,
+                }),
+            matchKey,
+            pace,
+            reservation,
+            generation,
+        );
+        if (persistent.ok) {
             return true;
-        } catch (error) {
-            lastError = error;
-            this.releaseRoom();
         }
+        if (persistent.aborted) return false;
+        lastError = persistent.error;
         this.setStatus("error", describeCorrespondenceError(lastError));
         return false;
+    }
+
+    private async openCorrespondenceWithRetry(
+        openRoom: () => Promise<ServerRoom<ChessProtocol>>,
+        matchKey: string,
+        pace: CorrespondencePace,
+        reservation: { challenger: RivalIdentity; recipient: RivalIdentity } | null | undefined,
+        generation: number,
+    ): Promise<{ ok: true } | { ok: false; aborted?: true; error?: unknown }> {
+        let lastError: unknown = null;
+        for (let attempt = 0; attempt <= DUPLICATE_SESSION_RETRY_MS.length; attempt += 1) {
+            if (generation !== this.connectGeneration) return { ok: false, aborted: true };
+            if (attempt > 0) {
+                await new Promise((resolve) => setTimeout(resolve, DUPLICATE_SESSION_RETRY_MS[attempt - 1]));
+                if (generation !== this.connectGeneration) return { ok: false, aborted: true };
+            }
+            try {
+                const room = await openRoom();
+                if (generation !== this.connectGeneration) {
+                    room.leave();
+                    return { ok: false, aborted: true };
+                }
+                await this.openCorrespondenceRoom(room, matchKey, pace, reservation);
+                this.finishConnection();
+                return { ok: true };
+            } catch (error) {
+                lastError = error;
+                this.releaseRoom();
+                if (!isDuplicateSessionError(error)) break;
+                this.error = null;
+                this.setStatus("connecting");
+            }
+        }
+        return { ok: false, error: lastError };
     }
 
     private async recoverCorrespondenceRoom(
@@ -374,14 +438,33 @@ export class OnlineChessClient {
             },
             onError: (error) => {
                 if (this.room !== room) return;
-                this.setStatus("error", error || "Room error");
+                if (this.experience === "async" && isDuplicateSessionError(error)) {
+                    this.error = null;
+                    this.setStatus("connecting");
+                    return;
+                }
+                const safeError =
+                    this.experience === "async"
+                        ? describeCorrespondenceError(error)
+                        : describeJoinError(error || "Room error");
+                this.setStatus("error", safeError);
             },
             onDisconnect: () => {
                 if (this.room !== room) return;
+                if (this.experience === "async" && this.matchKey && this.pace) {
+                    const matchKey = this.matchKey;
+                    const pace = this.pace;
+                    const roomCode = this.roomCode;
+                    this.error = null;
+                    this.setStatus("connecting");
+                    void this.connectCorrespondence(matchKey, pace, roomCode);
+                    return;
+                }
                 this.setStatus("disconnected", "Disconnected from match.");
             },
             onReconnecting: () => {
                 if (this.room !== room) return;
+                this.error = null;
                 this.setStatus("connecting");
             },
             onReconnected: () => {

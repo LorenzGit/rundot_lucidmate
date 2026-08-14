@@ -40,7 +40,7 @@ export function describeCorrespondenceError(error: unknown): string {
         return "This match has ended. You can remove it from Your Games.";
     }
     if (isDuplicateSessionError(error)) {
-        return "This board is already open on another device. Close it there, then try again.";
+        return "RUN is still closing the previous connection. Return to Your Games and reopen this board in a moment.";
     }
     if (/unauthori[sz]ed|forbidden|close(?:d)?\s*4001/i.test(message)) {
         return "RUN could not open this board for your account. Refresh RUN, then try again.";
