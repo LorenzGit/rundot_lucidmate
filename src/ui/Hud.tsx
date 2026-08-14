@@ -10,6 +10,7 @@ import {
     HINT_COST,
     UNDO_COST,
     leaveOnlineMatch,
+    shareCorrespondenceInvite,
     startCorrespondenceMatch,
     startCorrespondenceRematch,
     startMatch,
@@ -132,6 +133,7 @@ export default function Hud() {
     const onlineSeat = useStore((s) => s.onlineSeat);
     const onlinePlayerCount = useStore((s) => s.onlinePlayerCount);
     const onlineExperience = useStore((s) => s.onlineExperience);
+    const socialBusy = useStore((s) => s.socialBusy);
     const activeMatchKey = useStore((s) => s.activeMatchKey);
     const correspondenceMatches = useStore((s) => s.correspondenceMatches);
     const playerColor = useStore((s) => s.playerColor);
@@ -244,10 +246,23 @@ export default function Hud() {
                     <p className="online-wait-hint">
                         {isCorrespondence
                             ? onlineRoomCode
-                                ? "Your board is saved. Tap the code to copy it, send it to your friend, then come back later."
+                                ? "Your board is saved. Send the invite link, then come back when your friend moves."
                                 : "No room code is available. Return to the menu and create a new board."
                             : "Share the code with a friend, or keep this open for a quick match."}
                     </p>
+                    {isCorrespondence && activeMatch?.roomCode && !activeMatch.opponent && (
+                        <button
+                            type="button"
+                            className="online-share-invite"
+                            disabled={socialBusy}
+                            onClick={() => {
+                                tapFeedback();
+                                void shareCorrespondenceInvite(activeMatch);
+                            }}
+                        >
+                            Share invite link
+                        </button>
+                    )}
                     <button type="button" className="secondary-button" onClick={leave}>
                         Cancel
                     </button>

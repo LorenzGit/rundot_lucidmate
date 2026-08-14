@@ -2,17 +2,18 @@
  * Versioned persistence for LUCIDMATE.
  */
 import { DEFAULT_THEME, isThemeId, THEMES, type ThemeId } from "../game/art/palette.ts";
+import { DEFAULT_PIECE_STYLE, isPieceStyleId } from "../game/art/pieceStyles.ts";
 import { getRunCapabilities, readAppStorage, writeAppStorage } from "../sdk/runSdk.ts";
 import { type AppState, type PendingPurchaseIntent, store } from "../state/store.ts";
 import { sanitizeMatches } from "../social/model.ts";
 
 const SAVE_KEY = "lucidmate:save";
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 
 const QUEST_IDS = ["matches", "wins", "captures"] as const;
 
-export interface GameSaveV2 {
-    version: 2;
+export interface GameSaveV3 {
+    version: 3;
     settings: Pick<
         AppState,
         | "musicEnabled"
@@ -38,6 +39,7 @@ export interface GameSaveV2 {
         | "currentWinStreak"
         | "ownedThemes"
         | "selectedTheme"
+        | "selectedPieceStyle"
     >;
     setup: Pick<AppState, "opponentMode" | "difficulty" | "playerColor">;
     retention: Pick<
@@ -114,7 +116,7 @@ function pendingIntent(value: unknown): PendingPurchaseIntent | null {
     };
 }
 
-function snapshot(): GameSaveV2 {
+function snapshot(): GameSaveV3 {
     const s = store.get();
     return {
         version: SAVE_VERSION,
@@ -141,6 +143,7 @@ function snapshot(): GameSaveV2 {
             currentWinStreak: s.currentWinStreak,
             ownedThemes: s.ownedThemes,
             selectedTheme: s.selectedTheme,
+            selectedPieceStyle: s.selectedPieceStyle,
         },
         setup: {
             opponentMode: s.opponentMode,
@@ -160,18 +163,18 @@ function snapshot(): GameSaveV2 {
     };
 }
 
-function defaults(): GameSaveV2 {
+function defaults(): GameSaveV3 {
     return snapshot();
 }
 
-function migrate(raw: unknown): GameSaveV2 {
+function migrate(raw: unknown): GameSaveV3 {
     const fallback = defaults();
     if (!raw || typeof raw !== "object") return fallback;
-    const candidate = raw as Omit<Partial<GameSaveV2>, "version" | "social"> & {
+    const candidate = raw as Omit<Partial<GameSaveV3>, "version" | "social"> & {
         version?: number;
         social?: unknown;
     };
-    if (candidate.version !== 1 && candidate.version !== 2) return fallback;
+    if (candidate.version !== 1 && candidate.version !== 2 && candidate.version !== 3) return fallback;
 
     const progress = candidate.progress ?? fallback.progress;
     const settings = candidate.settings ?? fallback.settings;
@@ -190,7 +193,7 @@ function migrate(raw: unknown): GameSaveV2 {
     }
 
     return {
-        version: 2,
+        version: 3,
         settings: {
             musicEnabled: booleanOr(settings.musicEnabled, true),
             musicVolume: clamp01(settings.musicVolume, 0.38),
@@ -218,6 +221,9 @@ function migrate(raw: unknown): GameSaveV2 {
             currentWinStreak: nonNegativeInteger(progress.currentWinStreak),
             ownedThemes,
             selectedTheme: ownedThemes.includes(selectedTheme) ? selectedTheme : DEFAULT_THEME,
+            selectedPieceStyle: isPieceStyleId(progress.selectedPieceStyle)
+                ? progress.selectedPieceStyle
+                : DEFAULT_PIECE_STYLE,
         },
         setup: {
             opponentMode: enumOr(setup.opponentMode, ["ai", "local", "online"] as const, "ai"),
@@ -235,14 +241,14 @@ function migrate(raw: unknown): GameSaveV2 {
         commerce: { pendingPurchaseIntent: pendingIntent(commerce.pendingPurchaseIntent) },
         social: {
             correspondenceMatches:
-                candidate.version === 2 && candidate.social && typeof candidate.social === "object"
+                candidate.version >= 2 && candidate.social && typeof candidate.social === "object"
                     ? sanitizeMatches((candidate.social as { correspondenceMatches?: unknown }).correspondenceMatches)
                     : [],
         },
     };
 }
 
-function apply(save: GameSaveV2): void {
+function apply(save: GameSaveV3): void {
     store.patch({
         ...save.settings,
         ...save.progress,
@@ -274,7 +280,7 @@ function readLocal(): unknown | null {
     }
 }
 
-function writeLocal(save: GameSaveV2): void {
+function writeLocal(save: GameSaveV3): void {
     try {
         localStorage.setItem(SAVE_KEY, JSON.stringify(save));
     } catch {

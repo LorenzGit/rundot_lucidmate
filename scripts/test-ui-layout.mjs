@@ -216,11 +216,10 @@ function assert(cond, msg) {
     assert(/Send a friendly chess phrase/.test(hud), "reaction UI explains its purpose");
     assert(/className="connection-card/.test(hud), "lost connections show a dedicated recovery card");
     assert(/Your board is safe/.test(hud), "reconnect copy reassures the player that progress is preserved");
-    assert(!/SHARE INVITE/.test(hud), "waiting board has no broken share-invite button");
+    assert(/shareCorrespondenceInvite/.test(hud), "waiting friend board exposes the SDK share-link action");
 
     const challenge = fs.readFileSync(path.join(root, "src/ui/ChallengeScreen.tsx"), "utf8");
-    assert(/CREATE BOARD/.test(challenge), "friend challenge creates a board without a broken share action");
-    assert(!/SHARE INVITE/.test(challenge), "challenge setup has no broken share-invite action");
+    assert(/CREATE BOARD/.test(challenge), "friend challenge creates an authoritative board before sharing");
     assert(
         /Friend games aren’t connected here/.test(challenge),
         "offline preview explains why friend games are unavailable",
@@ -228,7 +227,7 @@ function assert(cond, msg) {
     assert(/isNew: true/.test(challenge), "a new friend board is not persisted before the server accepts it");
 
     const lounge = fs.readFileSync(path.join(root, "src/ui/LoungeScreen.tsx"), "utf8");
-    assert(/PRODUCT_IDS\.map/.test(lounge), "Lounge renders every configured Run Bits product");
+    assert(/PRODUCT_IDS\.filter/.test(lounge), "Lounge renders the remaining configured Run Bits products once");
     assert(/className="shop-card"/.test(lounge), "Lounge exposes real catalog cards");
     assert(/view\.priceLabel/.test(lounge), "catalog cards display the host-resolved Run Bits price");
     assert(/purchaseProduct\(productId\)/.test(lounge), "catalog cards use the verified Shop checkout path");

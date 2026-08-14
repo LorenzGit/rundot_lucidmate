@@ -17,7 +17,7 @@ import type { ChessScene } from "./scene/chessScene.ts";
 import { correspondence } from "../social/correspondence.ts";
 import type { CorrespondenceMatch, CorrespondencePace } from "../social/model.ts";
 import { rivalsClient } from "../social/rivalsClient.ts";
-import { getRunPlayerProfile } from "../sdk/runSdk.ts";
+import { getRunPlayerProfile, shareRunLink } from "../sdk/runSdk.ts";
 
 export const UNDO_COST = 12;
 export const HINT_COST = 8;
@@ -702,6 +702,19 @@ export async function startCorrespondenceMatch(input: {
 
 /** End a saved board authoritatively, then mirror its final state locally. */
 export async function endCorrespondenceMatch(match: CorrespondenceMatch): Promise<boolean> {
+    const directoryChallenge = match.phase === "waiting" && match.opponent !== null;
+    if (directoryChallenge) {
+        store.patch({ socialBusy: true, onlineError: null, toast: null });
+        const cancelled = await rivalsClient.cancelChallenge(match.matchKey);
+        if (!match.roomCode) {
+            if (cancelled) correspondence.removeReference(match.matchKey);
+            store.patch({
+                socialBusy: false,
+                toast: cancelled ? "Challenge cancelled for both players." : null,
+            });
+            return cancelled;
+        }
+    }
     await rivalsClient.disconnect();
     store.patch({ socialBusy: true, onlineError: null, toast: null });
     const connected = await onlineChess.connectCorrespondence(
@@ -735,6 +748,29 @@ export async function endCorrespondenceMatch(match: CorrespondenceMatch): Promis
         toast: null,
     });
     return ended !== null;
+}
+
+/** Open RUN's tracked native share sheet for a generic friend board. */
+export async function shareCorrespondenceInvite(match: CorrespondenceMatch): Promise<boolean> {
+    if (!match.roomCode || match.phase !== "waiting" || match.opponent) return false;
+    store.patch({ socialBusy: true, toast: null });
+    const result = await shareRunLink({
+        params: {
+            route: "match",
+            matchKey: match.matchKey,
+            pace: match.pace,
+            roomCode: match.roomCode,
+        },
+        title: "Your move in LUCIDMATE",
+        description: `Join my ${match.pace === "daily" ? "daily" : "relaxed"} chess board. You play Black.`,
+        slug: "lucidmate-friend-board",
+    });
+    store.patch({
+        socialBusy: false,
+        toast: result ? "Invite link ready to send." : "Sharing is available inside RUN.",
+    });
+    if (result) analytics.event("correspondence_invite_shared", { pace: match.pace });
+    return result !== null;
 }
 
 export async function startCorrespondenceRematch(): Promise<boolean> {

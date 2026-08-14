@@ -107,6 +107,14 @@ export const INTERSTITIAL_RUN_INTERVAL = 3;
 
 export const products = createProductRegistry([
     {
+        id: "piece_pack",
+        catalogItemId: PLATFORM_IDS.piecePackItem,
+        kind: "durable",
+        expectedEntitlementIds: [PLATFORM_IDS.piecePackEntitlement],
+        unique: true,
+        unlockDescription: "Offered after the first finished match as a cosmetic identity upgrade",
+    },
+    {
         id: "theme_pack",
         catalogItemId: PLATFORM_IDS.themePackItem,
         kind: "durable",
@@ -136,17 +144,19 @@ export const products = createProductRegistry([
     },
 ]);
 
-export type ProductId = "theme_pack" | "ad_free" | "trip_pass";
+export type ProductId = "piece_pack" | "theme_pack" | "ad_free" | "trip_pass";
 
-export const PRODUCT_IDS: readonly ProductId[] = ["theme_pack", "ad_free", "trip_pass"];
+export const PRODUCT_IDS: readonly ProductId[] = ["piece_pack", "theme_pack", "ad_free", "trip_pass"];
 
 export const DEV_PREVIEW_PRICES: Readonly<Record<ProductId, string>> = {
+    piece_pack: "149 RB",
     theme_pack: "199 RB",
     ad_free: "249 RB",
     trip_pass: "399 RB",
 };
 
 export const PRODUCT_UNLOCK_RUNS: Readonly<Record<ProductId, number>> = {
+    piece_pack: 1,
     theme_pack: 1,
     ad_free: 3,
     trip_pass: 3,

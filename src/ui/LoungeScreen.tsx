@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { audioManager } from "../audio/audioManager.ts";
 import { THEMES } from "../game/art/palette.ts";
+import { PIECE_STYLES } from "../game/art/pieceStyles.ts";
 import { store, useStore } from "../state/store.ts";
 import { analytics } from "../systems/analytics/analyticsConfig.ts";
 import { productView, purchaseProduct, refreshCommerce } from "../systems/commerce.ts";
@@ -11,16 +12,19 @@ import { t } from "../systems/localization.ts";
 import { monetizationTelemetry } from "../systems/monetization/runtime.ts";
 import { PRODUCT_IDS, type ProductId } from "../systems/monetization/config.ts";
 import { buyThemeWithAuras, selectTheme, themeIsOwned, themeOffer } from "../systems/palettes.ts";
+import { pieceStyleIsOwned, selectPieceStyle } from "../systems/pieceStyles.ts";
 import { runtimeServices } from "../systems/runtimeServices.ts";
 import MenuScreenLayout from "./MenuScreenLayout.tsx";
 
 export default function LoungeScreen() {
     useStore((s) => s.ownedThemes);
     useStore((s) => s.selectedTheme);
+    useStore((s) => s.selectedPieceStyle);
     useStore((s) => s.auras);
     useStore((s) => s.locale);
     const auras = store.get().auras;
     const selected = store.get().selectedTheme;
+    const selectedPieceStyle = store.get().selectedPieceStyle;
     const [busy, setBusy] = useState<string | null>(null);
     const [catalogRevision, setCatalogRevision] = useState(0);
 
@@ -63,14 +67,66 @@ export default function LoungeScreen() {
         store.patch({ toast: t(outcome.status === "unknown" ? "PurchasePending" : "PurchaseFailed") });
     };
 
-    const productViews = PRODUCT_IDS.map((productId) => productView(productId)).filter((view) => view.visible);
+    const productViews = PRODUCT_IDS.filter((productId) => productId !== "piece_pack")
+        .map((productId) => productView(productId))
+        .filter((view) => view.visible);
 
     return (
-        <MenuScreenLayout kicker={t("KickerLounge")} title={t("MenuLounge")}>
-            <p className="lounge-auras">{t("LoungeBody")}</p>
+        <MenuScreenLayout kicker="CUSTOMIZE" title={t("MenuLounge")}>
+            <p className="lounge-auras">Boards and pieces are cosmetic — chess stays fair.</p>
             <p className="lounge-auras">
                 {t("LabelAuras")}: <strong>{auras}</strong>
             </p>
+            <section className="piece-style-section" aria-labelledby="piece-style-title">
+                <div className="piece-style-heading">
+                    <div>
+                        <p>YOUR PIECES</p>
+                        <h3 id="piece-style-title">Pick a set for every board</h3>
+                    </div>
+                    <span>Cosmetic only</span>
+                </div>
+                <div className="piece-style-grid">
+                    {PIECE_STYLES.map((style) => {
+                        const owned = pieceStyleIsOwned(style.id);
+                        const isSelected = selectedPieceStyle === style.id;
+                        const view = style.id === "candy" ? productView("piece_pack") : null;
+                        const select = () => {
+                            audioManager.play("tap");
+                            void runtimeServices.haptic("light");
+                            selectPieceStyle(style.id);
+                        };
+                        return (
+                            <article
+                                key={style.id}
+                                className={`piece-style-card ${style.id}${isSelected ? " selected" : ""}`}
+                            >
+                                <div className="piece-style-preview" aria-hidden="true">
+                                    <i className="piece-preview pawn" />
+                                    <i className="piece-preview king" />
+                                    <i className="piece-preview pawn dark" />
+                                </div>
+                                <h4>{style.name}</h4>
+                                <p>{style.blurb}</p>
+                                {owned ? (
+                                    <button type="button" disabled={isSelected} onClick={select}>
+                                        {isSelected ? "SELECTED" : "USE THIS SET"}
+                                    </button>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        disabled={busy !== null || !view?.purchasable}
+                                        onClick={() => void checkout("piece_pack")}
+                                    >
+                                        {busy === "piece_pack"
+                                            ? t("PurchaseWorking")
+                                            : (view?.priceLabel ?? "UNAVAILABLE")}
+                                    </button>
+                                )}
+                            </article>
+                        );
+                    })}
+                </div>
+            </section>
             <div className="theme-grid">
                 {THEMES.map((theme) => {
                     const offer = themeOffer(theme.id);

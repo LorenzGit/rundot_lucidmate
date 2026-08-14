@@ -28,7 +28,8 @@ export function applyDevelopmentScreenPreview(): void {
     const requested = params.get("screen") ?? pathScreen;
     const qa = params.get("qa") === "1" || qaPath;
     const socialPreview = params.get("socialPreview");
-    if (qa && store.get().correspondenceMatches.length === 0) {
+    if (qa && params.get("pieceStyle") === "candy") store.patch({ selectedPieceStyle: "candy" });
+    if (qa && (socialPreview === "waiting" || store.get().correspondenceMatches.length === 0)) {
         const now = Date.now();
         if (socialPreview === "waiting") {
             store.patch({
@@ -41,7 +42,7 @@ export function applyDevelopmentScreenPreview(): void {
                         color: "w",
                         opponent: null,
                         turn: "w",
-                        roomCode: null,
+                        roomCode: "DREAM2",
                         deadlineAt: null,
                         updatedAt: now,
                         moveCount: 0,
@@ -134,6 +135,27 @@ export function applyDevelopmentScreenPreview(): void {
     }
     if (!requested) return;
     if (requested === "game") {
+        const waitingMatch =
+            socialPreview === "waiting" ? store.get().correspondenceMatches.find((match) => !match.opponent) : null;
+        if (waitingMatch?.color) {
+            store.patch({
+                phase: "playing",
+                menuScreen: "main",
+                paused: false,
+                opponentMode: "online",
+                playerColor: waitingMatch.color,
+                turn: waitingMatch.turn,
+                matchStatus: "playing",
+                onlineExperience: "async",
+                onlineStatus: "waiting",
+                onlineRoomCode: waitingMatch.roomCode,
+                onlineSeat: waitingMatch.color,
+                onlinePlayerCount: 1,
+                activeMatchKey: waitingMatch.matchKey,
+                activeMatchPace: waitingMatch.pace,
+            });
+            return;
+        }
         store.patch({ phase: "playing", menuScreen: "main", paused: false });
         return;
     }

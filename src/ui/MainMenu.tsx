@@ -6,6 +6,7 @@ import { GAME_NAME } from "../game/constants.ts";
 import {
     endCorrespondenceMatch,
     leaveOnlineMatch,
+    shareCorrespondenceInvite,
     startCorrespondenceMatch,
     startOnlineMatch,
 } from "../game/runController.ts";
@@ -255,6 +256,23 @@ function BoardActions({ match, onClose }: { match: CorrespondenceMatch; onClose:
                             >
                                 End match
                                 <small>{match.phase === "waiting" ? "Cancel for everyone" : "Resign this game"}</small>
+                            </button>
+                        )}
+                        {match.phase === "waiting" && match.roomCode && !match.opponent && (
+                            <button
+                                type="button"
+                                className="board-action share"
+                                disabled={busy}
+                                onClick={() => {
+                                    cue(() => setActionError(null));
+                                    void shareCorrespondenceInvite(match).then((shared) => {
+                                        if (!shared)
+                                            setActionError("Open this board inside RUN to share its invite link.");
+                                    });
+                                }}
+                            >
+                                Share invite link
+                                <small>Open your phone’s share sheet</small>
                             </button>
                         )}
                         {match.unavailable && (

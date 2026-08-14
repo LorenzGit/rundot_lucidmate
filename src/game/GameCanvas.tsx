@@ -66,6 +66,7 @@ async function initializeBench(scope: RendererLifecycleScope, host: HTMLElement)
         stage,
         match: controller.match,
         themeId: state.selectedTheme,
+        pieceStyle: state.selectedPieceStyle,
         reducedMotion: state.reducedMotion,
         quality: state.quality,
         insets: designInsets(stage.scale()),
@@ -100,6 +101,7 @@ export default function GameCanvas() {
     const paused = useStore((s) => s.paused);
     const reducedMotion = useStore((s) => s.reducedMotion);
     const themeId = useStore((s) => s.selectedTheme);
+    const pieceStyle = useStore((s) => s.selectedPieceStyle);
 
     useEffect(() => {
         const host = hostRef.current;
@@ -159,6 +161,10 @@ export default function GameCanvas() {
     useEffect(() => {
         sceneRef.current?.setTheme(themeId);
     }, [themeId]);
+
+    useEffect(() => {
+        sceneRef.current?.setPieceStyle(pieceStyle);
+    }, [pieceStyle]);
 
     return <div ref={hostRef} className="absolute inset-0" role="img" aria-label="Lucidmate chess board" />;
 }

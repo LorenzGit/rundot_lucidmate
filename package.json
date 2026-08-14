@@ -1,6 +1,6 @@
 {
   "name": "lucidmate",
-  "version": "0.4.4",
+  "version": "1.0.8",
   "description": "LUCIDMATE — Neon chess for RUN.world, built with PixiJS 8 (WebGPU-first).",
   "private": true,
   "license": "SEE LICENSE IN LICENSE.md",

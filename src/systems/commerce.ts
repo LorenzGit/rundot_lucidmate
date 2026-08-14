@@ -60,12 +60,14 @@ export interface ProductView {
 }
 
 const PRODUCT_NAMES: Readonly<Record<ProductId, string>> = {
+    piece_pack: "PIECE SET — CANDY CLUB",
     theme_pack: "THEME PACK — COSMIC",
     ad_free: "AD-FREE FOREVER",
     trip_pass: "TRIP PASS",
 };
 
 const PRODUCT_DESCRIPTIONS: Readonly<Record<ProductId, string>> = {
+    piece_pack: "Bubblegum, mint and glossy chrome pieces. Permanent and cosmetic only.",
     theme_pack: "Permanently unlocks Nebula and Ultraviolet themes. Cosmetic only — no rules change.",
     ad_free: "Removes the between-matches interstitial forever. Optional rewarded videos remain.",
     trip_pass: "Theme pack + ad-free + exclusive Lava theme. Cosmetic and ad-free only.",

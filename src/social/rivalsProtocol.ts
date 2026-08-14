@@ -26,7 +26,7 @@ export type RivalsClientMessage =
           pace: CorrespondencePace;
       }
     | { type: "acceptChallenge"; matchKey: string }
-    | { type: "cancelChallenge"; matchKey: string };
+    | { type: "cancelChallenge"; matchKey: string; requestId?: string };
 
 export type RivalsServerMessage =
     | {
@@ -38,7 +38,7 @@ export type RivalsServerMessage =
       }
     | { type: "challengeSent"; requestId: string; target: RivalIdentity }
     | { type: "challengeReceived"; invitation: RivalInvitation }
-    | { type: "challengeRemoved"; matchKey: string; reason: "accepted" | "cancelled" }
+    | { type: "challengeRemoved"; matchKey: string; reason: "accepted" | "cancelled"; requestId?: string }
     | { type: "error"; requestId?: string; reason: string };
 
 export type RivalsProtocol = RivalsClientMessage | RivalsServerMessage;

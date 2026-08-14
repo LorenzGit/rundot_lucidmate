@@ -81,7 +81,7 @@ export default class RivalsRoom extends GameRoom<RivalsProtocol> {
                 this.removeInvitation(sender.id, payload.matchKey, true);
                 return;
             case "cancelChallenge":
-                this.removeInvitation(sender.id, payload.matchKey, false);
+                this.removeInvitation(sender.id, payload.matchKey, false, payload.requestId);
                 return;
         }
     }
@@ -218,14 +218,36 @@ export default class RivalsRoom extends GameRoom<RivalsProtocol> {
         }
     }
 
-    private removeInvitation(playerId: string, matchKey: string, accepting: boolean): void {
+    private removeInvitation(playerId: string, matchKey: string, accepting: boolean, requestId?: string): void {
         const entry = this.invitations.get(matchKey);
-        if (!entry) return;
-        if (accepting ? entry.to !== playerId : entry.to !== playerId && entry.invitation.from.id !== playerId) return;
+        if (!entry) {
+            if (!accepting) {
+                this.sendTo(playerId, {
+                    type: "challengeRemoved",
+                    matchKey,
+                    reason: "cancelled",
+                    ...(requestId ? { requestId } : {}),
+                });
+            }
+            return;
+        }
+        if (accepting ? entry.to !== playerId : entry.to !== playerId && entry.invitation.from.id !== playerId) {
+            this.sendTo(playerId, {
+                type: "error",
+                reason: "You can’t change this challenge.",
+                ...(requestId ? { requestId } : {}),
+            });
+            return;
+        }
         this.invitations.delete(matchKey);
         this.save();
         const reason = accepting ? "accepted" : "cancelled";
-        this.sendTo(playerId, { type: "challengeRemoved", matchKey, reason });
+        this.sendTo(playerId, {
+            type: "challengeRemoved",
+            matchKey,
+            reason,
+            ...(requestId ? { requestId } : {}),
+        });
         const other = entry.to === playerId ? entry.invitation.from.id : entry.to;
         if (this.players.has(other)) {
             this.sendTo(other, { type: "challengeRemoved", matchKey, reason });

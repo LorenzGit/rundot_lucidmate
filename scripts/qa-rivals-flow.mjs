@@ -38,14 +38,52 @@ try {
     assert.ok(invitation, "recipient receives a durable invitation reference");
     assert.equal(invitation.opponent?.id.startsWith("dev-tab-"), true);
 
+    // Cancelling an unopened directory challenge must acknowledge the shared
+    // deletion instead of trying to reconnect to a chess room that does not
+    // exist yet.
+    await sender.locator(`[data-match-key="${invitation.matchKey}"] .inbox-match-manage`).click();
+    await sender.getByRole("button", { name: "End match" }).click();
+    await sender.getByRole("button", { name: "End match" }).click();
+    await sender.waitForFunction(
+        (matchKey) =>
+            !window.__LUCIDMATE_QA__.snapshot().correspondenceMatches.some((match) => match.matchKey === matchKey),
+        invitation.matchKey,
+        { timeout: 10_000 },
+    );
+    await recipient.waitForFunction(
+        (matchKey) =>
+            !window.__LUCIDMATE_QA__.snapshot().correspondenceMatches.some((match) => match.matchKey === matchKey),
+        invitation.matchKey,
+        { timeout: 10_000 },
+    );
+
+    await sender.evaluate(() => {
+        window.__LUCIDMATE_QA__.forceMenu();
+        window.__LUCIDMATE_QA__.openMenu("rivals");
+    });
+    await sender.waitForFunction(() => window.__LUCIDMATE_QA__.snapshot().rivalDirectoryStatus === "ready");
+    await sender.getByLabel("FIND A PLAYER").fill(recipientProfile.username);
+    const rechallenge = sender.locator(".rival-discovery-card", { hasText: recipientProfile.username });
+    await rechallenge.waitFor();
+    await rechallenge.getByRole("button", { name: `Challenge ${recipientProfile.username}` }).click();
+    await recipient.waitForFunction(
+        () => window.__LUCIDMATE_QA__.snapshot().correspondenceMatches.some((match) => match.incoming),
+        null,
+        { timeout: 10_000 },
+    );
+    const activeInvitation = (
+        await recipient.evaluate(() => window.__LUCIDMATE_QA__.snapshot())
+    ).correspondenceMatches.find((match) => match.incoming);
+    assert.ok(activeInvitation, "recipient receives the replacement invitation");
+
     // The challenger may open first, but is still authoritatively reserved as
     // Black. The invited player must always receive White and the first turn.
     await sender.waitForFunction(
         (matchKey) =>
             window.__LUCIDMATE_QA__.snapshot().correspondenceMatches.some((match) => match.matchKey === matchKey),
-        invitation.matchKey,
+        activeInvitation.matchKey,
     );
-    await sender.locator(`[data-match-key="${invitation.matchKey}"] .inbox-match-open`).click();
+    await sender.locator(`[data-match-key="${activeInvitation.matchKey}"] .inbox-match-open`).click();
     await sender.waitForFunction(() => window.__LUCIDMATE_QA__.snapshot().onlineStatus === "waiting", null, {
         timeout: 15_000,
     });
@@ -56,7 +94,7 @@ try {
     );
 
     await recipient.evaluate(() => window.__LUCIDMATE_QA__.forceMenu());
-    const incomingCard = recipient.locator(`[data-match-key="${invitation.matchKey}"]`);
+    const incomingCard = recipient.locator(`[data-match-key="${activeInvitation.matchKey}"]`);
     await incomingCard.waitFor();
     await incomingCard.getByText("YOUR FIRST MOVE").waitFor();
     fs.mkdirSync("tmp", { recursive: true });
@@ -68,7 +106,7 @@ try {
     });
     assert.equal(
         (await recipient.evaluate(() => window.__LUCIDMATE_QA__.snapshot())).activeMatchKey,
-        invitation.matchKey,
+        activeInvitation.matchKey,
         "recipient opens the invited board",
     );
 
@@ -85,8 +123,8 @@ try {
     assert.equal(senderState.onlineSeat, "b", "challenger is Black");
     assert.equal(recipientState.onlineSeat, "w", "invited player is White");
     assert.equal(recipientState.turn, "w", "invited player has the first turn");
-    assert.equal(senderState.activeMatchKey, invitation.matchKey);
-    assert.equal(recipientState.activeMatchKey, invitation.matchKey);
+    assert.equal(senderState.activeMatchKey, activeInvitation.matchKey);
+    assert.equal(recipientState.activeMatchKey, activeInvitation.matchKey);
 
     await recipient.evaluate(() => window.__LUCIDMATE_QA__.forceMenu());
     await recipient.waitForFunction(
@@ -100,12 +138,12 @@ try {
                 match.incoming === false
             );
         },
-        invitation.matchKey,
+        activeInvitation.matchKey,
         { timeout: 15_000 },
     );
 
     console.log(
-        "rivals QA passed: offline directory, named challenge, durable inbox delivery, recipient White/first turn, and clean reconnect",
+        "rivals QA passed: acknowledged unopened cancellation, named challenge, durable inbox delivery, recipient White/first turn, and clean reconnect",
     );
 } finally {
     await browser.close();

@@ -20,6 +20,7 @@ export function installBrowserQaContract(): void {
                 wins: state.wins,
                 matchesPlayed: state.matchesPlayed,
                 selectedTheme: state.selectedTheme,
+                selectedPieceStyle: state.selectedPieceStyle,
                 thinking: state.thinking,
                 onlineStatus: state.onlineStatus,
                 onlineError: state.onlineError,
@@ -74,8 +75,14 @@ export function installBrowserQaContract(): void {
         setMatchesPlayed(amount: number) {
             store.patch({ matchesPlayed: Math.max(0, Math.floor(amount)) });
         },
+        previewCandyPieces() {
+            store.patch({ selectedPieceStyle: "candy" });
+        },
         forceMenu() {
             store.patch({ phase: "menu", menuScreen: "main", matchSummary: null });
+        },
+        openMenu(screen: "main" | "rivals") {
+            store.patch({ phase: "menu", menuScreen: screen, matchSummary: null });
         },
         previewLocalGame() {
             store.patch({
@@ -119,7 +126,7 @@ export function installBrowserQaContract(): void {
                 color: "w" as const,
                 opponent: null,
                 turn: "w" as const,
-                roomCode: null,
+                roomCode: "DREAM2",
                 deadlineAt: null,
                 updatedAt: now,
                 moveCount: 0,

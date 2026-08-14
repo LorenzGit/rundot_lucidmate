@@ -6,6 +6,7 @@ import type { AiDifficulty } from "../game/chess/ai.ts";
 import type { OpponentMode } from "../game/chess/game.ts";
 import type { Color, GameStatus, MatchSummary } from "../game/chess/types.ts";
 import { DEFAULT_THEME, type ThemeId } from "../game/art/palette.ts";
+import { DEFAULT_PIECE_STYLE, type PieceStyleId } from "../game/art/pieceStyles.ts";
 import type { CorrespondenceMatch, CorrespondencePace } from "../social/model.ts";
 import type { RivalDirectoryProfile, RivalInvitation } from "../social/rivalsProtocol.ts";
 
@@ -88,6 +89,7 @@ export interface AppState {
     currentWinStreak: number;
     ownedThemes: ThemeId[];
     selectedTheme: ThemeId;
+    selectedPieceStyle: PieceStyleId;
 
     /** Settings */
     musicEnabled: boolean;
@@ -173,6 +175,7 @@ let state: AppState = {
     currentWinStreak: 0,
     ownedThemes: [DEFAULT_THEME],
     selectedTheme: DEFAULT_THEME,
+    selectedPieceStyle: DEFAULT_PIECE_STYLE,
 
     musicEnabled: true,
     musicVolume: 0.38,

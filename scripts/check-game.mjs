@@ -53,13 +53,13 @@ const shop = readJson("rundot/shop.config.json");
 const shopItemIds = new Set(shop.items.map((item) => item.itemId));
 const shopEntitlementIds = new Set(shop.items.flatMap((item) => item.entitlements.map((e) => e.entitlementId)));
 
-for (const key of ["themePackItem", "adFreeItem", "tripPassItem"]) {
+for (const key of ["piecePackItem", "themePackItem", "adFreeItem", "tripPassItem"]) {
     expect(
         shopItemIds.has(platformIds[key]),
         `PLATFORM_IDS.${key} (${platformIds[key]}) is not in rundot/shop.config.json`,
     );
 }
-for (const key of ["themePackEntitlement", "adFreeEntitlement", "lavaThemeEntitlement"]) {
+for (const key of ["piecePackEntitlement", "themePackEntitlement", "adFreeEntitlement", "lavaThemeEntitlement"]) {
     expect(
         shopEntitlementIds.has(platformIds[key]),
         `PLATFORM_IDS.${key} (${platformIds[key]}) is granted by no shop item`,
@@ -104,7 +104,7 @@ if (monetization) {
             `placement "${id}" is missing or disabled in rundot/liveops.config.json`,
         );
     }
-    for (const id of ["theme_pack", "ad_free", "trip_pass"]) {
+    for (const id of ["piece_pack", "theme_pack", "ad_free", "trip_pass"]) {
         expect(
             monetization.products?.[id]?.enabled === true,
             `product "${id}" is missing or disabled in rundot/liveops.config.json`,

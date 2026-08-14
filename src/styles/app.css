@@ -2417,6 +2417,22 @@ body {
     line-height: 1.35;
 }
 
+.online-share-invite {
+    min-height: 48px;
+    border: 1px solid color-mix(in srgb, var(--accent) 70%, white 8%);
+    border-radius: 999px;
+    background: linear-gradient(110deg, var(--accent), var(--accent-2));
+    color: #07191a;
+    font-size: max(0.76rem, 13px);
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.online-share-invite:disabled {
+    opacity: 0.55;
+}
+
 @media (orientation: landscape) {
     .connection-card {
         left: calc((100% - var(--rail-width) - max(calc(52 * var(--u)), var(--safe-right))) / 2);
@@ -2732,6 +2748,166 @@ body {
     margin: 0 0 0.75rem;
     color: var(--lm-muted);
     line-height: 1.4;
+}
+
+.piece-style-section {
+    margin: 0.9rem 0 1rem;
+    border: 1px solid color-mix(in srgb, var(--accent-2) 44%, var(--lm-line));
+    border-radius: 20px;
+    background: linear-gradient(145deg, rgba(8, 28, 29, 0.95), rgba(17, 22, 31, 0.95));
+    padding: 0.9rem;
+}
+
+.piece-style-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 0.75rem;
+}
+
+.piece-style-heading p,
+.piece-style-heading h3 {
+    margin: 0;
+}
+
+.piece-style-heading p {
+    color: var(--accent);
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.14em;
+}
+
+.piece-style-heading h3 {
+    margin-top: 4px;
+    font-size: 0.95rem;
+}
+
+.piece-style-heading > span {
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+    padding: 5px 8px;
+    color: var(--lm-muted);
+    font-size: 10px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.piece-style-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.piece-style-card {
+    display: grid;
+    gap: 7px;
+    min-width: 0;
+    border: 1px solid var(--lm-line);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.035);
+    padding: 9px;
+}
+
+.piece-style-card.selected {
+    border-color: color-mix(in srgb, var(--accent) 78%, white 8%);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+.piece-style-preview {
+    display: flex;
+    height: 58px;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 3px;
+    overflow: hidden;
+    border-radius: 11px;
+    background: linear-gradient(135deg, #3a3348 50%, #a89f90 50%);
+}
+
+.piece-preview {
+    position: relative;
+    display: block;
+    width: 26px;
+    height: 32px;
+    border: 3px solid #211426;
+    border-radius: 50% 50% 7px 7px;
+    background: #fffef9;
+    box-shadow: 0 3px 0 #211426;
+}
+
+.piece-preview::after {
+    position: absolute;
+    left: -5px;
+    right: -5px;
+    bottom: -5px;
+    height: 7px;
+    border: 3px solid #211426;
+    border-radius: 5px;
+    background: inherit;
+    content: "";
+}
+
+.piece-preview.king {
+    height: 43px;
+    border-radius: 6px 6px 8px 8px;
+}
+
+.piece-preview.dark {
+    background: #b04a88;
+}
+
+.piece-style-card.candy .piece-style-preview {
+    background: linear-gradient(135deg, #f9c95d 50%, #75d9c8 50%);
+}
+
+.piece-style-card.candy .piece-preview {
+    background: #fff2cf;
+    box-shadow:
+        inset 0 -5px 0 #f0529a,
+        0 3px 0 #211426;
+}
+
+.piece-style-card.candy .piece-preview.dark {
+    background: #f0529a;
+    box-shadow:
+        inset 0 -5px 0 #79ead6,
+        0 3px 0 #211426;
+}
+
+.piece-style-card h4,
+.piece-style-card p {
+    margin: 0;
+}
+
+.piece-style-card h4 {
+    color: var(--lm-ink);
+    font-size: max(0.74rem, 12px);
+}
+
+.piece-style-card p {
+    color: var(--lm-muted);
+    font-size: max(0.68rem, 11px);
+    line-height: 1.3;
+}
+
+.piece-style-card button {
+    min-height: 44px;
+    border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--lm-line));
+    border-radius: 11px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--lm-ink);
+    font-size: 10px;
+    font-weight: 900;
+}
+
+.piece-style-card.candy button {
+    background: linear-gradient(110deg, #f4c75e, #72d6c5);
+    color: #191422;
+}
+
+.piece-style-card button:disabled {
+    opacity: 0.58;
 }
 
 .lounge-products {
@@ -4668,6 +4844,12 @@ html[data-reduced-motion="true"] .reaction-bar.your-turn::before {
     border: 1px solid rgba(240, 167, 155, 0.45);
     background: rgba(124, 57, 55, 0.1);
     color: #f4b2a7;
+}
+
+.board-action.share {
+    border: 1px solid color-mix(in srgb, var(--accent) 60%, var(--lm-line));
+    background: color-mix(in srgb, var(--accent) 10%, rgba(255, 255, 255, 0.035));
+    color: var(--accent);
 }
 
 .board-action.danger {

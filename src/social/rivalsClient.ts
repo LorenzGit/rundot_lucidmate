@@ -21,6 +21,10 @@ export class RivalsClient {
         string,
         { resolve: (accepted: boolean) => void; timeout: ReturnType<typeof setTimeout> }
     >();
+    private cancelRequests = new Map<
+        string,
+        { resolve: (cancelled: boolean) => void; timeout: ReturnType<typeof setTimeout> }
+    >();
 
     async connect(): Promise<boolean> {
         if (this.room?.connectionState === "connected") return true;
@@ -44,6 +48,11 @@ export class RivalsClient {
         } catch {
             /* ignore */
         }
+        for (const request of this.cancelRequests.values()) {
+            clearTimeout(request.timeout);
+            request.resolve(false);
+        }
+        this.cancelRequests.clear();
         store.patch({ rivalDirectoryStatus: "idle" });
     }
 
@@ -148,8 +157,17 @@ export class RivalsClient {
         });
     }
 
-    async cancelChallenge(matchKey: string): Promise<void> {
-        if (await this.connect()) this.room?.send({ type: "cancelChallenge", matchKey });
+    async cancelChallenge(matchKey: string): Promise<boolean> {
+        if (!(await this.connect()) || !this.room) return false;
+        const requestId = `cancel-${matchKey}-${Date.now().toString(36)}`.slice(0, 80);
+        return new Promise((resolve) => {
+            const timeout = setTimeout(() => {
+                this.cancelRequests.delete(requestId);
+                resolve(false);
+            }, 8_000);
+            this.cancelRequests.set(requestId, { resolve, timeout });
+            this.room?.send({ type: "cancelChallenge", matchKey, requestId });
+        });
     }
 
     private handle(message: RivalsProtocol): void {
@@ -191,6 +209,13 @@ export class RivalsClient {
                     store.patch({ rivalDirectoryError: message.reason });
                     return;
                 }
+                const cancelRequest = this.cancelRequests.get(message.requestId);
+                if (cancelRequest) {
+                    clearTimeout(cancelRequest.timeout);
+                    this.cancelRequests.delete(message.requestId);
+                    cancelRequest.resolve(false);
+                    return;
+                }
                 const request = this.challengeRequests.get(message.requestId);
                 if (!request) return;
                 clearTimeout(request.timeout);
@@ -207,6 +232,14 @@ export class RivalsClient {
                     acceptRequest.resolve(true);
                 }
                 if (message.reason === "cancelled") correspondence.removeReference(message.matchKey);
+                if (message.requestId) {
+                    const cancelRequest = this.cancelRequests.get(message.requestId);
+                    if (cancelRequest) {
+                        clearTimeout(cancelRequest.timeout);
+                        this.cancelRequests.delete(message.requestId);
+                        cancelRequest.resolve(message.reason === "cancelled");
+                    }
+                }
                 store.patch({
                     rivalInvitations: store
                         .get()

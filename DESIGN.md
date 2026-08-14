@@ -46,7 +46,7 @@ Standard chess: castling, en passant, promotion, check, checkmate, stalemate, 50
 
 | Channel | Surface |
 | --- | --- |
-| Run Bits | Theme Pack (Nebula+UV), Ad-Free Forever, Trip Pass bundle |
+| Run Bits | Candy Club piece set, Theme Pack (Nebula+UV), Ad-Free Forever, Trip Pass bundle |
 | Rewarded | Free undo, free hint, double auras on results |
 | Interstitial | Every 3rd finished match after first session |
 

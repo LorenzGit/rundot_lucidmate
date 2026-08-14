@@ -42,6 +42,7 @@
           }
         },
         "products": {
+          "piece_pack": { "enabled": true },
           "theme_pack": { "enabled": true },
           "ad_free": { "enabled": true },
           "trip_pass": { "enabled": true }

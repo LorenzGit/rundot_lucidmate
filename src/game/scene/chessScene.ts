@@ -7,6 +7,7 @@ import type { ChessMatch } from "../chess/game.ts";
 import type { Move, PieceType } from "../chess/types.ts";
 import { getTheme, type ThemeId, type TripTheme } from "../art/palette.ts";
 import { createPieceGraphic } from "../art/pieces.ts";
+import type { PieceStyleId } from "../art/pieceStyles.ts";
 import { createParticleEmitter, type ParticleEmitter } from "../particles.ts";
 import type { Stage } from "../stage.ts";
 import { ease, type TweenController, createTweenController } from "../tween.ts";
@@ -27,6 +28,7 @@ export interface ChessSceneOptions {
     stage: Stage;
     match: ChessMatch;
     themeId: ThemeId;
+    pieceStyle: PieceStyleId;
     reducedMotion: boolean;
     quality: "high" | "low";
     insets: Insets;
@@ -82,6 +84,7 @@ export class ChessScene {
     private layout: BoardLayout = { originX: 0, originY: 0, cell: 64, size: 512 };
     private insets: Insets;
     private theme: TripTheme;
+    private pieceStyle: PieceStyleId;
     private reducedMotion: boolean;
     private quality: "high" | "low";
     private time = 0;
@@ -106,6 +109,7 @@ export class ChessScene {
         this.callbacks = opts.callbacks;
         this.insets = opts.insets;
         this.theme = getTheme(opts.themeId);
+        this.pieceStyle = opts.pieceStyle;
         this.reducedMotion = opts.reducedMotion;
         this.quality = opts.quality;
 
@@ -175,6 +179,12 @@ export class ChessScene {
         this.paintStage();
         this.paintBoard();
         this.updateStatusLabel(true);
+    }
+
+    setPieceStyle(id: PieceStyleId): void {
+        if (id === this.pieceStyle) return;
+        this.pieceStyle = id;
+        this.rebuildPieces();
     }
 
     setReducedMotion(value: boolean): void {
@@ -386,7 +396,7 @@ export class ChessScene {
         for (let sq = 0; sq < 64; sq++) {
             const piece = snap.board[sq];
             if (!piece) continue;
-            const root = createPieceGraphic(piece.type, piece.color, this.theme, this.layout.cell);
+            const root = createPieceGraphic(piece.type, piece.color, this.theme, this.layout.cell, this.pieceStyle);
             const pos = squareToLocal(this.layout, sq, this.flipped());
             root.x = pos.x;
             root.y = pos.y;
@@ -439,7 +449,13 @@ export class ChessScene {
         const old = this.pieces.get(move.from);
         const flying = old
             ? old.root
-            : createPieceGraphic(move.promotion ?? move.piece, move.color, this.theme, this.layout.cell);
+            : createPieceGraphic(
+                  move.promotion ?? move.piece,
+                  move.color,
+                  this.theme,
+                  this.layout.cell,
+                  this.pieceStyle,
+              );
         // Rebuild everything except we'll re-add the flier
         for (const sprite of this.pieces.values()) {
             if (sprite.root !== flying) sprite.root.destroy({ children: true });
@@ -450,7 +466,7 @@ export class ChessScene {
             if (sq === move.to) continue; // flier lands here
             const piece = snap.board[sq];
             if (!piece) continue;
-            const root = createPieceGraphic(piece.type, piece.color, this.theme, this.layout.cell);
+            const root = createPieceGraphic(piece.type, piece.color, this.theme, this.layout.cell, this.pieceStyle);
             const pos = squareToLocal(this.layout, sq, this.flipped());
             root.x = pos.x;
             root.y = pos.y;
@@ -495,7 +511,13 @@ export class ChessScene {
                 let landed = flying;
                 if (move.promotion) {
                     flying.destroy({ children: true });
-                    landed = createPieceGraphic(move.promotion, move.color, this.theme, this.layout.cell);
+                    landed = createPieceGraphic(
+                        move.promotion,
+                        move.color,
+                        this.theme,
+                        this.layout.cell,
+                        this.pieceStyle,
+                    );
                     landed.x = toPos.x;
                     landed.y = toPos.y;
                     this.pieceLayer.addChild(landed);

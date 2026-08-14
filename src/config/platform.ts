@@ -15,11 +15,13 @@ export const PLATFORM_IDS = Object.freeze({
     themePackItem: "lucidmate_theme_pack_cosmic",
     adFreeItem: "lucidmate_no_interstitials",
     tripPassItem: "lucidmate_trip_pass",
+    piecePackItem: "lucidmate_piece_pack_candy",
 
     /** Entitlements granted by those items. */
     themePackEntitlement: "lucidmate_theme_pack_cosmic",
     adFreeEntitlement: "lucidmate_no_interstitials",
     lavaThemeEntitlement: "lucidmate_theme_lava",
+    piecePackEntitlement: "lucidmate_piece_pack_candy",
 });
 
 export function isConfiguredPlatformId(value: string): boolean {

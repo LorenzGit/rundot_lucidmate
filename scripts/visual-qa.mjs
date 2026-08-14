@@ -115,7 +115,7 @@ try {
                 });
                 await page.waitForSelector(".shop-card", { timeout: 10_000 });
                 const offers = await page.locator(".shop-card").count();
-                if (offers !== 3) note(`${viewport.name}: expected 3 Run Bits offers, found ${offers}`);
+                if (offers !== 3) note(`${viewport.name}: expected 3 general Run Bits offers, found ${offers}`);
             }
             if (shot.reactions) {
                 await page.evaluate(() => globalThis.__LUCIDMATE_QA__.previewCorrespondenceGame());
@@ -134,7 +134,7 @@ try {
 
             const label = `${viewport.name}/${shot.name}`;
             const audit = await inspectLayout(page, label);
-            if (shot.screen === "main" && audit.version !== "v0.4.4") {
+            if (shot.screen === "main" && audit.version !== "v1.0.8") {
                 note(`${label}: visible version is "${audit.version ?? "missing"}"`);
             }
             await page.screenshot({ path: path.join(outputDir, `${viewport.name}-${shot.name}.png`) });

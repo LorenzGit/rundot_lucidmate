@@ -5,23 +5,38 @@
 import { Container, Graphics } from "pixi.js";
 import type { Color, PieceType } from "../chess/types.ts";
 import type { TripTheme } from "./palette.ts";
+import type { PieceStyleId } from "./pieceStyles.ts";
 
-export function createPieceGraphic(type: PieceType, color: Color, theme: TripTheme, cellSize: number): Container {
+export function createPieceGraphic(
+    type: PieceType,
+    color: Color,
+    theme: TripTheme,
+    cellSize: number,
+    style: PieceStyleId = "dream",
+): Container {
     const root = new Container();
     const g = new Graphics();
     const isWhite = color === "w";
-    const fill = isWhite ? theme.whitePiece : theme.blackPiece;
+    const candy = style === "candy";
+    const fill = candy ? (isWhite ? 0xfff2cf : 0xf0529a) : isWhite ? theme.whitePiece : theme.blackPiece;
     // Near-black outline; white pieces get a thicker ring so ivory never melts
     // into mid-tone light squares.
-    const stroke = theme.outline;
+    const stroke = candy ? 0x211426 : theme.outline;
     const s = cellSize;
-    const line = Math.max(isWhite ? 2.8 : 1.5, s * (isWhite ? 0.072 : 0.04));
+    const line = Math.max(isWhite ? 2.8 : 1.5, s * (candy ? 0.078 : isWhite ? 0.072 : 0.04));
 
     // Soft drop-shadow so pieces separate from any square color
     const shadow = new Graphics();
     shadow.ellipse(0, s * 0.3, s * 0.3, s * 0.11);
     shadow.fill({ color: 0x000000, alpha: isWhite ? 0.45 : 0.35 });
     root.addChild(shadow);
+
+    if (candy) {
+        const glow = new Graphics();
+        glow.circle(0, 0, s * 0.31);
+        glow.fill({ color: isWhite ? 0x79ead6 : 0xff88bd, alpha: 0.13 });
+        root.addChild(glow);
+    }
 
     // White pieces: dark under-halo behind the silhouette for extra punch.
     if (isWhite) {
@@ -35,6 +50,10 @@ export function createPieceGraphic(type: PieceType, color: Color, theme: TripThe
     g.roundRect(-s * 0.28, s * 0.22, s * 0.56, s * 0.12, s * 0.04);
     g.fill({ color: fill, alpha: 1 });
     g.stroke({ width: line * 1.2, color: stroke, alpha: 1 });
+    if (candy) {
+        g.roundRect(-s * 0.2, s * 0.245, s * 0.4, s * 0.045, s * 0.018);
+        g.fill({ color: isWhite ? 0xf0529a : 0x79ead6, alpha: 0.95 });
+    }
 
     switch (type) {
         case "p":
@@ -61,12 +80,19 @@ export function createPieceGraphic(type: PieceType, color: Color, theme: TripThe
     if (type !== "n") {
         const jewel = new Graphics();
         jewel.circle(0, type === "p" ? -s * 0.05 : -s * 0.18, s * 0.06);
-        jewel.fill({ color: theme.accent, alpha: 1 });
+        jewel.fill({ color: candy ? (isWhite ? 0xf0529a : 0x79ead6) : theme.accent, alpha: 1 });
         jewel.stroke({ width: Math.max(1, line * 0.55), color: stroke, alpha: 0.95 });
         root.addChild(g);
         root.addChild(jewel);
     } else {
         root.addChild(g);
+    }
+    if (candy) {
+        const shine = new Graphics();
+        shine.circle(-s * 0.12, -s * 0.19, s * 0.025);
+        shine.circle(s * 0.17, s * 0.1, s * 0.018);
+        shine.fill({ color: 0xffffff, alpha: 0.8 });
+        root.addChild(shine);
     }
     return root;
 }

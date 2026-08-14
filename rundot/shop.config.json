@@ -1,6 +1,24 @@
 {
   "items": [
     {
+      "itemId": "lucidmate_piece_pack_candy",
+      "name": "Piece Set — Candy Club",
+      "description": "Permanently unlocks the Candy Club chess pieces: bubblegum pink, mint jewels and glossy striped bases. Cosmetic only.",
+      "category": "non_consumable",
+      "price": { "type": "bucks", "value": "149" },
+      "entitlements": [{ "entitlementId": "lucidmate_piece_pack_candy", "quantity": 1, "consumable": false }],
+      "assets": {},
+      "unique": true,
+      "active": true,
+      "regions": [],
+      "refundEligible": true,
+      "refundWindowHours": 24,
+      "tags": ["lucidmate", "pieces", "cosmetic", "permanent"],
+      "sortOrder": 1,
+      "releasedAt": null,
+      "expiresAt": null
+    },
+    {
       "itemId": "lucidmate_trip_pass",
       "name": "Trip Pass",
       "description": "Permanently unlocks Nebula, Ultraviolet and Lava themes, and removes the between-matches interstitial. Cosmetic and ad-free only — no chess rule changes.",
@@ -18,7 +36,7 @@
       "refundEligible": true,
       "refundWindowHours": 24,
       "tags": ["lucidmate", "founder", "cosmetic", "ad-free", "permanent"],
-      "sortOrder": 1,
+      "sortOrder": 2,
       "releasedAt": null,
       "expiresAt": null
     },
@@ -36,7 +54,7 @@
       "refundEligible": true,
       "refundWindowHours": 24,
       "tags": ["lucidmate", "cosmetic", "permanent"],
-      "sortOrder": 2,
+      "sortOrder": 3,
       "releasedAt": null,
       "expiresAt": null
     },
@@ -54,7 +72,7 @@
       "refundEligible": true,
       "refundWindowHours": 24,
       "tags": ["lucidmate", "ad-free", "permanent"],
-      "sortOrder": 3,
+      "sortOrder": 4,
       "releasedAt": null,
       "expiresAt": null
     }
