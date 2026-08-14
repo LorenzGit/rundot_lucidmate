@@ -966,6 +966,7 @@ svg.gear-icon {
     opacity: 0.62;
 }
 .notification-test-status {
+    min-height: 18px;
     color: #9de6da;
     font-weight: 600;
 }

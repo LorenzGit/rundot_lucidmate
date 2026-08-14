@@ -138,6 +138,10 @@ const settingsScreen = read("src/ui/SettingsScreen.tsx");
 const notificationPreference = read("src/systems/notificationPreference.ts");
 expect(/updateNotificationPreference/.test(settingsScreen), "settings has no notification consent action");
 expect(
+    /channels:\s*\["local"\]/.test(runSdk) && !/channels:\s*\["push"\]/.test(runSdk),
+    "settings notification test must use the public local channel until typed remote push ships",
+);
+expect(
     /returnReminders\.cancelAll/.test(notificationPreference),
     "notification opt-out does not cancel pending reminders",
 );

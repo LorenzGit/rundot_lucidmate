@@ -435,61 +435,39 @@ export async function setNotificationPreference(enabled: boolean): Promise<Notif
     }
 }
 
-/**
- * Result of the Settings delivery diagnostic. `push_only` is retained as a
- * defensive outcome even though the server normally writes the inbox row
- * before asking Braze to schedule the push.
- */
-export type NotificationSelfTestResult = "scheduled" | "push_only" | "inbox_only" | "unavailable" | "failed";
-
-type RemotePushSubmitApi = {
-    submitMessageAsync(input: {
-        channels: ["push"];
-        title: string;
-        body: string;
-        delaySeconds: number;
-        collapseKey: string;
-        payload: Record<string, unknown>;
-    }): Promise<{
-        results: Array<{
-            channel: "push" | "inbox" | "local" | "rcs";
-            status: "scheduled" | "skipped";
-        }>;
-    }>;
-};
+/** Result of the Settings on-device notification diagnostic. */
+export type NotificationSelfTestResult = "scheduled" | "unavailable" | "failed";
 
 /**
- * Exercises the real RUN/Braze remote-push route and its durable inbox copy.
- * The `push` channel is present in the matching Venus host change but not yet
- * in this game's published 5.24 type package, so the compatibility boundary
- * is deliberately isolated here until the next SDK package is released.
+ * Exercises the notification route that exists in the installed public SDK.
+ * Remote push and optional inbox persistence must not be advertised here until
+ * the matching RUN host/server changes and a typed SDK release are available.
  */
 export async function requestNotificationSelfTest(): Promise<NotificationSelfTestResult> {
     if (!capabilities.notifications) return "unavailable";
     try {
-        const notifications = RundotGameAPI.notifications as unknown as RemotePushSubmitApi;
+        const notificationId = "lucidmate-settings-alert-test";
+        await withTimeout(
+            RundotGameAPI.notifications.cancelNotification(notificationId),
+            2_000,
+            "notifications.selfTest.cancel",
+        );
         const result = await withTimeout(
-            notifications.submitMessageAsync({
-                channels: ["push"],
+            RundotGameAPI.notifications.submitMessageAsync({
+                channels: ["local"],
                 title: "Lucidmate alert test",
-                body: "Your RUN push alerts are working. Your next move will find you too.",
+                body: "Your RUN phone alerts are enabled.",
                 delaySeconds: 5,
+                notificationId,
                 collapseKey: "lucidmate-settings-alert-test",
                 payload: { source: "lucidmate_settings_test", screen: "settings" },
             }),
             8_000,
             "notifications.selfTest",
         );
-        const pushScheduled = result.results.some(
-            (channel) => channel.channel === "push" && channel.status === "scheduled",
-        );
-        const inboxScheduled = result.results.some(
-            (channel) => channel.channel === "inbox" && channel.status === "scheduled",
-        );
-        if (pushScheduled && inboxScheduled) return "scheduled";
-        if (pushScheduled) return "push_only";
-        if (inboxScheduled) return "inbox_only";
-        return "failed";
+        return result.results.some((channel) => channel.channel === "local" && channel.status === "scheduled")
+            ? "scheduled"
+            : "failed";
     } catch (error) {
         console.warn("[runSdk] notification self-test failed", error);
         return "failed";

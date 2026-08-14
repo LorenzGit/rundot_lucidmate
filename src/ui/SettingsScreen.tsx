@@ -67,9 +67,9 @@ export default function SettingsScreen() {
         if (!turnAlertsOn) {
             const preference = await updateNotificationPreference(true);
             if (preference !== "enabled") {
-                setNotificationTestStatus(
-                    preference === "unavailable" ? "NotificationTestUnavailable" : "NotificationTestFailed",
-                );
+                const resultKey =
+                    preference === "unavailable" ? "NotificationTestUnavailable" : "NotificationTestFailed";
+                setNotificationTestStatus(resultKey);
                 setNotificationTestBusy(false);
                 audioManager.play("reject");
                 void runtimeServices.haptic("error");
@@ -80,12 +80,11 @@ export default function SettingsScreen() {
         const result: NotificationSelfTestResult = await requestNotificationSelfTest();
         const statusKey: Record<NotificationSelfTestResult, string> = {
             scheduled: "NotificationTestScheduled",
-            push_only: "NotificationTestPushOnly",
-            inbox_only: "NotificationTestInboxOnly",
             unavailable: "NotificationTestUnavailable",
             failed: "NotificationTestFailed",
         };
-        setNotificationTestStatus(statusKey[result]);
+        const resultKey = statusKey[result];
+        setNotificationTestStatus(resultKey);
         setNotificationTestBusy(false);
         const success = result === "scheduled";
         audioManager.play(success ? "reward" : result === "failed" ? "reject" : "tap");
@@ -226,6 +225,9 @@ export default function SettingsScreen() {
                 </div>
                 <p className="notification-test-copy">{t("SettingsTestCopy")}</p>
                 <p className="notification-test-disclaimer">{t("SettingsTestDisclaimer")}</p>
+                <p className="notification-test-status" role="status">
+                    {notificationTestStatus ? t(notificationTestStatus) : "\u00a0"}
+                </p>
                 <div className="notification-test-actions">
                     <button
                         type="button"
@@ -239,11 +241,6 @@ export default function SettingsScreen() {
                         {t("SettingsTestInApp")}
                     </button>
                 </div>
-                {notificationTestStatus ? (
-                    <p className="notification-test-status" role="status">
-                        {t(notificationTestStatus)}
-                    </p>
-                ) : null}
             </section>
             <p className="safety-note">{t("NotificationConsentNote")}</p>
         </MenuScreenLayout>
