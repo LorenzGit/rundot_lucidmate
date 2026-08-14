@@ -13,7 +13,7 @@ import {
 } from "./protocol.ts";
 import type { Color, PieceType } from "./types.ts";
 import type { ChessReaction, CorrespondencePace, RivalIdentity } from "../../social/model.ts";
-import { describeJoinError } from "./joinErrors.ts";
+import { describeCorrespondenceError, describeJoinError } from "./joinErrors.ts";
 
 export type OnlineConnectMode = "create" | "join";
 
@@ -90,6 +90,7 @@ export class OnlineChessClient {
     private onInfo: InfoHandler | null = null;
     private onStatus: StatusHandler | null = null;
     private stateListeners = new Set<(state: ServerState) => void>();
+    private stateErrorListeners = new Set<(error: Error) => void>();
     private connectGeneration = 0;
 
     setHandlers(opts: { onState?: StateHandler; onInfo?: InfoHandler; onStatus?: StatusHandler }): void {
@@ -126,17 +127,26 @@ export class OnlineChessClient {
     private waitForState(predicate: (state: ServerState) => boolean, timeoutMs = 6_000): Promise<ServerState> {
         if (this.lastState && predicate(this.lastState)) return Promise.resolve(this.lastState);
         return new Promise((resolve, reject) => {
-            const listener = (state: ServerState) => {
-                if (!predicate(state)) return;
+            const cleanup = () => {
                 clearTimeout(timeout);
                 this.stateListeners.delete(listener);
+                this.stateErrorListeners.delete(errorListener);
+            };
+            const listener = (state: ServerState) => {
+                if (!predicate(state)) return;
+                cleanup();
                 resolve(state);
             };
+            const errorListener = (error: Error) => {
+                cleanup();
+                reject(error);
+            };
             const timeout = setTimeout(() => {
-                this.stateListeners.delete(listener);
+                cleanup();
                 reject(new Error("The match did not send its board state."));
             }, timeoutMs);
             this.stateListeners.add(listener);
+            this.stateErrorListeners.add(errorListener);
         });
     }
 
@@ -249,6 +259,9 @@ export class OnlineChessClient {
             // If the invitation handle expired, the stable key resumes the
             // durable board across room-server restarts and deployments.
             const room = await RundotGameAPI.realtime.joinOrCreateRoom<ChessProtocol>(CORRESPONDENCE_ROOM_TYPE, {
+                // The persistent key is authoritative in production. The
+                // equality criterion also prevents older/local room routers
+                // from reusing an unrelated open correspondence room.
                 criteria: { matchKey },
                 persistentKey: matchKey,
             });
@@ -259,11 +272,7 @@ export class OnlineChessClient {
             lastError = error;
             this.releaseRoom();
         }
-        const timedOut = lastError instanceof Error && /timed out|board state/i.test(lastError.message);
-        this.setStatus(
-            "error",
-            `We couldn’t reopen this board${timedOut ? " before the connection timed out" : ""}. Try again in a moment.`,
-        );
+        this.setStatus("error", describeCorrespondenceError(lastError));
         return false;
     }
 
@@ -302,6 +311,7 @@ export class OnlineChessClient {
         this.lastState = null;
         this.playerCount = 0;
         this.stateListeners.clear();
+        this.stateErrorListeners.clear();
     }
 
     private bindRoom(room: ServerRoom<ChessProtocol>): void {
@@ -361,6 +371,7 @@ export class OnlineChessClient {
             this.onInfo?.(message.reason);
             this.error = message.reason;
             this.emitStatus();
+            for (const reject of [...this.stateErrorListeners]) reject(new Error(message.reason));
             return;
         }
         if (message.type === "info") {
@@ -481,7 +492,9 @@ export class OnlineChessClient {
         this.experience = "live";
         this.matchKey = null;
         this.pace = null;
+        for (const reject of [...this.stateErrorListeners]) reject(new Error("Connection closed."));
         this.stateListeners.clear();
+        this.stateErrorListeners.clear();
         this.emitStatus();
     }
 }

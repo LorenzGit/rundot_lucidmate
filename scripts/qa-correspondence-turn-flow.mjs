@@ -18,11 +18,19 @@ try {
         black.waitForFunction(() => window.__LUCIDMATE_QA__),
     ]);
 
-    assert.equal(
-        await white.evaluate((key) => window.__LUCIDMATE_QA__.openCorrespondence(key, "daily"), matchKey),
-        true,
-        "creator opens a persistent board",
-    );
+    const opened = await white.evaluate((key) => window.__LUCIDMATE_QA__.openCorrespondence(key, "daily"), matchKey);
+    if (!opened) {
+        console.error("persistent board open state", await white.evaluate(() => window.__LUCIDMATE_QA__.snapshot()));
+        console.error(
+            "persistent board open toast",
+            await white
+                .locator(".toast")
+                .textContent()
+                .catch(() => null),
+        );
+        console.error("multiplayer ready", await white.evaluate(() => window.__LUCIDMATE_QA__.multiplayerReady()));
+    }
+    assert.equal(opened, true, "creator opens a persistent board");
     const roomCode = (await white.evaluate(() => window.__LUCIDMATE_QA__.snapshot())).onlineRoomCode;
     assert.match(roomCode, /^[A-Z0-9]{6}$/);
     assert.equal(await black.evaluate((code) => window.__LUCIDMATE_QA__.joinCode(code), roomCode), true);

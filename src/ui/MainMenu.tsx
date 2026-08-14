@@ -16,6 +16,7 @@ import { paceLabel } from "../social/model.ts";
 import { rivalsClient } from "../social/rivalsClient.ts";
 import { store, useStore } from "../state/store.ts";
 import { dailySystems } from "../systems/dailySystems.ts";
+import { updateNotificationPreference } from "../systems/notificationPreference.ts";
 import { runtimeServices } from "../systems/runtimeServices.ts";
 import GearIcon from "./GearIcon.tsx";
 
@@ -62,6 +63,15 @@ function JoinIcon() {
     return (
         <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M13 5h6v14h-6M3 12h12M10 7l5 5-5 5" />
+        </svg>
+    );
+}
+
+function BellIcon() {
+    return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 10a6 6 0 0 1 12 0v4l2 3H4l2-3Z" />
+            <path d="M10 20h4" />
         </svg>
     );
 }
@@ -324,6 +334,7 @@ function NavIcon({ name }: { name: "rivals" | "league" | "dreams" | "settings" }
 export default function MainMenu() {
     const state = useStore((value) => value);
     const [managedMatchKey, setManagedMatchKey] = useState<string | null>(null);
+    const [notificationBusy, setNotificationBusy] = useState(false);
     const matches = state.correspondenceMatches;
     const yourMove = matches.filter((match) => match.phase === "playing" && match.color === match.turn);
     const waiting = matches.filter(
@@ -335,6 +346,28 @@ export default function MainMenu() {
     const busy = state.socialBusy;
     const onlineReady = canUseAuthoritativeRealtime();
     const managedMatch = matches.find((match) => match.matchKey === managedMatchKey) ?? null;
+
+    const enableTurnAlerts = async () => {
+        if (notificationBusy) return;
+        await audioManager.unlock();
+        setNotificationBusy(true);
+        const result = await updateNotificationPreference(true);
+        setNotificationBusy(false);
+        if (result === "enabled") {
+            audioManager.play("reward");
+            void runtimeServices.haptic("success");
+            store.patch({ toast: "Turn alerts enabled." });
+            return;
+        }
+        audioManager.play("reject");
+        void runtimeServices.haptic("error");
+        store.patch({
+            toast:
+                result === "unavailable"
+                    ? "Phone alerts are unavailable here. Check RUN notifications in iOS Settings."
+                    : "RUN could not enable phone alerts. Check iOS Settings → Notifications → RUN.",
+        });
+    };
 
     useEffect(() => {
         void (store.get().onlineStatus !== "idle" ? leaveOnlineMatch() : Promise.resolve()).then(() =>
@@ -470,6 +503,23 @@ export default function MainMenu() {
                 </div>
                 {visible.length ? (
                     <div className="inbox-match-stack">
+                        {!state.notificationsEnabled && (
+                            <button
+                                type="button"
+                                className="turn-alert-card"
+                                disabled={notificationBusy}
+                                onClick={() => void enableTurnAlerts()}
+                            >
+                                <span className="turn-alert-icon">
+                                    <BellIcon />
+                                </span>
+                                <span>
+                                    <strong>Turn alerts are off</strong>
+                                    <small>Get a phone alert for moves and reactions.</small>
+                                </span>
+                                <b>{notificationBusy ? "…" : "ENABLE"}</b>
+                            </button>
+                        )}
                         {visible.map((match) => (
                             <MatchCard
                                 key={match.matchKey}

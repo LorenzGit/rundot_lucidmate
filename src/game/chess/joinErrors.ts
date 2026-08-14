@@ -14,3 +14,23 @@ export function describeJoinError(error: unknown): string {
     }
     return "We couldn’t reach that board. Try again in a moment.";
 }
+
+export function describeCorrespondenceError(error: unknown): string {
+    const message = error instanceof Error ? error.message : String(error ?? "");
+    if (/belongs to two other players|not seated/i.test(message)) {
+        return "This board belongs to another RUN account.";
+    }
+    if (/match has ended|game is not in progress/i.test(message)) {
+        return "This match has ended. You can remove it from Your Games.";
+    }
+    if (/duplicate.?session|already connected|already in (this|the) room/i.test(message)) {
+        return "This board is already open on another device. Close it there, then try again.";
+    }
+    if (/unauthori[sz]ed|forbidden|close(?:d)?\s*4001/i.test(message)) {
+        return "RUN could not open this board for your account. Refresh RUN, then try again.";
+    }
+    if (/timed out|board state/i.test(message)) {
+        return "The board is taking too long to wake up. Try again in a moment.";
+    }
+    return "RUN could not reopen this board. Try again in a moment.";
+}

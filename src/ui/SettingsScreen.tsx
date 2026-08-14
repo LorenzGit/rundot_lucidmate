@@ -1,11 +1,10 @@
 import { useState } from "react";
 import { audioManager } from "../audio/audioManager.ts";
-import { setNotificationPreference } from "../sdk/runSdk.ts";
 import { type AppState, store, useStore } from "../state/store.ts";
 import { LOCALES, selectLocale, t } from "../systems/localization.ts";
+import { updateNotificationPreference } from "../systems/notificationPreference.ts";
 import { runtimeServices } from "../systems/runtimeServices.ts";
 import { saveSystem } from "../systems/save.ts";
-import { refreshNotificationPermission, returnReminders } from "../systems/retention/retentionConfig.ts";
 import MenuScreenLayout from "./MenuScreenLayout.tsx";
 import SettingToggle from "./SettingToggle.tsx";
 
@@ -25,14 +24,12 @@ export default function SettingsScreen() {
     const notificationToggle = async (enabled: boolean) => {
         await audioManager.unlock();
         setNotificationBusy(true);
-        const result = await setNotificationPreference(enabled);
+        const result = await updateNotificationPreference(enabled);
         setNotificationBusy(false);
         if (result === "enabled") {
-            persist({ notificationsEnabled: true, notificationsConsent: "granted" });
-            void refreshNotificationPermission().then(() => returnReminders.refreshAll());
+            audioManager.play("reward");
         } else if (result === "disabled") {
-            persist({ notificationsEnabled: false, notificationsConsent: "denied" });
-            void returnReminders.cancelAll();
+            audioManager.play("tap");
         } else {
             audioManager.play("reject");
             store.patch({ toast: result === "unavailable" ? t("SettingsUnavailable") : t("NotificationFailed") });

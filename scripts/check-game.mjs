@@ -135,9 +135,13 @@ expect(/system\.getDevice\(\)/.test(runSdk), "haptics capability must come from 
 expect(/triggerHapticAsync/.test(runSdk), "RUN haptic feedback is not wired");
 expect(/hapticsEnabled \? triggerHaptic/.test(runtimeServices), "persisted haptics opt-out does not gate feedback");
 const settingsScreen = read("src/ui/SettingsScreen.tsx");
-expect(/setNotificationPreference/.test(settingsScreen), "settings has no notification consent action");
-expect(/returnReminders\.cancelAll/.test(settingsScreen), "notification opt-out does not cancel pending reminders");
-expect(/returnReminders\.refreshAll/.test(settingsScreen), "notification opt-in does not arm reminders");
+const notificationPreference = read("src/systems/notificationPreference.ts");
+expect(/updateNotificationPreference/.test(settingsScreen), "settings has no notification consent action");
+expect(
+    /returnReminders\.cancelAll/.test(notificationPreference),
+    "notification opt-out does not cancel pending reminders",
+);
+expect(/returnReminders\.refreshAll/.test(notificationPreference), "notification opt-in does not arm reminders");
 
 const realtime = readJson("rundot/realtime.config.json");
 const correspondenceRoom = realtime.rooms.find((room) => room.type === "lucidmate-correspondence");
@@ -145,6 +149,11 @@ expect(correspondenceRoom?.persistent === true, "correspondence room must remain
 expect(correspondenceRoom?.config?.maxPlayers === 2, "correspondence room must be strictly two-player");
 const socialModel = read("src/social/model.ts");
 expect(/CHESS_REACTIONS/.test(socialModel), "multiplayer reactions need an explicit safe allowlist");
+const rivalsClient = read("src/social/rivalsClient.ts");
+expect(
+    /criteria:\s*\{\s*directory:\s*RIVALS_DIRECTORY_KEY\s*\}/.test(rivalsClient),
+    "rival discovery must keep local/legacy routers on one directory room",
+);
 const roomServer = read("src/rooms/ChessRoom.ts");
 expect(
     /this\.reason = this\.winner \? "resign" : "cancelled"/.test(roomServer),
@@ -161,6 +170,10 @@ expect(
     "Playground multiplayer requires a configured hosted room server and version tag",
 );
 expect(/persistentKey: matchKey/.test(onlineClient), "saved boards must recover through their persistent match key");
+expect(
+    /criteria:\s*\{\s*matchKey\s*\}/.test(onlineClient),
+    "saved boards must also partition legacy/local room matching by match key",
+);
 expect(
     /joinRoomByCode<ChessProtocol>\(knownRoomCode\)/.test(onlineClient),
     "saved boards rejoin the exact warm room first",
@@ -179,6 +192,10 @@ expect(
     "failed retries retain the active board",
 );
 expect(/onlineStateHydrated/.test(runController), "reconnect hydration is distinct from a newly received move");
+expect(
+    /lucidmate_send_move_notification/.test(roomServer) && /services\.simulation\.executeRecipe/.test(roomServer),
+    "offline turn alerts must use a validated any-player server recipe",
+);
 const chessScene = read("src/game/scene/chessScene.ts");
 expect(
     /private relayout\(\)[\s\S]*?this\.moving = false;[\s\S]*?this\.repositionPieces\(\)/.test(chessScene),

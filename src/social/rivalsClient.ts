@@ -64,6 +64,9 @@ export class RivalsClient {
         store.patch({ rivalDirectoryStatus: "connecting", rivalDirectoryError: null });
         try {
             const room = await RundotGameAPI.realtime.joinOrCreateRoom<RivalsProtocol>(RIVALS_ROOM_TYPE, {
+                // Persistent routing is authoritative in RUN; the equality
+                // key also keeps local/legacy routers on one directory room.
+                criteria: { directory: RIVALS_DIRECTORY_KEY },
                 persistentKey: RIVALS_DIRECTORY_KEY,
             });
             if (generation !== this.connectionGeneration) {

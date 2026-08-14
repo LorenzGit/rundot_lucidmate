@@ -186,11 +186,7 @@ export default class ChessRoom extends GameRoom<ChessProtocol> {
             const recipient = this.seats[this.turn];
             if (recipient) {
                 const mover = this.profiles[opposite(this.turn)]?.username ?? "Your opponent";
-                void this.notify(recipient, "lucidmate_your_move", `${mover} moved. Your board is waiting.`, {
-                    route: "match",
-                    matchKey: this.matchKey ?? "",
-                    pace: this.pace ?? "daily",
-                });
+                void this.notify(sender.id, recipient, "lucidmate_send_move_notification", { opponent: mover });
             }
         }
     }
@@ -396,16 +392,10 @@ export default class ChessRoom extends GameRoom<ChessProtocol> {
         const recipient = this.otherPlayer(playerId);
         const label = CHESS_REACTIONS.find((entry) => entry.id === reaction)?.label ?? "New reaction";
         if (recipient) {
-            void this.notify(
-                recipient,
-                "lucidmate_reaction",
-                `${this.profileOf(playerId)?.username ?? "Your rival"}: ${label}`,
-                {
-                    route: "match",
-                    matchKey: this.matchKey ?? "",
-                    pace: this.pace ?? "daily",
-                },
-            );
+            void this.notify(playerId, recipient, "lucidmate_send_reaction_notification", {
+                opponent: this.profileOf(playerId)?.username ?? "Your rival",
+                reaction: label,
+            });
         }
     }
 
@@ -418,16 +408,9 @@ export default class ChessRoom extends GameRoom<ChessProtocol> {
         this.save();
         const recipient = this.otherPlayer(playerId);
         if (recipient) {
-            void this.notify(
-                recipient,
-                "lucidmate_rematch",
-                `${this.profileOf(playerId)?.username ?? "Your rival"} wants a rematch.`,
-                {
-                    route: "match",
-                    matchKey: this.matchKey ?? "",
-                    pace: this.pace ?? "daily",
-                },
-            );
+            void this.notify(playerId, recipient, "lucidmate_send_rematch_notification", {
+                opponent: this.profileOf(playerId)?.username ?? "Your rival",
+            });
         }
     }
 
@@ -466,25 +449,27 @@ export default class ChessRoom extends GameRoom<ChessProtocol> {
     }
 
     private async notify(
+        actor: string,
         recipient: string,
-        template: string,
-        fallbackBody: string,
-        data: Record<string, unknown>,
+        recipe: string,
+        params: Record<string, string>,
     ): Promise<void> {
+        if (!this.matchKey || !this.pace) return;
         try {
-            const opponent = this.otherPlayer(recipient);
-            await this.services.notifications.send({
-                recipientProfileIds: [recipient],
-                template,
-                params: { opponent: opponent ? (this.profileOf(opponent)?.username ?? "Your rival") : "Your rival" },
-                data,
-                fallbackTitle: "LUCIDMATE",
-                fallbackBody,
+            // Room notifications can only target current members. Async rivals
+            // normally leave between turns, so the trusted actor executes an
+            // any-player notification recipe after the room validates both
+            // reserved seat IDs.
+            await this.services.simulation.executeRecipe(actor, recipe, {
+                targetId: recipient,
+                matchKey: this.matchKey,
+                pace: this.pace,
+                ...params,
             });
         } catch (error) {
             this.log.warn("social notification unavailable", {
                 recipient,
-                template,
+                recipe,
                 error: error instanceof Error ? error.message : String(error),
             });
         }
