@@ -38,8 +38,18 @@ try {
         white.waitForFunction(() => window.__LUCIDMATE_QA__.snapshot().onlineStatus === "playing"),
         black.waitForFunction(() => window.__LUCIDMATE_QA__.snapshot().onlineStatus === "playing"),
     ]);
+    assert.equal(
+        (await white.evaluate(() => window.__LUCIDMATE_QA__.snapshot())).onlineSeat,
+        "b",
+        "board creator is Black",
+    );
+    assert.equal(
+        (await black.evaluate(() => window.__LUCIDMATE_QA__.snapshot())).onlineSeat,
+        "w",
+        "invited friend is White and starts",
+    );
 
-    assert.equal(await white.evaluate(() => window.__LUCIDMATE_QA__.sendOnlineMove(12, 28)), true, "e2-e4 sends");
+    assert.equal(await black.evaluate(() => window.__LUCIDMATE_QA__.sendOnlineMove(12, 28)), true, "e2-e4 sends");
     await Promise.all([
         white.waitForFunction(() => window.__LUCIDMATE_QA__.snapshot().turn === "b"),
         black.waitForFunction(() => window.__LUCIDMATE_QA__.snapshot().turn === "b"),
@@ -49,6 +59,17 @@ try {
     assert.equal(afterMove.phase, "playing", "confirmed asynchronous move stays on the board");
     assert.equal(afterMove.activeMatchKey, matchKey, "active saved board remains attached after the move");
     assert.equal(afterMove.onlineStatus, "playing", "room connection remains active after the move");
+
+    assert.equal(
+        await white.evaluate((key) => window.__LUCIDMATE_QA__.openCorrespondence(key, "daily"), matchKey),
+        true,
+        "Reconnect reuses the current room instead of creating a duplicate session",
+    );
+    assert.equal(
+        (await white.evaluate(() => window.__LUCIDMATE_QA__.snapshot())).onlineStatus,
+        "playing",
+        "in-place reconnect dismisses the connection state",
+    );
 
     await white.evaluate(async () => {
         await window.__LUCIDMATE_QA__.leaveOnline();
@@ -81,8 +102,10 @@ try {
     assert.equal(hydrated.boardPieces, hydrated.renderedPieces, "reconnect renders one sprite per board piece");
     assert.equal(hydrated.layerChildren, hydrated.renderedPieces, "reconnect leaves no duplicate flying piece");
 
+    assert.equal(await white.evaluate(() => window.__LUCIDMATE_QA__.sendOnlineMove(52, 36)), true, "e7-e5 sends");
+    await black.waitForFunction(() => window.__LUCIDMATE_QA__.snapshot().turn === "w");
     await white.evaluate(() => window.__LUCIDMATE_QA__.scene().setMotionDurationScaleForQa(10));
-    assert.equal(await black.evaluate(() => window.__LUCIDMATE_QA__.sendOnlineMove(52, 36)), true, "e7-e5 sends");
+    assert.equal(await black.evaluate(() => window.__LUCIDMATE_QA__.sendOnlineMove(6, 21)), true, "g1-f3 sends");
     await white.waitForFunction(() => window.__LUCIDMATE_QA__.sceneGeometry()?.moving === true);
     const beforeResize = await white.evaluate(() => window.__LUCIDMATE_QA__.sceneGeometry());
     assert.ok(beforeResize, "portrait scene exposes geometry before resize");
@@ -101,20 +124,23 @@ try {
 
     const clickSquare = async (square) => {
         const geometry = await white.evaluate(() => window.__LUCIDMATE_QA__.sceneGeometry());
+        const flipped = (await white.evaluate(() => window.__LUCIDMATE_QA__.snapshot().onlineSeat)) === "b";
         const file = square & 7;
         const rank = square >> 3;
-        const x = (geometry.layout.originX + (file + 0.5) * geometry.layout.cell) * geometry.stageScale;
-        const y = (geometry.layout.originY + (7 - rank + 0.5) * geometry.layout.cell) * geometry.stageScale;
+        const displayFile = flipped ? 7 - file : file;
+        const displayRank = flipped ? rank : 7 - rank;
+        const x = (geometry.layout.originX + (displayFile + 0.5) * geometry.layout.cell) * geometry.stageScale;
+        const y = (geometry.layout.originY + (displayRank + 0.5) * geometry.layout.cell) * geometry.stageScale;
         await white.mouse.click(x, y);
     };
-    await clickSquare(6);
-    await white.waitForFunction(() => window.__LUCIDMATE_QA__.sceneGeometry()?.selected === 6);
-    await clickSquare(21);
-    await white.waitForFunction(() => window.__LUCIDMATE_QA__.snapshot().turn === "b");
+    await clickSquare(62);
+    await white.waitForFunction(() => window.__LUCIDMATE_QA__.sceneGeometry()?.selected === 62);
+    await clickSquare(45);
+    await white.waitForFunction(() => window.__LUCIDMATE_QA__.snapshot().turn === "w");
     assert.equal(
         await white.evaluate(() => window.__LUCIDMATE_QA__.sceneGeometry().misalignedSquares.length),
         0,
-        "resized canvas accepts g1-f3 and keeps the next authoritative board aligned",
+        "resized canvas accepts g8-f6 and keeps the next authoritative board aligned",
     );
     const landscapeUi = await white.evaluate(() => {
         const headline = document.querySelector(".hud-score strong");

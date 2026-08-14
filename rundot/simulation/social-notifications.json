@@ -11,15 +11,16 @@
       },
       "beginEffects": [
         {
-          "type": "send_notification",
+          "type": "send_inbox_message",
           "recipientProfileId": "{{inputs.targetId}}",
-          "title": "A LUCIDMATE challenge is waiting",
-          "body": "You play White and make the first move.",
+          "template": "lucidmate_challenge",
+          "params": {},
           "payload": {
             "route": "match",
             "matchKey": "{{inputs.matchKey}}",
             "pace": "{{inputs.pace}}"
-          }
+          },
+          "as": "delivery"
         }
       ]
     },
@@ -35,15 +36,16 @@
       },
       "beginEffects": [
         {
-          "type": "send_notification",
+          "type": "send_inbox_message",
           "recipientProfileId": "{{inputs.targetId}}",
-          "title": "Your move in LUCIDMATE",
-          "body": "{{inputs.opponent}} moved. Your board is waiting.",
+          "template": "lucidmate_your_move",
+          "params": { "opponent": "{{inputs.opponent}}" },
           "payload": {
             "route": "match",
             "matchKey": "{{inputs.matchKey}}",
             "pace": "{{inputs.pace}}"
-          }
+          },
+          "as": "delivery"
         }
       ]
     },
@@ -60,15 +62,19 @@
       },
       "beginEffects": [
         {
-          "type": "send_notification",
+          "type": "send_inbox_message",
           "recipientProfileId": "{{inputs.targetId}}",
-          "title": "A rival reacted",
-          "body": "{{inputs.opponent}}: {{inputs.reaction}}",
+          "template": "lucidmate_reaction",
+          "params": {
+            "opponent": "{{inputs.opponent}}",
+            "reaction": "{{inputs.reaction}}"
+          },
           "payload": {
             "route": "match",
             "matchKey": "{{inputs.matchKey}}",
             "pace": "{{inputs.pace}}"
-          }
+          },
+          "as": "delivery"
         }
       ]
     },
@@ -84,15 +90,16 @@
       },
       "beginEffects": [
         {
-          "type": "send_notification",
+          "type": "send_inbox_message",
           "recipientProfileId": "{{inputs.targetId}}",
-          "title": "Rematch?",
-          "body": "{{inputs.opponent}} wants another game.",
+          "template": "lucidmate_rematch",
+          "params": { "opponent": "{{inputs.opponent}}" },
           "payload": {
             "route": "match",
             "matchKey": "{{inputs.matchKey}}",
             "pace": "{{inputs.pace}}"
-          }
+          },
+          "as": "delivery"
         }
       ]
     }

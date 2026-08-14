@@ -90,6 +90,7 @@ assert.equal(simulationCalls[1]?.recipe, "lucidmate_send_reaction_notification")
 assert.equal(simulationCalls[1]?.input.targetId, challenger.id);
 
 const config = JSON.parse(fs.readFileSync("rundot/simulation/social-notifications.json", "utf8"));
+const inbox = JSON.parse(fs.readFileSync("rundot/inbox.config.json", "utf8"));
 for (const recipe of [
     "lucidmate_send_challenge_notification",
     "lucidmate_send_move_notification",
@@ -97,6 +98,11 @@ for (const recipe of [
     "lucidmate_send_rematch_notification",
 ]) {
     assert.ok(config.recipes[recipe], `${recipe} must ship in the server simulation config`);
+    const effect = config.recipes[recipe].beginEffects[0];
+    assert.equal(effect.type, "send_inbox_message", `${recipe} uses the supported inbox broker`);
+    assert.ok(inbox.templates[effect.template], `${recipe} references a shipped inbox template`);
+    assert.equal(effect.payload.route, "match", `${recipe} deep-links to a match`);
+    assert.equal(effect.payload.matchKey, "{{inputs.matchKey}}", `${recipe} routes to the exact board`);
 }
 
-console.log("room notifications: offline move and reaction routes use validated any-player recipes");
+console.log("room notifications: offline alerts use inbox templates with exact-board routing");

@@ -134,7 +134,7 @@ try {
 
             const label = `${viewport.name}/${shot.name}`;
             const audit = await inspectLayout(page, label);
-            if (shot.screen === "main" && audit.version !== "v1.0.9") {
+            if (shot.screen === "main" && audit.version !== "v1.0.10") {
                 note(`${label}: visible version is "${audit.version ?? "missing"}"`);
             }
             await page.screenshot({ path: path.join(outputDir, `${viewport.name}-${shot.name}.png`) });

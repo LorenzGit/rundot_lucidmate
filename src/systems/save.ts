@@ -192,6 +192,12 @@ function migrate(raw: unknown): GameSaveV3 {
         }
     }
 
+    const notificationsConsent = enumOr(
+        settings.notificationsConsent,
+        ["unknown", "granted", "denied"] as const,
+        "unknown",
+    );
+
     return {
         version: 3,
         settings: {
@@ -199,12 +205,13 @@ function migrate(raw: unknown): GameSaveV3 {
             musicVolume: clamp01(settings.musicVolume, 0.38),
             sfxEnabled: booleanOr(settings.sfxEnabled, true),
             sfxVolume: clamp01(settings.sfxVolume, 0.72),
-            notificationsEnabled: booleanOr(settings.notificationsEnabled, false),
-            notificationsConsent: enumOr(
-                settings.notificationsConsent,
-                ["unknown", "granted", "denied"] as const,
-                "unknown",
-            ),
+            // Older saves wrote false before the player made a choice. Migrate
+            // only that unknown state; an explicit denial stays off.
+            notificationsEnabled:
+                notificationsConsent === "unknown"
+                    ? true
+                    : booleanOr(settings.notificationsEnabled, notificationsConsent === "granted"),
+            notificationsConsent,
             hapticsEnabled: booleanOr(settings.hapticsEnabled, true),
             reducedMotion: booleanOr(settings.reducedMotion, fallback.settings.reducedMotion),
             locale: typeof settings.locale === "string" ? settings.locale : "English",

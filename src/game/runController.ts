@@ -648,7 +648,7 @@ export async function startCorrespondenceMatch(input: {
         onlineSeat: snapshot.you,
         onlinePlayerCount: snapshot.playerCount,
         socialBusy: false,
-        toast: ok ? (snapshot.status === "waiting" ? "Board ready — tap the code to copy it." : null) : null,
+        toast: ok ? (snapshot.status === "waiting" ? "Board ready — share its private invite link." : null) : null,
     });
     if (!ok) {
         const connectionError = snapshot.error ?? "We couldn’t reopen this board. Try again in a moment.";
@@ -750,7 +750,7 @@ export async function endCorrespondenceMatch(match: CorrespondenceMatch): Promis
     return ended !== null;
 }
 
-/** Open RUN's tracked native share sheet for a generic friend board. */
+/** Mint a fresh tracked link whose payload routes to this exact board. */
 export async function shareCorrespondenceInvite(match: CorrespondenceMatch): Promise<boolean> {
     if (!match.roomCode || match.phase !== "waiting" || match.opponent) return false;
     store.patch({ socialBusy: true, toast: null });
@@ -762,8 +762,10 @@ export async function shareCorrespondenceInvite(match: CorrespondenceMatch): Pro
             roomCode: match.roomCode,
         },
         title: "Your move in LUCIDMATE",
-        description: `Join my ${match.pace === "daily" ? "daily" : "relaxed"} chess board. You play Black.`,
-        slug: "lucidmate-friend-board",
+        description: `Join my ${match.pace === "daily" ? "daily" : "relaxed"} chess board. You play White and move first.`,
+        // The /s/<code> segment is the authoritative unique ID; this suffix is
+        // cosmetic, but a board mark makes multiple links visibly distinct.
+        slug: `lucidmate-${match.matchKey.slice(-6)}`,
     });
     store.patch({
         socialBusy: false,

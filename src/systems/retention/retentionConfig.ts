@@ -8,6 +8,7 @@ import {
 import { RETURN_DELAYS_SECONDS, createReturnReminders } from "./returnReminders";
 import { store } from "../../state/store";
 import { dreamMastery } from "../mastery";
+import { saveSystem } from "../save";
 
 /**
  * Return reminders for lucidmate.
@@ -28,6 +29,16 @@ let notificationsGranted = false;
 /** Refresh the cached permission. Call at startup and after any consent change. */
 export async function refreshNotificationPermission(): Promise<boolean> {
     notificationsGranted = await notificationsEnabled();
+    const state = store.get();
+    if (notificationsGranted && (!state.notificationsEnabled || state.notificationsConsent !== "granted")) {
+        store.patch({ notificationsEnabled: true, notificationsConsent: "granted" });
+        saveSystem.scheduleFlush();
+    } else if (!notificationsGranted && state.notificationsConsent === "granted") {
+        // The player revoked RUN's permission in system settings after opting
+        // in. Mirror that truth instead of showing a misleading ON state.
+        store.patch({ notificationsEnabled: false, notificationsConsent: "denied" });
+        saveSystem.scheduleFlush();
+    }
     return notificationsGranted;
 }
 

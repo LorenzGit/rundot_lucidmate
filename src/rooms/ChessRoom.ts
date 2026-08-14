@@ -329,8 +329,10 @@ export default class ChessRoom extends GameRoom<ChessProtocol> {
                 this.seats = { w: safeRecipient.id, b: safeChallenger.id };
                 this.profiles = { w: safeRecipient, b: safeChallenger };
             } else {
-                // Backward compatibility for old code-based invitations.
-                this.seats.w = playerId;
+                // A link/code invite does not know the recipient yet. Reserve
+                // the creator as Black so the accepting friend gets White and
+                // the first move, matching directory challenges.
+                this.seats.b = playerId;
             }
         }
         const color = this.colorOf(playerId);

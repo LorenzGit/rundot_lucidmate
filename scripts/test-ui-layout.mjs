@@ -190,6 +190,17 @@ function assert(cond, msg) {
     assert(/End match/.test(mainMenu), "active saved boards expose an end-match action");
     assert(/inbox-match-manage/.test(mainMenu), "saved-board management is directly discoverable");
     assert(/data-match-key=/.test(mainMenu), "saved-board controls remain uniquely addressable");
+    assert(/\["lounge", "store", "Store"\]/.test(mainMenu), "main dock exposes the cosmetic Store");
+    assert(/Finish turn-alert setup/.test(mainMenu), "turn alerts default to setup instead of an off state");
+    const stateStore = fs.readFileSync(path.join(root, "src/state/store.ts"), "utf8");
+    const save = fs.readFileSync(path.join(root, "src/systems/save.ts"), "utf8");
+    assert(/notificationsEnabled:\s*true/.test(stateStore), "new players start with turn alerts requested");
+    assert(
+        /notificationsConsent === "unknown"\s*\?\s*true/.test(save),
+        "older undecided saves migrate to turn-alert setup",
+    );
+    const strings = fs.readFileSync(path.join(root, "src/assets/strings.csv"), "utf8");
+    assert(/^MenuLounge,STORE,LOJA,TIENDA$/m.test(strings), "the cosmetic route is titled Store");
 
     const css = fs.readFileSync(path.join(root, "src/styles/app.css"), "utf8");
     const app = fs.readFileSync(path.join(root, "src/ui/App.tsx"), "utf8");
@@ -217,6 +228,14 @@ function assert(cond, msg) {
     assert(/className="connection-card/.test(hud), "lost connections show a dedicated recovery card");
     assert(/Your board is safe/.test(hud), "reconnect copy reassures the player that progress is preserved");
     assert(/shareCorrespondenceInvite/.test(hud), "waiting friend board exposes the SDK share-link action");
+
+    const controller = fs.readFileSync(path.join(root, "src/game/runController.ts"), "utf8");
+    assert(/matchKey: match\.matchKey/.test(controller), "share links carry the exact board key");
+    assert(/roomCode: match\.roomCode/.test(controller), "share links carry the board room code");
+    assert(
+        /slug: `lucidmate-\$\{match\.matchKey\.slice\(-6\)\}`/.test(controller),
+        "share links show a distinct board mark",
+    );
 
     const challenge = fs.readFileSync(path.join(root, "src/ui/ChallengeScreen.tsx"), "utf8");
     assert(/CREATE BOARD/.test(challenge), "friend challenge creates an authoritative board before sharing");

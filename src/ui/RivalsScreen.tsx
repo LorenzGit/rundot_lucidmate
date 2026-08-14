@@ -206,7 +206,7 @@ export default function RivalsScreen() {
                                     key={player.id}
                                     player={player}
                                     detail={recentDetail(player)}
-                                    busy={busy || !onlineReady}
+                                    busy={busy || !onlineReady || directoryStatus !== "ready"}
                                     onChallenge={() => challenge(player)}
                                 />
                             ))}
@@ -229,7 +229,7 @@ export default function RivalsScreen() {
                                     key={player.id}
                                     player={player}
                                     detail={recentDetail(player)}
-                                    busy={busy || !onlineReady}
+                                    busy={busy || !onlineReady || directoryStatus !== "ready"}
                                     onChallenge={() => challenge(player)}
                                 />
                             ))}

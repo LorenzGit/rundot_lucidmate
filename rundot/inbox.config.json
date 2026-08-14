@@ -1,0 +1,20 @@
+{
+  "templates": {
+    "lucidmate_challenge": {
+      "title": { "en": "A LUCIDMATE challenge is waiting" },
+      "text": { "en": "You play White and make the first move." }
+    },
+    "lucidmate_your_move": {
+      "title": { "en": "Your move in LUCIDMATE" },
+      "text": { "en": "{{opponent}} moved. Your board is waiting." }
+    },
+    "lucidmate_reaction": {
+      "title": { "en": "A rival reacted" },
+      "text": { "en": "{{opponent}}: {{reaction}}" }
+    },
+    "lucidmate_rematch": {
+      "title": { "en": "Rematch?" },
+      "text": { "en": "{{opponent}} wants another game." }
+    }
+  }
+}

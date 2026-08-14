@@ -181,7 +181,9 @@ let state: AppState = {
     musicVolume: 0.38,
     sfxEnabled: true,
     sfxVolume: 0.72,
-    notificationsEnabled: false,
+    // Turn alerts are part of correspondence. The OS permission prompt still
+    // waits for a player tap, as required by the host.
+    notificationsEnabled: true,
     notificationsConsent: "unknown",
     hapticsEnabled: true,
     reducedMotion: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false,

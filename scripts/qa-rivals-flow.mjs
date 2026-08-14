@@ -101,9 +101,19 @@ try {
     await recipient.screenshot({ path: "tmp/rivals-incoming-challenge.png" });
 
     await incomingCard.locator(".inbox-match-open").click();
-    await recipient.waitForFunction(() => window.__LUCIDMATE_QA__.snapshot().onlineStatus === "playing", null, {
-        timeout: 15_000,
-    });
+    try {
+        await recipient.waitForFunction(() => window.__LUCIDMATE_QA__.snapshot().onlineStatus === "playing", null, {
+            timeout: 15_000,
+        });
+    } catch (error) {
+        const [senderState, recipientState] = await Promise.all([
+            sender.evaluate(() => window.__LUCIDMATE_QA__.snapshot()),
+            recipient.evaluate(() => window.__LUCIDMATE_QA__.snapshot()),
+        ]);
+        throw new Error(`recipient did not open the rival board: ${JSON.stringify({ senderState, recipientState })}`, {
+            cause: error,
+        });
+    }
     assert.equal(
         (await recipient.evaluate(() => window.__LUCIDMATE_QA__.snapshot())).activeMatchKey,
         activeInvitation.matchKey,

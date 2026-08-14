@@ -1,11 +1,22 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
-import { describeCorrespondenceError, describeJoinError } from "../src/game/chess/joinErrors.ts";
+import {
+    describeCorrespondenceError,
+    describeJoinError,
+    describeRivalsError,
+    isDuplicateSessionError,
+} from "../src/game/chess/joinErrors.ts";
 
 assert.equal(
     describeJoinError(new Error("duplicate session: player already connected")),
     "You’re already connected to this board. To test both sides, join from a different RUN account.",
 );
+assert.equal(isDuplicateSessionError(new Error("Duplicate session for player secret-id")), true);
+assert.equal(
+    describeRivalsError(new Error("Duplicate session for player secret-id: this identity is already in the room")),
+    "Your rival list is open in another RUN window. Close it there, then retry here.",
+);
+assert.equal(describeRivalsError(new Error("socket exploded")).includes("socket exploded"), false);
 assert.equal(
     describeJoinError(new Error("ROOM_NOT_FOUND")),
     "Match code not found. Check all 6 characters or ask for a new code.",

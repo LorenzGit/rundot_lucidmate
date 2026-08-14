@@ -22,7 +22,7 @@
       "itemId": "lucidmate_trip_pass",
       "name": "Trip Pass",
       "description": "Permanently unlocks Nebula, Ultraviolet and Lava themes, and removes the between-matches interstitial. Cosmetic and ad-free only — no chess rule changes.",
-      "category": "bundle",
+      "category": "non_consumable",
       "price": { "type": "bucks", "value": "399" },
       "entitlements": [
         { "entitlementId": "lucidmate_theme_pack_cosmic", "quantity": 1, "consumable": false },

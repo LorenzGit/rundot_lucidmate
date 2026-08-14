@@ -20,6 +20,7 @@ function persist(patch: Partial<AppState>, cue = true): void {
 export default function SettingsScreen() {
     const state = useStore((value) => value);
     const [notificationBusy, setNotificationBusy] = useState(false);
+    const turnAlertsOn = state.notificationsEnabled && state.notificationsConsent === "granted";
 
     const notificationToggle = async (enabled: boolean) => {
         await audioManager.unlock();
@@ -111,15 +112,17 @@ export default function SettingsScreen() {
                     <button
                         type="button"
                         disabled={notificationBusy}
-                        onClick={() => void notificationToggle(!state.notificationsEnabled)}
+                        onClick={() => void notificationToggle(!turnAlertsOn)}
                     >
                         {notificationBusy
                             ? "…"
-                            : state.notificationsEnabled
+                            : turnAlertsOn
                               ? t("ToggleOn")
-                              : state.notificationsConsent === "denied"
-                                ? t("ToggleOff")
-                                : t("ToggleAsk")}
+                              : state.notificationsEnabled
+                                ? t("ToggleAsk")
+                                : state.notificationsConsent === "denied"
+                                  ? t("ToggleOff")
+                                  : t("ToggleAsk")}
                     </button>
                 </label>
                 <label className="setting-row">

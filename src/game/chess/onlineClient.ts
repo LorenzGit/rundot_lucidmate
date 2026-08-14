@@ -220,6 +220,14 @@ export class OnlineChessClient {
         knownRoomCode?: string | null,
         reservation?: { challenger: RivalIdentity; recipient: RivalIdentity } | null,
     ): Promise<boolean> {
+        if (
+            this.room &&
+            this.experience === "async" &&
+            this.matchKey === matchKey &&
+            this.room.connectionState !== "disconnected"
+        ) {
+            return this.recoverCorrespondenceRoom(this.room, matchKey, pace, reservation);
+        }
         await this.leave();
         this.error = null;
         this.you = null;
@@ -274,6 +282,38 @@ export class OnlineChessClient {
         }
         this.setStatus("error", describeCorrespondenceError(lastError));
         return false;
+    }
+
+    private async recoverCorrespondenceRoom(
+        room: ServerRoom<ChessProtocol>,
+        matchKey: string,
+        pace: CorrespondencePace,
+        reservation?: { challenger: RivalIdentity; recipient: RivalIdentity } | null,
+    ): Promise<boolean> {
+        this.error = null;
+        this.lastState = null;
+        this.setStatus("connecting");
+        const state = this.waitForState(
+            (next) => next.experience === "async" && next.matchKey === matchKey,
+            ROOM_STATE_TIMEOUT_MS,
+        );
+        if (room.connectionState === "connected") {
+            try {
+                room.send({ type: "configure", matchKey, pace, ...reservation } satisfies ChessClientMessage);
+                room.send({ type: "ready" } satisfies ChessClientMessage);
+            } catch {
+                // The SDK may already be entering automatic reconnection. Its
+                // onReconnected callback sends ready again.
+            }
+        }
+        try {
+            await state;
+            this.finishConnection();
+            return true;
+        } catch (error) {
+            this.setStatus("error", describeCorrespondenceError(error));
+            return false;
+        }
     }
 
     private async openCorrespondenceRoom(
@@ -346,6 +386,7 @@ export class OnlineChessClient {
             },
             onReconnected: () => {
                 if (this.room !== room) return;
+                this.error = null;
                 this.setStatus(this.phase === "playing" ? "playing" : "waiting");
                 try {
                     room.send({ type: "ready" });

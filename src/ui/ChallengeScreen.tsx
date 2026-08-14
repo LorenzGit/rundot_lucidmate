@@ -40,7 +40,7 @@ export default function ChallengeScreen() {
             setCreateError("We couldn’t create the board. Check your connection and try again.");
             return;
         }
-        store.patch({ toast: "Board ready — tap the code to copy it." });
+        store.patch({ toast: "Board ready — share its private invite link." });
     };
     return (
         <MenuScreenLayout kicker="NEW MATCH" title="Challenge a friend">
@@ -50,8 +50,8 @@ export default function ChallengeScreen() {
                 </span>
                 <div>
                     <p>CORRESPONDENCE CHESS</p>
-                    <h3>Your board waits for both of you.</h3>
-                    <span>Make a move, close the game, and return when your friend replies.</span>
+                    <h3>Your friend gets the first move.</h3>
+                    <span>Create a private link. They play White; you can both return anytime.</span>
                 </div>
             </section>
             {onlineReady ? (

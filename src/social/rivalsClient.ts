@@ -1,6 +1,7 @@
 import type { ServerRoom } from "@series-inc/rundot-game-sdk";
 import RundotGameAPI from "@series-inc/rundot-game-sdk/api";
 import { canUseAuthoritativeRealtime } from "../game/chess/onlineClient.ts";
+import { describeRivalsError, isDuplicateSessionError } from "../game/chess/joinErrors.ts";
 import { correspondence } from "./correspondence.ts";
 import type { CorrespondencePace, RivalIdentity } from "./model.ts";
 import { RIVALS_DIRECTORY_KEY, RIVALS_ROOM_TYPE, type RivalInvitation, type RivalsProtocol } from "./rivalsProtocol.ts";
@@ -13,6 +14,8 @@ export class RivalsClient {
     private room: ServerRoom<RivalsProtocol> | null = null;
     private connectPromise: Promise<boolean> | null = null;
     private connectionGeneration = 0;
+    private duplicateRetryTimer: ReturnType<typeof setTimeout> | null = null;
+    private duplicateRetryAttempt = 0;
     private challengeRequests = new Map<
         string,
         { resolve: (result: ChallengeResult) => void; timeout: ReturnType<typeof setTimeout> }
@@ -40,6 +43,9 @@ export class RivalsClient {
 
     async disconnect(): Promise<void> {
         this.connectionGeneration += 1;
+        if (this.duplicateRetryTimer) clearTimeout(this.duplicateRetryTimer);
+        this.duplicateRetryTimer = null;
+        this.duplicateRetryAttempt = 0;
         const room = this.room;
         this.room = null;
         this.connectPromise = null;
@@ -74,6 +80,7 @@ export class RivalsClient {
                 return false;
             }
             this.room = room;
+            this.duplicateRetryAttempt = 0;
             room.on({
                 onMessage: (message) => {
                     if (this.room === room) this.handle(message);
@@ -83,7 +90,10 @@ export class RivalsClient {
                 },
                 onError: (error) => {
                     if (this.room !== room) return;
-                    store.patch({ rivalDirectoryStatus: "error", rivalDirectoryError: error || "Rivals unavailable." });
+                    store.patch({
+                        rivalDirectoryStatus: "error",
+                        rivalDirectoryError: describeRivalsError(error),
+                    });
                 },
                 onDisconnect: () => {
                     if (this.room !== room) return;
@@ -104,12 +114,33 @@ export class RivalsClient {
         } catch (error) {
             if (generation !== this.connectionGeneration) return false;
             this.room = null;
+            if (isDuplicateSessionError(error) && this.scheduleDuplicateRetry(generation)) return false;
             store.patch({
                 rivalDirectoryStatus: "error",
-                rivalDirectoryError: error instanceof Error ? error.message : "Rivals unavailable.",
+                rivalDirectoryError: describeRivalsError(error),
             });
             return false;
         }
+    }
+
+    private scheduleDuplicateRetry(generation: number): boolean {
+        const delays = [500, 1_200, 2_500, 5_000, 10_000, 20_000] as const;
+        const delay = delays[this.duplicateRetryAttempt];
+        if (delay === undefined) {
+            store.patch({
+                rivalDirectoryStatus: "error",
+                rivalDirectoryError: describeRivalsError("duplicate session"),
+            });
+            return false;
+        }
+        this.duplicateRetryAttempt += 1;
+        store.patch({ rivalDirectoryStatus: "connecting", rivalDirectoryError: null });
+        if (this.duplicateRetryTimer) clearTimeout(this.duplicateRetryTimer);
+        this.duplicateRetryTimer = setTimeout(() => {
+            this.duplicateRetryTimer = null;
+            if (generation === this.connectionGeneration) void this.connect();
+        }, delay);
+        return true;
     }
 
     refresh(): void {

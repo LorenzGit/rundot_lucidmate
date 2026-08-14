@@ -306,7 +306,7 @@ function BoardActions({ match, onClose }: { match: CorrespondenceMatch; onClose:
     );
 }
 
-function NavIcon({ name }: { name: "rivals" | "league" | "dreams" | "settings" }) {
+function NavIcon({ name }: { name: "rivals" | "league" | "store" | "settings" }) {
     if (name === "settings") return <GearIcon />;
     if (name === "rivals") {
         return (
@@ -321,6 +321,13 @@ function NavIcon({ name }: { name: "rivals" | "league" | "dreams" | "settings" }
         return (
             <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M7 4h10v5c0 4-2 7-5 8-3-1-5-4-5-8ZM4 6h3v3c0 2-1 3-3 3ZM20 6h-3v3c0 2 1 3 3 3M9 21h6M12 17v4" />
+            </svg>
+        );
+    }
+    if (name === "store") {
+        return (
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 9h16l-1 11H5ZM7 9V7a5 5 0 0 1 10 0v2" />
             </svg>
         );
     }
@@ -503,7 +510,7 @@ export default function MainMenu() {
                 </div>
                 {visible.length ? (
                     <div className="inbox-match-stack">
-                        {!state.notificationsEnabled && (
+                        {state.notificationsEnabled && state.notificationsConsent !== "granted" && (
                             <button
                                 type="button"
                                 className="turn-alert-card"
@@ -514,8 +521,8 @@ export default function MainMenu() {
                                     <BellIcon />
                                 </span>
                                 <span>
-                                    <strong>Turn alerts are off</strong>
-                                    <small>Get a phone alert for moves and reactions.</small>
+                                    <strong>Finish turn-alert setup</strong>
+                                    <small>Allow RUN to alert you when a friend moves.</small>
                                 </span>
                                 <b>{notificationBusy ? "…" : "ENABLE"}</b>
                             </button>
@@ -562,7 +569,7 @@ export default function MainMenu() {
                     [
                         ["rivals", "rivals", "Rivals"],
                         ["league", "league", "League"],
-                        ["dreams", "dreams", "Daily"],
+                        ["lounge", "store", "Store"],
                         ["settings", "settings", "Settings"],
                     ] as const
                 ).map(([screen, icon, label]) => (
