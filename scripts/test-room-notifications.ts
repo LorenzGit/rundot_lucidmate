@@ -6,6 +6,11 @@ import ChessRoom from "../src/rooms/ChessRoom.ts";
 
 const messages: Array<{ to: string | null; type: string; data: unknown }> = [];
 const simulationCalls: Array<{ actor: string; recipe: string; input: Record<string, unknown> }> = [];
+let releaseFirstMoveNotification: (() => void) | null = null;
+const firstMoveNotification = new Promise<void>((resolve) => {
+    releaseFirstMoveNotification = resolve;
+});
+let rejectNextMoveNotification = false;
 const players = new Map();
 const protocol = {
     broadcast: (type: string, data: unknown) => messages.push({ to: null, type, data }),
@@ -44,6 +49,13 @@ new RoomHarness({
         simulation: {
             executeRecipe: async (actor, recipe, input = {}) => {
                 simulationCalls.push({ actor, recipe, input });
+                if (recipe === "lucidmate_send_move_notification" && simulationCalls.length === 1) {
+                    await firstMoveNotification;
+                }
+                if (recipe === "lucidmate_send_move_notification" && rejectNextMoveNotification) {
+                    rejectNextMoveNotification = false;
+                    throw new Error("notification broker unavailable");
+                }
                 return {};
             },
             getState: async () => ({}),
@@ -71,8 +83,23 @@ assert.equal((await protocol.handleJoin(challenger)).accepted, true);
 await protocol.handleMessage(challenger.id, "configure", { matchKey, pace: "daily", challenger, recipient });
 assert.equal((await protocol.handleJoin(recipient)).accepted, true);
 await protocol.handleMessage(recipient.id, "configure", { matchKey, pace: "daily", challenger, recipient });
-await protocol.handleMessage(recipient.id, "move", { from: 12, to: 28, promotion: null });
+
+// Illegal moves never generate alerts.
+await protocol.handleMessage(recipient.id, "move", { from: 12, to: 36, promotion: null });
+assert.equal(simulationCalls.length, 0);
+
+// The room must await the broker recipe. Fire-and-forget work can be dropped
+// when an idle correspondence room freezes immediately after a move.
+let firstMoveHandled = false;
+const firstMoveRequest = protocol.handleMessage(recipient.id, "move", { from: 12, to: 28, promotion: null });
+void firstMoveRequest.then(() => {
+    firstMoveHandled = true;
+});
 await Promise.resolve();
+assert.equal(firstMoveHandled, false, "move handler returned before the notification broker completed");
+releaseFirstMoveNotification?.();
+await firstMoveRequest;
+assert.equal(firstMoveHandled, true);
 
 assert.deepEqual(simulationCalls[0], {
     actor: recipient.id,
@@ -80,14 +107,23 @@ assert.deepEqual(simulationCalls[0], {
     input: { targetId: challenger.id, matchKey, pace: "daily", opponent: recipient.username },
 });
 
+// Broker failure is logged, but it never rolls back an already accepted move.
+rejectNextMoveNotification = true;
+await protocol.handleMessage(challenger.id, "move", { from: 52, to: 36, promotion: null });
+assert.equal(simulationCalls[1]?.recipe, "lucidmate_send_move_notification");
+const latestState = messages.findLast((message) => message.type === "state")?.data as
+    | { turn?: string; moveCount?: number }
+    | undefined;
+assert.equal(latestState?.turn, "w");
+assert.equal(latestState?.moveCount, 2);
+
 // The opponent is no longer a current room member between async turns. The
 // recipe still targets their validated reserved seat instead of being rejected
 // by the room-only notification service.
 await protocol.handleLeave(challenger.id, "leave");
 await protocol.handleMessage(recipient.id, "react", { reaction: "nice_move" });
-await Promise.resolve();
-assert.equal(simulationCalls[1]?.recipe, "lucidmate_send_reaction_notification");
-assert.equal(simulationCalls[1]?.input.targetId, challenger.id);
+assert.equal(simulationCalls[2]?.recipe, "lucidmate_send_reaction_notification");
+assert.equal(simulationCalls[2]?.input.targetId, challenger.id);
 
 const config = JSON.parse(fs.readFileSync("rundot/simulation/social-notifications.json", "utf8"));
 const inbox = JSON.parse(fs.readFileSync("rundot/inbox.config.json", "utf8"));

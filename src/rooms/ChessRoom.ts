@@ -78,7 +78,7 @@ export default class ChessRoom extends GameRoom<ChessProtocol> {
         this.save();
     }
 
-    onGameMessage(message: GameMessage<ChessProtocol>): void {
+    async onGameMessage(message: GameMessage<ChessProtocol>): Promise<void> {
         const { sender, payload } = message;
         if (!sender.connected) return;
 
@@ -89,11 +89,11 @@ export default class ChessRoom extends GameRoom<ChessProtocol> {
             return;
         }
         if (payload.type === "react") {
-            this.handleReaction(sender.id, payload.reaction);
+            await this.handleReaction(sender.id, payload.reaction);
             return;
         }
         if (payload.type === "rematch") {
-            this.handleRematch(sender.id, payload.matchKey);
+            await this.handleRematch(sender.id, payload.matchKey);
             return;
         }
 
@@ -186,7 +186,7 @@ export default class ChessRoom extends GameRoom<ChessProtocol> {
             const recipient = this.seats[this.turn];
             if (recipient) {
                 const mover = this.profiles[opposite(this.turn)]?.username ?? "Your opponent";
-                void this.notify(sender.id, recipient, "lucidmate_send_move_notification", { opponent: mover });
+                await this.notify(sender.id, recipient, "lucidmate_send_move_notification", { opponent: mover });
             }
         }
     }
@@ -378,7 +378,7 @@ export default class ChessRoom extends GameRoom<ChessProtocol> {
         };
     }
 
-    private handleReaction(playerId: string, reaction: ChessReaction): void {
+    private async handleReaction(playerId: string, reaction: ChessReaction): Promise<void> {
         if (!this.correspondence || !this.colorOf(playerId)) return;
         if (!CHESS_REACTIONS.some((entry) => entry.id === reaction)) return;
         const now = this.now();
@@ -394,14 +394,14 @@ export default class ChessRoom extends GameRoom<ChessProtocol> {
         const recipient = this.otherPlayer(playerId);
         const label = CHESS_REACTIONS.find((entry) => entry.id === reaction)?.label ?? "New reaction";
         if (recipient) {
-            void this.notify(playerId, recipient, "lucidmate_send_reaction_notification", {
+            await this.notify(playerId, recipient, "lucidmate_send_reaction_notification", {
                 opponent: this.profileOf(playerId)?.username ?? "Your rival",
                 reaction: label,
             });
         }
     }
 
-    private handleRematch(playerId: string, matchKey: string): void {
+    private async handleRematch(playerId: string, matchKey: string): Promise<void> {
         if (!this.correspondence || this.phase !== "over" || !this.colorOf(playerId) || !isMatchKey(matchKey)) return;
         if (this.rematch && this.rematch.offeredBy !== playerId) return;
         this.rematch = { matchKey, offeredBy: playerId };
@@ -410,7 +410,7 @@ export default class ChessRoom extends GameRoom<ChessProtocol> {
         this.save();
         const recipient = this.otherPlayer(playerId);
         if (recipient) {
-            void this.notify(playerId, recipient, "lucidmate_send_rematch_notification", {
+            await this.notify(playerId, recipient, "lucidmate_send_rematch_notification", {
                 opponent: this.profileOf(playerId)?.username ?? "Your rival",
             });
         }

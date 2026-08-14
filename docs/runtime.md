@@ -72,7 +72,12 @@ autoplay. These are browser features, not additional SDK namespaces.
 - RUN host daily claims require a successful server-time sample.
 - Local fallback enables development and is visibly non-authoritative.
 - Analytics never controls ownership, eligibility, or rewards.
-- Notification success is not assumed from a request; the host preference is read back and messages use the current `submitMessageAsync` API.
+- The Settings five-second alert uses typed local `submitMessageAsync` and
+  proves only permission/scheduling on that phone. Accepted correspondence
+  moves await the protected `lucidmate_send_move_notification` recipe, which
+  writes through the inbox broker to the validated opponent with the exact
+  match key. Broker failure is logged and never rolls back the move. Real push
+  still requires two RUN identities and a disconnected device test.
 - Haptics are optional feedback and never the only feedback.
 - Haptics use root `triggerHapticAsync()` plus
   `system.getDevice().haptics`; there is no runtime `haptics` namespace in SDK
