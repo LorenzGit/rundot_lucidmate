@@ -238,6 +238,10 @@ function assert(cond, msg) {
     assert(/helper-bar\$\{isYourTurn \? " your-turn"/.test(hud), "helper rail marks the local player's turn");
     assert(/className="reaction-actions"/.test(hud), "reactions have a dedicated responsive action grid");
     assert(/Send a friendly chess phrase/.test(hud), "reaction UI explains its purpose");
+    assert(/CHECKMATE!/.test(hud), "checkmate is the dominant terminal result message");
+    assert(/The king has no legal escape/.test(hud), "checkmate explains why the game ended");
+    assert(/role="alertdialog"/.test(hud), "terminal results are announced assertively");
+    assert(/data-testid=\{isCheckmate \? "checkmate-result"/.test(hud), "checkmate has a stable visual QA target");
     assert(/className="connection-card/.test(hud), "lost connections show a dedicated recovery card");
     assert(/Your board is safe/.test(hud), "reconnect copy reassures the player that progress is preserved");
     assert(/const reconnectingSavedBoard =/.test(hud), "background resume identifies saved-board recovery");
@@ -308,6 +312,13 @@ function assert(cond, msg) {
         "narrow host landscape has a dedicated menu layout",
     );
     assert(/!waitingOnline/.test(hud), "waiting room details render once, inside the primary card");
+    assert(/\.match-result-backdrop\.checkmate/.test(css), "checkmate dims the board behind the result");
+    assert(
+        /orientation:\s*portrait\) and \(max-height:\s*740px\)[\s\S]*?\.results-card \.results-dream-progress[\s\S]*?display:\s*none/.test(
+            css,
+        ),
+        "short phones prioritize checkmate actions over secondary progression",
+    );
 
     const scene = fs.readFileSync(path.join(root, "src/game/scene/ChessScene.ts"), "utf8");
     assert(!/g\.rect\(0, 0, w, Math\.max\(90/.test(scene), "gameplay backdrop has no hard top band");

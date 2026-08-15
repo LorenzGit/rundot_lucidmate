@@ -5,13 +5,13 @@ export interface MasteryStats {
     bestWinStreak: number;
 }
 
-interface DreamRank {
+export interface DreamRank {
     name: string;
     threshold: number;
     reward: number;
 }
 
-const DREAM_RANKS: readonly DreamRank[] = [
+export const DREAM_RANKS: readonly DreamRank[] = [
     { name: "WANDERER", threshold: 0, reward: 0 },
     { name: "SEER", threshold: 100, reward: 25 },
     { name: "VOYAGER", threshold: 260, reward: 40 },

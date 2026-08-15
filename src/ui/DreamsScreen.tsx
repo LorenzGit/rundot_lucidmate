@@ -1,11 +1,14 @@
 import { useState } from "react";
+import lucidmateDreamPath from "../assets/art/lucidmate-dream-path.png";
+import lucidmateReactionStickers from "../assets/art/lucidmate-reaction-stickers.png";
 import { audioManager } from "../audio/audioManager.ts";
 import { store, useStore } from "../state/store.ts";
 import { dailySystems } from "../systems/dailySystems.ts";
-import { dreamMastery } from "../systems/mastery.ts";
+import { DREAM_RANKS, dreamMastery } from "../systems/mastery.ts";
 import { formatNumber } from "../systems/numberFormat.ts";
 import { runtimeServices } from "../systems/runtimeServices.ts";
 import MenuScreenLayout from "./MenuScreenLayout.tsx";
+import ToyPieceIcon from "./ToyPieceIcon.tsx";
 
 export default function DreamsScreen() {
     const state = useStore((value) => value);
@@ -13,6 +16,48 @@ export default function DreamsScreen() {
     const reward = dailySystems.rewardView();
     const quests = dailySystems.quests();
     const mastery = dreamMastery(state);
+    const trophies = [
+        {
+            id: "first-board",
+            label: "First Steps",
+            detail: "Finish one board",
+            value: state.matchesPlayed,
+            target: 1,
+            piece: "p" as const,
+        },
+        {
+            id: "first-win",
+            label: "Bright Idea",
+            detail: "Win your first game",
+            value: state.wins,
+            target: 1,
+            piece: "q" as const,
+        },
+        {
+            id: "captures",
+            label: "Sharp Eye",
+            detail: "Capture 25 pieces",
+            value: state.capturesLifetime,
+            target: 25,
+            piece: "n" as const,
+        },
+        {
+            id: "streak",
+            label: "On a Roll",
+            detail: "Reach a 3-win streak",
+            value: state.bestWinStreak,
+            target: 3,
+            piece: "r" as const,
+        },
+        {
+            id: "collector",
+            label: "Toy Collector",
+            detail: "Own 3 board themes",
+            value: state.ownedThemes.length,
+            target: 3,
+            piece: "k" as const,
+        },
+    ];
 
     const claimReward = async () => {
         await audioManager.unlock();
@@ -40,12 +85,10 @@ export default function DreamsScreen() {
 
     return (
         <MenuScreenLayout title="DREAMBOOK" kicker="RETURN WITH PURPOSE">
-            <section className="dreambook-mastery" aria-label="Dream mastery">
-                <div className="dreambook-rank-mark" aria-hidden="true">
-                    <span>{mastery.rankIndex + 1}</span>
-                </div>
-                <div className="dreambook-rank-copy">
-                    <p>DREAM RANK</p>
+            <section className="dream-path-card" aria-label="Dream Path progress">
+                <img src={lucidmateDreamPath} alt="" aria-hidden="true" />
+                <div className="dream-path-copy">
+                    <p>DREAM PATH</p>
                     <h3>{mastery.rankName}</h3>
                     {mastery.nextRankName ? (
                         <span>
@@ -53,10 +96,65 @@ export default function DreamsScreen() {
                             {formatNumber(mastery.nextReward)} auras
                         </span>
                     ) : (
-                        <span>Every path through the board is open.</span>
+                        <span>Every reward on the path is yours.</span>
                     )}
+                    <progress value={mastery.progress} max={1} aria-label="Progress to next dream rank" />
                 </div>
-                <progress value={mastery.progress} max={1} aria-label="Progress to next dream rank" />
+                <ul className="dream-path-nodes" aria-label="Dream ranks">
+                    {DREAM_RANKS.map((rank, index) => (
+                        <li
+                            key={rank.name}
+                            className={
+                                index < mastery.rankIndex ? "unlocked" : index === mastery.rankIndex ? "current" : ""
+                            }
+                            title={`${rank.name}: ${formatNumber(rank.threshold)} insight`}
+                        >
+                            <i>{index + 1}</i>
+                            <small>
+                                {rank.name === "ONEIRONAUT"
+                                    ? "ONEIRO"
+                                    : rank.name === "ASCENDANT"
+                                      ? "ASCEND"
+                                      : rank.name}
+                            </small>
+                        </li>
+                    ))}
+                </ul>
+            </section>
+
+            <section className="trophy-cabinet dreambook-section" aria-labelledby="trophy-title">
+                <header className="dreambook-section-head">
+                    <div>
+                        <p>YOUR CABINET</p>
+                        <h3 id="trophy-title">Tiny triumphs</h3>
+                    </div>
+                    <span>
+                        {trophies.filter((trophy) => trophy.value >= trophy.target).length}/{trophies.length}
+                    </span>
+                </header>
+                <div className="trophy-grid">
+                    {trophies.map((trophy) => {
+                        const earned = trophy.value >= trophy.target;
+                        return (
+                            <article key={trophy.id} className={earned ? "earned" : "locked"}>
+                                <span>
+                                    <ToyPieceIcon type={trophy.piece} />
+                                </span>
+                                <strong>{trophy.label}</strong>
+                                <small>{earned ? "Collected" : trophy.detail}</small>
+                                <progress value={Math.min(trophy.value, trophy.target)} max={trophy.target} />
+                            </article>
+                        );
+                    })}
+                </div>
+                <div className="sticker-collection">
+                    <img src={lucidmateReactionStickers} alt="" aria-hidden="true" />
+                    <div>
+                        <p>REACTION STICKERS</p>
+                        <strong>Four friendly moods</strong>
+                        <span>Send one after your rival moves. Your choices reset on your next turn.</span>
+                    </div>
+                </div>
             </section>
 
             <section className="dreambook-section">

@@ -281,6 +281,29 @@ export function installBrowserQaContract(): void {
             window.requestAnimationFrame(apply);
             window.setTimeout(apply, 320);
         },
+        previewResults() {
+            store.patch({
+                phase: "playing",
+                opponentMode: "ai",
+                playerColor: "w",
+                matchStatus: "checkmate",
+                matchesPlayed: 7,
+                wins: 4,
+                capturesLifetime: 62,
+                bestWinStreak: 3,
+                masteryBonusAuras: 40,
+                matchSummary: {
+                    status: "checkmate",
+                    winner: "w",
+                    result: "win",
+                    movesPlayed: 31,
+                    captures: 9,
+                    checksGiven: 4,
+                    aurasEarned: 28,
+                    playerWon: true,
+                },
+            });
+        },
         controller() {
             return getRunController();
         },

@@ -79,7 +79,7 @@ export function createPieceGraphic(
     // Accent jewel — skip on knight; the eye is the recognisable detail there.
     if (type !== "n") {
         const jewel = new Graphics();
-        jewel.circle(0, type === "p" ? -s * 0.05 : -s * 0.18, s * 0.06);
+        jewel.circle(0, type === "p" ? s * 0.13 : -s * 0.18, s * 0.055);
         jewel.fill({ color: candy ? (isWhite ? 0xf0529a : 0x79ead6) : theme.accent, alpha: 1 });
         jewel.stroke({ width: Math.max(1, line * 0.55), color: stroke, alpha: 0.95 });
         root.addChild(g);
@@ -94,7 +94,39 @@ export function createPieceGraphic(
         shine.fill({ color: 0xffffff, alpha: 0.8 });
         root.addChild(shine);
     }
+    if (type !== "n") addPersonality(root, type, stroke, s, candy);
     return root;
+}
+
+function addPersonality(root: Container, type: PieceType, color: number, s: number, candy: boolean): void {
+    const face = new Graphics();
+    const y = type === "p" ? -s * 0.08 : type === "b" ? -s * 0.07 : type === "r" ? s * 0.01 : s * 0.02;
+    const eye = Math.max(1.2, s * 0.026);
+    const gap = type === "r" ? s * 0.075 : s * 0.065;
+    if (type === "b") {
+        face.moveTo(-gap - eye, y);
+        face.quadraticCurveTo(-gap, y + eye, -gap + eye, y);
+        face.moveTo(gap - eye, y);
+        face.quadraticCurveTo(gap, y + eye, gap + eye, y);
+        face.stroke({ width: Math.max(1.2, s * 0.022), color, alpha: 0.82 });
+    } else {
+        face.circle(-gap, y, eye);
+        face.circle(gap, y, eye);
+        face.fill({ color, alpha: 0.9 });
+    }
+    if (type === "k") {
+        face.moveTo(-gap - eye, y - s * 0.05);
+        face.lineTo(-gap + eye, y - s * 0.035);
+        face.moveTo(gap - eye, y - s * 0.035);
+        face.lineTo(gap + eye, y - s * 0.05);
+        face.stroke({ width: Math.max(1, s * 0.018), color, alpha: 0.72 });
+    }
+    if (type !== "r") {
+        face.moveTo(-s * 0.035, y + s * 0.055);
+        face.quadraticCurveTo(0, y + s * (candy ? 0.09 : 0.075), s * 0.04, y + s * 0.05);
+        face.stroke({ width: Math.max(1, s * 0.018), color, alpha: 0.72 });
+    }
+    root.addChild(face);
 }
 
 function drawPawn(g: Graphics, fill: number, stroke: number, s: number, line: number): void {

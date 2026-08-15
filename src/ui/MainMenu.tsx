@@ -13,8 +13,9 @@ import {
     startOnlineMatch,
 } from "../game/runController.ts";
 import { correspondence } from "../social/correspondence.ts";
-import type { CorrespondenceMatch } from "../social/model.ts";
+import { CHESS_REACTIONS, type CorrespondenceMatch, type RivalIdentity } from "../social/model.ts";
 import { paceLabel } from "../social/model.ts";
+import { rivalryLevel } from "../social/rivalry.ts";
 import { rivalsClient } from "../social/rivalsClient.ts";
 import { store, useStore } from "../state/store.ts";
 import { dailySystems } from "../systems/dailySystems.ts";
@@ -22,6 +23,7 @@ import { formatNumber } from "../systems/numberFormat.ts";
 import { updateNotificationPreference } from "../systems/notificationPreference.ts";
 import { runtimeServices } from "../systems/runtimeServices.ts";
 import GearIcon from "./GearIcon.tsx";
+import ToyPieceIcon from "./ToyPieceIcon.tsx";
 
 const MINI_SQUARES = [
     "a4",
@@ -82,11 +84,43 @@ function MiniBoard({ match }: { match: CorrespondenceMatch }) {
         <span className="inbox-mini-board" aria-hidden="true">
             {MINI_SQUARES.map((square, index) => (
                 <i key={square} className={index === accent ? "hot" : ""}>
-                    {index === accent ? (match.color === "b" ? "♞" : "♘") : ""}
+                    {index === accent && <ToyPieceIcon type={match.moveCount % 3 === 0 ? "n" : "p"} />}
                 </i>
             ))}
         </span>
     );
+}
+
+function opponentTone(identity: RivalIdentity | null): number {
+    const value = identity?.id ?? identity?.username ?? "friend";
+    let hash = 2_166_136_261;
+    for (const character of value) hash = Math.imul(hash ^ character.charCodeAt(0), 16_777_619);
+    return (hash >>> 0) % 5;
+}
+
+function OpponentAvatar({ identity, urgent = false }: { identity: RivalIdentity | null; urgent?: boolean }) {
+    return (
+        <span className={`match-avatar tone-${opponentTone(identity)}${urgent ? " urgent" : ""}`} aria-hidden="true">
+            {identity?.avatarUrl ? (
+                <img src={identity.avatarUrl} alt="" />
+            ) : (
+                <ToyPieceIcon type={identity ? "n" : "p"} />
+            )}
+            {urgent && <i />}
+        </span>
+    );
+}
+
+function squareName(square: number): string {
+    return `${"abcdefgh"[square % 8] ?? "?"}${Math.floor(square / 8) + 1}`;
+}
+
+function latestActivity(match: CorrespondenceMatch): string {
+    if (match.reaction) {
+        return CHESS_REACTIONS.find((entry) => entry.id === match.reaction?.id)?.label ?? "New reaction";
+    }
+    if (match.lastMove) return `Last move ${squareName(match.lastMove.from)}–${squareName(match.lastMove.to)}`;
+    return match.incoming ? "A fresh challenge" : "Board ready";
 }
 
 function dueCopy(match: CorrespondenceMatch): string {
@@ -128,10 +162,14 @@ function openMatch(match: CorrespondenceMatch): void {
         });
 }
 
-function TurnSpotlight({ matches }: { matches: CorrespondenceMatch[] }) {
+function TurnSpotlight({ matches, allMatches }: { matches: CorrespondenceMatch[]; allMatches: CorrespondenceMatch[] }) {
     const primary = matches[0];
     if (!primary) return null;
     const opponent = primary.opponent?.username ?? "your friend";
+    const rivalryGames = allMatches.filter(
+        (match) => primary.opponent && match.opponent?.id === primary.opponent.id && match.phase === "over",
+    ).length;
+    const rivalry = rivalryLevel(rivalryGames);
     return (
         <button
             type="button"
@@ -139,9 +177,12 @@ function TurnSpotlight({ matches }: { matches: CorrespondenceMatch[] }) {
             data-testid="turn-waiting-hero"
             onClick={() => openMatch(primary)}
         >
-            <span className="turn-spotlight-board" aria-hidden="true">
-                <MiniBoard match={primary} />
-                <i>{matches.length}</i>
+            <span className="turn-spotlight-people" aria-hidden="true">
+                <OpponentAvatar identity={primary.opponent} urgent />
+                <span className="turn-spotlight-board">
+                    <MiniBoard match={primary} />
+                    <i>{matches.length}</i>
+                </span>
             </span>
             <span className="turn-spotlight-copy">
                 <small>{matches.length === 1 ? "1 BOARD NEEDS YOU" : `${matches.length} BOARDS NEED YOU`}</small>
@@ -149,6 +190,10 @@ function TurnSpotlight({ matches }: { matches: CorrespondenceMatch[] }) {
                 <em>
                     {matches.length === 1 ? opponent : `First: ${opponent}`} · {dueCopy(primary)}
                 </em>
+                <span className="turn-spotlight-rivalry">
+                    <i style={{ "--rival-progress": rivalry.progress } as React.CSSProperties} />
+                    Rivalry {rivalry.level} · {rivalry.name}
+                </span>
             </span>
             <span className="turn-spotlight-cta">
                 PLAY NOW <b aria-hidden="true">›</b>
@@ -157,7 +202,15 @@ function TurnSpotlight({ matches }: { matches: CorrespondenceMatch[] }) {
     );
 }
 
-function MatchCard({ match, onManage }: { match: CorrespondenceMatch; onManage: () => void }) {
+function MatchCard({
+    match,
+    rivalryGames,
+    onManage,
+}: {
+    match: CorrespondenceMatch;
+    rivalryGames: number;
+    onManage: () => void;
+}) {
     const yourMove = match.phase === "playing" && match.color === match.turn;
     const status = matchStatus(match, yourMove);
     return (
@@ -166,6 +219,7 @@ function MatchCard({ match, onManage }: { match: CorrespondenceMatch; onManage: 
             data-match-key={match.matchKey}
         >
             <button type="button" className="inbox-match-open" onClick={() => openMatch(match)}>
+                <OpponentAvatar identity={match.opponent} urgent={yourMove} />
                 <MiniBoard match={match} />
                 <span className="inbox-match-copy">
                     <small>{status}</small>
@@ -174,6 +228,9 @@ function MatchCard({ match, onManage }: { match: CorrespondenceMatch; onManage: 
                         {match.moveCount ? `${match.moveCount} moves · ` : ""}
                         {dueCopy(match)}
                     </em>
+                    <span>
+                        {latestActivity(match)} · Rivalry {rivalryLevel(rivalryGames).level}
+                    </span>
                 </span>
                 <span className="inbox-match-arrow" aria-hidden="true">
                     ›
@@ -464,7 +521,7 @@ export default function MainMenu() {
                 </div>
             </header>
 
-            <TurnSpotlight matches={yourMove} />
+            <TurnSpotlight matches={yourMove} allMatches={matches} />
 
             <button
                 type="button"
@@ -585,6 +642,14 @@ export default function MainMenu() {
                             <MatchCard
                                 key={match.matchKey}
                                 match={match}
+                                rivalryGames={
+                                    matches.filter(
+                                        (entry) =>
+                                            match.opponent &&
+                                            entry.opponent?.id === match.opponent.id &&
+                                            entry.phase === "over",
+                                    ).length
+                                }
                                 onManage={() => setManagedMatchKey(match.matchKey)}
                             />
                         ))}

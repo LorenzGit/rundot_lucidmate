@@ -1,6 +1,6 @@
 /**
  * LUCIDMATE board scene — clear board + heavy event juice:
- * sliding moves, selection bounce, check shake, particles, ambient sparkles.
+ * sliding moves, selection bounce, capture impact, particles, ambient sparkles.
  */
 import { Application, Container, FederatedPointerEvent, Graphics, Text } from "pixi.js";
 import type { ChessMatch } from "../chess/game.ts";
@@ -14,6 +14,7 @@ import { ease, type TweenController, createTweenController } from "../tween.ts";
 import { computeBoardLayout, localToSquare, squareToLocal, type BoardLayout, type Insets } from "./layout.ts";
 import { captureBurst, checkPulse, mateBurst, moveTrail, placePop, selectSpark } from "./vfx.ts";
 import { DreamBreathFilter } from "./dreamBreathFilter.ts";
+import { moveShakeMagnitude } from "./moveFeedback.ts";
 
 export interface ChessSceneCallbacks {
     onPlayerMoved(move: Move): void;
@@ -61,6 +62,8 @@ export interface SceneGeometrySnapshot {
     misalignedSquares: number[];
     layout: BoardLayout;
     stageScale: number;
+    shakeMagnitude: number;
+    lastMoveShakeMagnitude: number;
 }
 
 export class ChessScene {
@@ -90,6 +93,7 @@ export class ChessScene {
     private time = 0;
     private pulse = 0;
     private shake = 0;
+    private lastMoveShakeMagnitude = 0;
     private selectPulse = 0;
     private destroyed = false;
     private unsubResize: (() => void) | null = null;
@@ -232,7 +236,6 @@ export class ChessScene {
         const snap = this.match.snapshot();
         if (snap.status === "check" || snap.status === "checkmate") {
             this.pulse = 1;
-            this.shake = snap.status === "checkmate" ? 14 : 9;
             const kingSq = snap.board.findIndex((p) => p && p.type === "k" && p.color === snap.turn);
             if (kingSq >= 0) {
                 const pos = squareToLocal(this.layout, kingSq, this.flipped());
@@ -438,6 +441,7 @@ export class ChessScene {
         const toPos = squareToLocal(this.layout, move.to, this.flipped());
 
         if (this.reducedMotion) {
+            this.lastMoveShakeMagnitude = 0;
             this.rebuildPieces();
             if (move.capture) captureBurst(this.emitter, toPos.x, toPos.y);
             else placePop(this.emitter, toPos.x, toPos.y);
@@ -445,6 +449,9 @@ export class ChessScene {
         }
 
         this.moving = true;
+        const castling = move.piece === "k" && Math.abs(move.to - move.from) === 2;
+        const rookFrom = castling ? (move.to > move.from ? move.from + 3 : move.from - 4) : null;
+        const rookTo = castling ? (move.to > move.from ? move.from + 1 : move.from - 1) : null;
         // Snapshot the moving piece graphic before rebuild
         const old = this.pieces.get(move.from);
         const flying = old
@@ -456,14 +463,19 @@ export class ChessScene {
                   this.layout.cell,
                   this.pieceStyle,
               );
+        const oldRook = rookFrom == null ? null : this.pieces.get(rookFrom);
+        const flyingRook =
+            rookFrom == null
+                ? null
+                : (oldRook?.root ?? createPieceGraphic("r", move.color, this.theme, this.layout.cell, this.pieceStyle));
         // Rebuild everything except we'll re-add the flier
         for (const sprite of this.pieces.values()) {
-            if (sprite.root !== flying) sprite.root.destroy({ children: true });
+            if (sprite.root !== flying && sprite.root !== flyingRook) sprite.root.destroy({ children: true });
         }
         this.pieces.clear();
         const snap = this.match.snapshot();
         for (let sq = 0; sq < 64; sq++) {
-            if (sq === move.to) continue; // flier lands here
+            if (sq === move.to || sq === rookTo) continue; // fliers land here
             const piece = snap.board[sq];
             if (!piece) continue;
             const root = createPieceGraphic(piece.type, piece.color, this.theme, this.layout.cell, this.pieceStyle);
@@ -480,6 +492,15 @@ export class ChessScene {
         flying.y = fromPos.y;
         flying.scale.set(1);
         flying.alpha = 1;
+        const rookFromPos = rookFrom == null ? null : squareToLocal(this.layout, rookFrom, this.flipped());
+        const rookToPos = rookTo == null ? null : squareToLocal(this.layout, rookTo, this.flipped());
+        if (flyingRook && rookFromPos) {
+            if (!flyingRook.parent) this.pieceLayer.addChild(flyingRook);
+            this.pieceLayer.setChildIndex(flyingRook, this.pieceLayer.children.length - 1);
+            flyingRook.position.set(rookFromPos.x, rookFromPos.y);
+            flyingRook.scale.set(1);
+            flyingRook.alpha = 1;
+        }
 
         const duration = (move.capture ? 260 : 220) * this.qaMotionDurationScale;
         const lift = this.layout.cell * 0.28;
@@ -493,6 +514,13 @@ export class ChessScene {
                 flying.x = x;
                 flying.y = y;
                 flying.scale.set(1 + Math.sin(u * Math.PI) * 0.12);
+                if (flyingRook && rookFromPos && rookToPos && !flyingRook.destroyed) {
+                    const rookU = Math.max(0, Math.min(1, (u - 0.1) / 0.9));
+                    flyingRook.x = rookFromPos.x + (rookToPos.x - rookFromPos.x) * rookU;
+                    flyingRook.y =
+                        rookFromPos.y + (rookToPos.y - rookFromPos.y) * rookU - Math.sin(rookU * Math.PI) * lift * 0.45;
+                    flyingRook.scale.set(1 + Math.sin(rookU * Math.PI) * 0.06);
+                }
                 trailTick += 1;
                 if (trailTick % 3 === 0) moveTrail(this.emitter, x, y);
             },
@@ -523,6 +551,12 @@ export class ChessScene {
                     this.pieceLayer.addChild(landed);
                 }
                 this.pieces.set(move.to, { sq: move.to, root: landed, baseScale: 1 });
+                if (flyingRook && rookTo != null && rookToPos && !flyingRook.destroyed) {
+                    flyingRook.position.set(rookToPos.x, rookToPos.y);
+                    flyingRook.scale.set(1);
+                    this.pieces.set(rookTo, { sq: rookTo, root: flyingRook, baseScale: 1 });
+                    placePop(this.emitter, rookToPos.x, rookToPos.y);
+                }
                 this.moving = false;
                 landed.scale.set(0.78);
                 this.tweens.addTween(
@@ -537,7 +571,9 @@ export class ChessScene {
                 );
                 if (move.capture) captureBurst(this.emitter, toPos.x, toPos.y);
                 else placePop(this.emitter, toPos.x, toPos.y);
-                this.shake = Math.max(this.shake, move.capture ? 5 : 2.5);
+                const impactShake = moveShakeMagnitude(move.capture);
+                this.lastMoveShakeMagnitude = impactShake;
+                if (impactShake > 0) this.shake = Math.max(this.shake, impactShake);
             },
             { durationMs: duration },
         );
@@ -565,10 +601,9 @@ export class ChessScene {
         selectSpark(this.emitter, pos.x, pos.y);
     }
 
-    private shakeIllegal(): void {
+    private flagIllegal(): void {
         if (this.reducedMotion) return;
-        this.shake = Math.max(this.shake, 7);
-        // Flash edge
+        // Flash the edge without moving the camera.
         this.pulse = Math.max(this.pulse, 0.55);
     }
 
@@ -612,7 +647,7 @@ export class ChessScene {
     private onTap = (event: FederatedPointerEvent): void => {
         if (this.moving) return;
         const rootLocal = this.root.toLocal(event.global);
-        // Account for board shake offset
+        // Account for the brief capture-impact offset.
         const local = {
             x: rootLocal.x - this.boardLayer.x,
             y: rootLocal.y - this.boardLayer.y,
@@ -634,7 +669,7 @@ export class ChessScene {
         }
         if (result.kind === "illegal") {
             this.paintBoard();
-            this.shakeIllegal();
+            this.flagIllegal();
             this.callbacks.onIllegal();
             return;
         }
@@ -693,6 +728,8 @@ export class ChessScene {
             misalignedSquares,
             layout: { ...this.layout },
             stageScale: this.stage.scale(),
+            shakeMagnitude: this.shake,
+            lastMoveShakeMagnitude: this.lastMoveShakeMagnitude,
         };
     }
 
@@ -794,7 +831,7 @@ export class ChessScene {
         const shouldPaintBoard = this.reducedMotion ? this.pulse > 0 || this.hintTimer > 0 : hasAnimatedBoardMarks;
         if (shouldPaintBoard) this.paintBoard();
 
-        // Screen / board shake
+        // Capture-only board shake.
         if (this.shake > 0.1 && !this.reducedMotion) {
             const mag = this.shake;
             // Use sin of time for direction so it feels organic

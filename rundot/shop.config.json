@@ -21,7 +21,7 @@
     {
       "itemId": "lucidmate_trip_pass",
       "name": "Trip Pass",
-      "description": "Permanently unlocks Nebula, Ultraviolet and Lava themes, and removes the between-matches interstitial. Cosmetic and ad-free only — no chess rule changes.",
+      "description": "Permanently unlocks Moon Candy, Star Pajamas and Sunset Circus themes, and removes the between-matches interstitial. Cosmetic and ad-free only — no chess rule changes.",
       "category": "non_consumable",
       "price": { "type": "bucks", "value": "399" },
       "entitlements": [
@@ -42,8 +42,8 @@
     },
     {
       "itemId": "lucidmate_theme_pack_cosmic",
-      "name": "Theme Pack — Cosmic",
-      "description": "Permanently unlocks the Nebula and Ultraviolet trip themes. Cosmetic only.",
+      "name": "Theme Pack — Toybox Nights",
+      "description": "Permanently unlocks the Moon Candy and Star Pajamas themes. Cosmetic only.",
       "category": "non_consumable",
       "price": { "type": "bucks", "value": "199" },
       "entitlements": [{ "entitlementId": "lucidmate_theme_pack_cosmic", "quantity": 1, "consumable": false }],

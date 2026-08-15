@@ -172,7 +172,12 @@ export const correspondence = {
 
     react(reaction: ChessReaction): boolean {
         const sent = onlineChess.react(reaction);
-        if (sent) analytics.event("correspondence_reaction_sent", { reaction });
+        if (sent) {
+            const activeMatchKey = store.get().activeMatchKey;
+            const match = store.get().correspondenceMatches.find((entry) => entry.matchKey === activeMatchKey);
+            if (match) updateMatch({ ...match, reactionUsedAtMove: match.moveCount });
+            analytics.event("correspondence_reaction_sent", { reaction });
+        }
         return sent;
     },
 

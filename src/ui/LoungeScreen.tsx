@@ -16,6 +16,31 @@ import { buyThemeWithAuras, selectTheme, themeIsOwned, themeOffer } from "../sys
 import { pieceStyleIsOwned, selectPieceStyle } from "../systems/pieceStyles.ts";
 import { runtimeServices } from "../systems/runtimeServices.ts";
 import MenuScreenLayout from "./MenuScreenLayout.tsx";
+import ThemeBoardPreview from "./ThemeBoardPreview.tsx";
+
+function ProductArt({ productId }: { productId: ProductId }) {
+    const themeIds =
+        productId === "trip_pass"
+            ? (["nebula", "ultraviolet", "lava"] as const)
+            : productId === "theme_pack"
+              ? (["nebula", "ultraviolet"] as const)
+              : (["midnight"] as const);
+    return (
+        <div className={`shop-product-art ${productId}`} aria-hidden="true">
+            {themeIds.map((id) => {
+                const theme = THEMES.find((entry) => entry.id === id) ?? THEMES[0]!;
+                return (
+                    <ThemeBoardPreview
+                        key={id}
+                        theme={theme}
+                        pieceStyle={productId === "piece_pack" ? "candy" : "dream"}
+                        compact
+                    />
+                );
+            })}
+        </div>
+    );
+}
 
 export default function LoungeScreen() {
     useStore((s) => s.ownedThemes);
@@ -28,6 +53,8 @@ export default function LoungeScreen() {
     const selectedPieceStyle = store.get().selectedPieceStyle;
     const [busy, setBusy] = useState<string | null>(null);
     const [catalogRevision, setCatalogRevision] = useState(0);
+    const [previewThemeId, setPreviewThemeId] = useState(selected);
+    const previewTheme = THEMES.find((theme) => theme.id === previewThemeId) ?? THEMES[0]!;
 
     useEffect(() => {
         // Purchase funnel step 1: the monetization surface was actually seen.
@@ -86,6 +113,15 @@ export default function LoungeScreen() {
                     <span>{t("LabelAuras")}</span>
                 </aside>
             </section>
+            <section className="store-preview-stage" aria-label={`Previewing ${previewTheme.name}`}>
+                <ThemeBoardPreview theme={previewTheme} pieceStyle={selectedPieceStyle} />
+                <div>
+                    <p>LIVE PREVIEW</p>
+                    <strong>{previewTheme.name}</strong>
+                    <span>{previewTheme.blurb}</span>
+                </div>
+                <small>Tap any board below</small>
+            </section>
             <section className="piece-style-section" aria-labelledby="piece-style-title">
                 <div className="piece-style-heading">
                     <div>
@@ -109,11 +145,7 @@ export default function LoungeScreen() {
                                 key={style.id}
                                 className={`piece-style-card ${style.id}${isSelected ? " selected" : ""}`}
                             >
-                                <div className="piece-style-preview" aria-hidden="true">
-                                    <i className="piece-preview pawn" />
-                                    <i className="piece-preview king" />
-                                    <i className="piece-preview pawn dark" />
-                                </div>
+                                <ThemeBoardPreview theme={previewTheme} pieceStyle={style.id} compact />
                                 <h4>{style.name}</h4>
                                 <p>{style.blurb}</p>
                                 {owned ? (
@@ -150,12 +182,19 @@ export default function LoungeScreen() {
                     const paidProduct = paidProductId ? productView(paidProductId) : null;
                     return (
                         <article key={theme.id} className={`theme-card${isSelected ? " selected" : ""}`}>
-                            <div
-                                className="theme-swatch"
-                                style={{
-                                    background: `linear-gradient(135deg, #${theme.dark.toString(16).padStart(6, "0")}, #${theme.accent.toString(16).padStart(6, "0")}, #${theme.accent2.toString(16).padStart(6, "0")})`,
+                            <button
+                                type="button"
+                                className="theme-preview-button"
+                                aria-label={`Preview ${theme.name}`}
+                                onClick={() => {
+                                    audioManager.play("tap");
+                                    void runtimeServices.haptic("light");
+                                    setPreviewThemeId(theme.id);
                                 }}
-                            />
+                            >
+                                <ThemeBoardPreview theme={theme} compact />
+                                <span>{previewThemeId === theme.id ? "PREVIEWING" : "TAP TO PREVIEW"}</span>
+                            </button>
                             <h3>{theme.name}</h3>
                             <p>{theme.blurb}</p>
                             {owned ? (
@@ -214,6 +253,7 @@ export default function LoungeScreen() {
                 <div className="lounge-products-grid" data-catalog-revision={catalogRevision}>
                     {productViews.map((view) => (
                         <article className="shop-card" key={view.productId}>
+                            <ProductArt productId={view.productId} />
                             <p className="eyebrow">{view.statusLabel}</p>
                             <h3>{view.name}</h3>
                             <p>{view.description}</p>

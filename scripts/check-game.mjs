@@ -234,6 +234,15 @@ expect(
     /private relayout\(\)[\s\S]*?this\.moving = false;[\s\S]*?this\.repositionPieces\(\)/.test(chessScene),
     "resize atomically cancels stale motion and reflows every piece",
 );
+expect(
+    /const impactShake = moveShakeMagnitude\(move\.capture\)/.test(chessScene) &&
+        /if \(impactShake > 0\) this\.shake = Math\.max/.test(chessScene),
+    "camera shake is routed through capture-only move feedback",
+);
+expect(
+    !/move\.capture \? 5 : 2\.5/.test(chessScene) && !/snap\.status === "checkmate" \? 14 : 9/.test(chessScene),
+    "quiet moves, check, and checkmate do not shake the camera",
+);
 
 for (const file of [...sources, "index.html", "src/styles/app.css", "README.md"]) {
     if (!fs.existsSync(path.join(root, file))) continue;

@@ -9,6 +9,7 @@ import { dreamMastery, masteryRewardsBetween } from "../systems/mastery.ts";
 import { saveSystem } from "../systems/save.ts";
 import { runtimeServices } from "../systems/runtimeServices.ts";
 import type { AiDifficulty } from "./chess/ai.ts";
+import { moveFromAuthoritativeTransition } from "./chess/authoritativeMove.ts";
 import { ChessMatch, type MatchConfig, type OpponentMode } from "./chess/game.ts";
 import { onlineChess, type OnlineConnectMode, type OnlineSessionSnapshot } from "./chess/onlineClient.ts";
 import { wireToBoard, type ChessServerMessage } from "./chess/protocol.ts";
@@ -153,15 +154,17 @@ export class RunController {
         const wasHydrated = this.onlineStateHydrated;
 
         const lastMove: Move | null = state.lastMove
-            ? {
-                  from: state.lastMove.from,
-                  to: state.lastMove.to,
-                  promotion: state.lastMove.promotion,
-                  piece: board[state.lastMove.to]?.type ?? "p",
-                  color: board[state.lastMove.to]?.color ?? "w",
-                  capture: null,
-                  flags: "",
-              }
+            ? wasHydrated && isNewMove
+                ? moveFromAuthoritativeTransition(this.match.snapshot().board, board, state.lastMove)
+                : {
+                      from: state.lastMove.from,
+                      to: state.lastMove.to,
+                      promotion: state.lastMove.promotion,
+                      piece: board[state.lastMove.to]?.type ?? "p",
+                      color: board[state.lastMove.to]?.color ?? "w",
+                      capture: null,
+                      flags: "",
+                  }
             : null;
 
         // summary() treats checkmate as "side to move lost" — align turn with winner on terminal.

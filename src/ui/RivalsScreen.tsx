@@ -6,11 +6,13 @@ import { canUseAuthoritativeRealtime } from "../game/chess/onlineClient.ts";
 import { challengeRival } from "../game/runController.ts";
 import { correspondence } from "../social/correspondence.ts";
 import { rivalSummaries, type RivalIdentity, type RivalSummary } from "../social/model.ts";
+import { rivalryLevel } from "../social/rivalry.ts";
 import { rivalsClient } from "../social/rivalsClient.ts";
 import type { RivalDirectoryProfile } from "../social/rivalsProtocol.ts";
 import { useStore } from "../state/store.ts";
 import { runtimeServices } from "../systems/runtimeServices.ts";
 import MenuScreenLayout from "./MenuScreenLayout.tsx";
+import ToyPieceIcon from "./ToyPieceIcon.tsx";
 
 function cue(): void {
     audioManager.play("tap");
@@ -34,7 +36,7 @@ function PlayerAvatar({ player }: { player: RivalIdentity }) {
                 <img className="rival-avatar" src={player.avatarUrl} alt="" />
             ) : (
                 <span className="rival-avatar" aria-hidden="true">
-                    {player.username.slice(0, 1).toUpperCase()}
+                    <ToyPieceIcon type={playerTone(player) === "coral" ? "q" : "n"} />
                 </span>
             )}
             <i aria-hidden="true" />
@@ -234,6 +236,7 @@ export default function RivalsScreen() {
                         <div className="rival-list">
                             {rivals.map((rival) => {
                                 const rivalryMatches = matches.filter((match) => match.opponent?.id === rival.id);
+                                const level = rivalryLevel(rival.games);
                                 const muted =
                                     rivalryMatches.length > 0 && rivalryMatches.every((match) => match.reactionsMuted);
                                 return (
@@ -242,6 +245,19 @@ export default function RivalsScreen() {
                                         <div>
                                             <h3>{rival.username}</h3>
                                             <span>{historyDetail(rival)}</span>
+                                            <div className="rivalry-meter">
+                                                <i
+                                                    style={
+                                                        { "--rival-progress": level.progress } as React.CSSProperties
+                                                    }
+                                                />
+                                                <small>
+                                                    Rivalry {level.level} · {level.name}
+                                                    {level.next
+                                                        ? ` · ${level.next - rival.games} to level ${level.level + 1}`
+                                                        : ""}
+                                                </small>
+                                            </div>
                                         </div>
                                         <button
                                             type="button"

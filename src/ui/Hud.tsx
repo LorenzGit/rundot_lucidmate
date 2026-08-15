@@ -1,7 +1,9 @@
 /**
  * In-match HUD: turn, helpers, promotion picker, results.
  */
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import lucidmateReactionStickers from "../assets/art/lucidmate-reaction-stickers.png";
+import lucidmateVictoryDuo from "../assets/art/lucidmate-victory-duo.png";
 import { audioManager } from "../audio/audioManager.ts";
 import { getRunController } from "../game/GameCanvas.tsx";
 import type { OpponentMode } from "../game/chess/game.ts";
@@ -16,7 +18,7 @@ import {
     startMatch,
 } from "../game/runController.ts";
 import { correspondence } from "../social/correspondence.ts";
-import { CHESS_REACTIONS, paceLabel } from "../social/model.ts";
+import { CHESS_REACTIONS, type CorrespondenceMatch, paceLabel } from "../social/model.ts";
 import { store, useStore } from "../state/store.ts";
 import { recordCompletedRun, rewardedAvailable, showRewarded } from "../systems/ads.ts";
 import { t } from "../systems/localization.ts";
@@ -24,6 +26,7 @@ import { PLACEMENT } from "../systems/monetization/config.ts";
 import { runtimeServices } from "../systems/runtimeServices.ts";
 import { saveSystem } from "../systems/save.ts";
 import { formatNumber } from "../systems/numberFormat.ts";
+import { dreamMastery } from "../systems/mastery.ts";
 import { copyPlainText } from "../systems/shareText.ts";
 import GearIcon from "./GearIcon.tsx";
 import SettingToggle from "./SettingToggle.tsx";
@@ -56,6 +59,43 @@ function ReactionIcon({ id }: { id: (typeof CHESS_REACTIONS)[number]["id"] }) {
         <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M19 8V4l-2 2a7 7 0 1 0 1.6 9M19 4h-4" />
         </svg>
+    );
+}
+
+function ReactionSticker({ id }: { id: (typeof CHESS_REACTIONS)[number]["id"] }) {
+    const index = Math.max(
+        0,
+        CHESS_REACTIONS.findIndex((reaction) => reaction.id === id),
+    );
+    return (
+        <span
+            className={`reaction-sticker sticker-${index}`}
+            style={{ backgroundImage: `url(${lucidmateReactionStickers})` }}
+            aria-hidden="true"
+        />
+    );
+}
+
+function IncomingReaction({ match }: { match: CorrespondenceMatch | null }) {
+    const [visibleAt, setVisibleAt] = useState<number | null>(null);
+    const reaction = match?.reaction ?? null;
+    const isMine = Boolean(reaction && match?.reactionUsedAtMove === reaction.moveCount);
+    useEffect(() => {
+        if (!reaction || isMine) return;
+        setVisibleAt(reaction.at);
+        const timeout = window.setTimeout(() => setVisibleAt(null), 5_000);
+        return () => window.clearTimeout(timeout);
+    }, [reaction, isMine]);
+    if (!reaction || isMine || visibleAt !== reaction.at) return null;
+    const label = CHESS_REACTIONS.find((entry) => entry.id === reaction.id)?.label ?? "Friendly reaction";
+    return (
+        <div className="incoming-reaction pointer-events-auto" role="status" aria-live="polite">
+            <ReactionSticker id={reaction.id} />
+            <span>
+                <small>{match?.opponent?.username ?? "Your rival"} reacted</small>
+                <strong>{label}</strong>
+            </span>
+        </div>
     );
 }
 
@@ -230,8 +270,13 @@ export default function Hud() {
                     <span className="online-banner-count">
                         {isCorrespondence ? (activeMatch?.color === turn ? "MOVE" : "WAIT") : `${onlinePlayerCount}/2`}
                     </span>
+                    {isCorrespondence && activeMatch?.lastMove && (
+                        <span className="online-banner-last">Move saved</span>
+                    )}
                 </div>
             )}
+
+            {isCorrespondence && <IncomingReaction match={activeMatch} />}
 
             {showOnlineWaitCard && (
                 <div className="online-wait-card pointer-events-auto" role="status">
@@ -354,6 +399,7 @@ export default function Hud() {
                                 }}
                             >
                                 <b>
+                                    <ReactionSticker id={reaction.id} />
                                     <ReactionIcon id={reaction.id} />
                                 </b>
                                 <small>{reaction.label}</small>
@@ -441,123 +487,179 @@ function ResultsCard() {
     const masteryBonusAuras = useStore((s) => s.masteryBonusAuras);
     const onlineExperience = useStore((s) => s.onlineExperience);
     const [busy, setBusy] = useState(false);
+    const matchesPlayed = useStore((state) => state.matchesPlayed);
+    const wins = useStore((state) => state.wins);
+    const capturesLifetime = useStore((state) => state.capturesLifetime);
+    const bestWinStreak = useStore((state) => state.bestWinStreak);
+    const mastery = dreamMastery({ matchesPlayed, wins, capturesLifetime, bestWinStreak });
     if (!summary) return null;
 
     const title = summary.result === "win" ? "You win" : summary.result === "loss" ? "You lose" : "Draw";
+    const isCheckmate = summary.status === "checkmate";
+    const outcomeTitle = isCheckmate && summary.result === "loss" ? "Rival wins" : title;
     const doubleOffered = !auraDoubled && summary.aurasEarned > 0 && rewardedAvailable(PLACEMENT.doubleAuras);
     const isOnline = opponentMode === "online";
     const isCorrespondence = isOnline && onlineExperience === "async";
 
     return (
-        <div className="modal-card pointer-events-auto results-card">
-            <p className="eyebrow">{summary.status}</p>
-            <h2>{title}</h2>
-            <dl className="results-grid">
-                <div>
-                    <dt>{t("LabelMoves")}</dt>
-                    <dd>{summary.movesPlayed}</dd>
-                </div>
-                <div>
-                    <dt>{t("LabelCaptures")}</dt>
-                    <dd>{summary.captures}</dd>
-                </div>
-                <div>
-                    <dt>{t("LabelChecks")}</dt>
-                    <dd>{summary.checksGiven}</dd>
-                </div>
-                <div>
-                    <dt>{t("LabelAuras")}</dt>
-                    <dd>+{auraDoubled ? summary.aurasEarned * 2 : summary.aurasEarned}</dd>
-                </div>
-                {masteryBonusAuras > 0 && (
-                    <div className="rank-reward">
-                        <dt>DREAM RANK</dt>
-                        <dd>+{formatNumber(masteryBonusAuras)}</dd>
-                    </div>
-                )}
-            </dl>
-
-            {doubleOffered && (
-                <button
-                    type="button"
-                    className="secondary-button"
-                    disabled={busy}
-                    onClick={() => {
-                        setBusy(true);
-                        void showRewarded(PLACEMENT.doubleAuras).then((result) => {
-                            setBusy(false);
-                            if (result !== "verified") {
-                                store.patch({ toast: t("AdUnavailable") });
-                                void runtimeServices.haptic("error");
-                                return;
-                            }
-                            const state = store.get();
-                            store.patch({
-                                auraDoubled: true,
-                                auras: state.auras + summary.aurasEarned,
-                            });
-                            void saveSystem.flush();
-                            audioManager.play("reward");
-                            void runtimeServices.haptic("success");
-                        });
-                    }}
-                >
-                    {busy ? t("AdLoading") : t("ResultsDoubleAuras", { auras: summary.aurasEarned })}
-                </button>
-            )}
-
-            {!isOnline && (
-                <button
-                    type="button"
-                    className="play-button"
-                    onClick={() => {
-                        audioManager.play("start");
-                        void runtimeServices.haptic("medium");
-                        recordCompletedRun();
-                        const state = store.get();
-                        store.patch({ matchSummary: null });
-                        startMatch({
-                            opponent: state.opponentMode,
-                            difficulty: state.difficulty,
-                            playerColor: state.playerColor,
-                        });
-                    }}
-                >
-                    {t("ResultsAgain")}
-                </button>
-            )}
-            {isCorrespondence && (
-                <button
-                    type="button"
-                    className="play-button"
-                    disabled={busy}
-                    onClick={() => {
-                        setBusy(true);
-                        audioManager.play("start");
-                        void runtimeServices.haptic("medium");
-                        void startCorrespondenceRematch().then((ok) => {
-                            setBusy(false);
-                            if (!ok) store.patch({ toast: "Could not open the rematch." });
-                        });
-                    }}
-                >
-                    {busy ? "OPENING REMATCH…" : "REMATCH"}
-                </button>
-            )}
-            <button
-                type="button"
-                className="secondary-button"
-                onClick={() => {
-                    tapFeedback();
-                    recordCompletedRun();
-                    if (isOnline) void leaveOnlineMatch();
-                    store.patch({ phase: "menu", menuScreen: "main", matchSummary: null });
-                    void saveSystem.flush();
-                }}
+        <>
+            <div className={`match-result-backdrop${isCheckmate ? " checkmate" : ""}`} aria-hidden="true" />
+            <div
+                className={`modal-card pointer-events-auto results-card${isCheckmate ? " checkmate-card" : ""}`}
+                role="alertdialog"
+                aria-modal="true"
+                aria-labelledby="match-result-title"
+                aria-describedby={isCheckmate ? "checkmate-explanation" : undefined}
+                data-testid={isCheckmate ? "checkmate-result" : "match-result"}
             >
-                {isCorrespondence ? "BACK TO YOUR GAMES" : t("ResultsLounge")}
-            </button>
-        </div>
+                <div className={`results-celebration ${summary.result}${isCheckmate ? " checkmate" : ""}`}>
+                    {isCheckmate && (
+                        <div className="checkmate-verdict">
+                            <span>GAME OVER</span>
+                            <strong>CHECKMATE!</strong>
+                            <small id="checkmate-explanation">The king has no legal escape. The game is over.</small>
+                        </div>
+                    )}
+                    <img src={lucidmateVictoryDuo} alt="" aria-hidden="true" />
+                    <div className="results-outcome">
+                        {!isCheckmate && <p className="eyebrow">{summary.status}</p>}
+                        <h2 id="match-result-title">{outcomeTitle}</h2>
+                        <span>
+                            {isCheckmate
+                                ? summary.result === "win"
+                                    ? "You trapped their king. Victory is yours!"
+                                    : "Your rival trapped the king. Good game!"
+                                : summary.result === "win"
+                                  ? "Brilliant board!"
+                                  : summary.result === "draw"
+                                    ? "A perfectly balanced dream."
+                                    : "Good game—your next idea is waiting."}
+                        </span>
+                    </div>
+                </div>
+                <div className="results-details">
+                    <dl className="results-grid">
+                        <div>
+                            <dt>{t("LabelMoves")}</dt>
+                            <dd>{summary.movesPlayed}</dd>
+                        </div>
+                        <div>
+                            <dt>{t("LabelCaptures")}</dt>
+                            <dd>{summary.captures}</dd>
+                        </div>
+                        <div>
+                            <dt>{t("LabelChecks")}</dt>
+                            <dd>{summary.checksGiven}</dd>
+                        </div>
+                        <div>
+                            <dt>{t("LabelAuras")}</dt>
+                            <dd>+{auraDoubled ? summary.aurasEarned * 2 : summary.aurasEarned}</dd>
+                        </div>
+                        {masteryBonusAuras > 0 && (
+                            <div className="rank-reward">
+                                <dt>DREAM RANK</dt>
+                                <dd>+{formatNumber(masteryBonusAuras)}</dd>
+                            </div>
+                        )}
+                    </dl>
+                    <div className="results-dream-progress">
+                        <span>
+                            <small>DREAM PATH</small>
+                            <strong>{mastery.rankName}</strong>
+                        </span>
+                        <progress value={mastery.progress} max={1} />
+                        <em>
+                            {mastery.nextRankName
+                                ? `${formatNumber(mastery.remaining)} to ${mastery.nextRankName}`
+                                : "Path complete"}
+                        </em>
+                    </div>
+
+                    <div className="results-actions">
+                        {doubleOffered && (
+                            <button
+                                type="button"
+                                className="secondary-button results-double"
+                                disabled={busy}
+                                onClick={() => {
+                                    setBusy(true);
+                                    void showRewarded(PLACEMENT.doubleAuras).then((result) => {
+                                        setBusy(false);
+                                        if (result !== "verified") {
+                                            store.patch({ toast: t("AdUnavailable") });
+                                            void runtimeServices.haptic("error");
+                                            return;
+                                        }
+                                        const state = store.get();
+                                        store.patch({
+                                            auraDoubled: true,
+                                            auras: state.auras + summary.aurasEarned,
+                                        });
+                                        void saveSystem.flush();
+                                        audioManager.play("reward");
+                                        void runtimeServices.haptic("success");
+                                    });
+                                }}
+                            >
+                                {busy ? t("AdLoading") : t("ResultsDoubleAuras", { auras: summary.aurasEarned })}
+                            </button>
+                        )}
+
+                        {!isOnline && (
+                            <button
+                                type="button"
+                                className="play-button results-primary"
+                                onClick={() => {
+                                    audioManager.play("start");
+                                    void runtimeServices.haptic("medium");
+                                    recordCompletedRun();
+                                    const state = store.get();
+                                    store.patch({ matchSummary: null });
+                                    startMatch({
+                                        opponent: state.opponentMode,
+                                        difficulty: state.difficulty,
+                                        playerColor: state.playerColor,
+                                    });
+                                }}
+                            >
+                                {t("ResultsAgain")}
+                            </button>
+                        )}
+                        {isCorrespondence && (
+                            <button
+                                type="button"
+                                className="play-button results-primary"
+                                disabled={busy}
+                                onClick={() => {
+                                    setBusy(true);
+                                    audioManager.play("start");
+                                    void runtimeServices.haptic("medium");
+                                    void startCorrespondenceRematch().then((ok) => {
+                                        setBusy(false);
+                                        if (!ok) store.patch({ toast: "Could not open the rematch." });
+                                    });
+                                }}
+                            >
+                                {busy ? "OPENING REMATCH…" : "REMATCH"}
+                            </button>
+                        )}
+                        <button
+                            type="button"
+                            className="secondary-button results-exit"
+                            onClick={() => {
+                                tapFeedback();
+                                recordCompletedRun();
+                                if (isOnline) void leaveOnlineMatch();
+                                store.patch({ phase: "menu", menuScreen: "main", matchSummary: null });
+                                void saveSystem.flush();
+                            }}
+                        >
+                            {isCorrespondence ? "BACK TO YOUR GAMES" : t("ResultsLounge")}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </>
     );
 }
 
