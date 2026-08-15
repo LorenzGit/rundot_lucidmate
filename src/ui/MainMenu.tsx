@@ -1,5 +1,7 @@
 import packageJson from "../../package.json";
 import { useEffect, useState } from "react";
+import lucidmateFriendsBoard from "../assets/art/lucidmate-friends-board.png";
+import lucidmateRookbot from "../assets/art/lucidmate-rookbot.png";
 import { audioManager } from "../audio/audioManager.ts";
 import { canUseAuthoritativeRealtime } from "../game/chess/onlineClient.ts";
 import { GAME_NAME } from "../game/constants.ts";
@@ -16,6 +18,7 @@ import { paceLabel } from "../social/model.ts";
 import { rivalsClient } from "../social/rivalsClient.ts";
 import { store, useStore } from "../state/store.ts";
 import { dailySystems } from "../systems/dailySystems.ts";
+import { formatNumber } from "../systems/numberFormat.ts";
 import { updateNotificationPreference } from "../systems/notificationPreference.ts";
 import { runtimeServices } from "../systems/runtimeServices.ts";
 import GearIcon from "./GearIcon.tsx";
@@ -47,18 +50,6 @@ function cue(action: () => void): void {
     });
 }
 
-function CpuIcon() {
-    return (
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-            <rect x="5" y="6" width="14" height="12" rx="3" />
-            <path d="M9 3v3M15 3v3M9 18v3M15 18v3M2 10h3M19 10h3M2 14h3M19 14h3" />
-            <circle cx="9.5" cy="11.5" r="1" />
-            <circle cx="14.5" cy="11.5" r="1" />
-            <path d="M9 15h6" />
-        </svg>
-    );
-}
-
 function JoinIcon() {
     return (
         <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -72,6 +63,15 @@ function BellIcon() {
         <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M6 10a6 6 0 0 1 12 0v4l2 3H4l2-3Z" />
             <path d="M10 20h4" />
+        </svg>
+    );
+}
+
+function AuraIcon() {
+    return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m12 2.5 6.8 4.2L21 14l-9 7.5L3 14l2.2-7.3Z" />
+            <path d="m5.2 6.7 6.8 7.8 6.8-7.8M3 14h18M12 2.5v12" />
         </svg>
     );
 }
@@ -111,31 +111,61 @@ function matchStatus(match: CorrespondenceMatch, yourMove: boolean): string {
     return match.phase === "over" ? "FINAL" : "WAITING";
 }
 
+function openMatch(match: CorrespondenceMatch): void {
+    cue(() => store.patch({ socialBusy: true }));
+    void (match.incoming ? rivalsClient.accept(match.matchKey) : Promise.resolve(true))
+        .then((accepted) =>
+            accepted
+                ? startCorrespondenceMatch({
+                      matchKey: match.matchKey,
+                      pace: match.pace,
+                      roomCode: match.roomCode,
+                  })
+                : false,
+        )
+        .then((ok) => {
+            if (!ok) store.patch({ socialBusy: false });
+        });
+}
+
+function TurnSpotlight({ matches }: { matches: CorrespondenceMatch[] }) {
+    const primary = matches[0];
+    if (!primary) return null;
+    const opponent = primary.opponent?.username ?? "your friend";
+    return (
+        <button
+            type="button"
+            className="turn-spotlight"
+            data-testid="turn-waiting-hero"
+            onClick={() => openMatch(primary)}
+        >
+            <span className="turn-spotlight-board" aria-hidden="true">
+                <MiniBoard match={primary} />
+                <i>{matches.length}</i>
+            </span>
+            <span className="turn-spotlight-copy">
+                <small>{matches.length === 1 ? "1 BOARD NEEDS YOU" : `${matches.length} BOARDS NEED YOU`}</small>
+                <strong>{primary.unavailable ? "RECONNECT TO PLAY" : "YOUR TURN"}</strong>
+                <em>
+                    {matches.length === 1 ? opponent : `First: ${opponent}`} · {dueCopy(primary)}
+                </em>
+            </span>
+            <span className="turn-spotlight-cta">
+                PLAY NOW <b aria-hidden="true">›</b>
+            </span>
+        </button>
+    );
+}
+
 function MatchCard({ match, onManage }: { match: CorrespondenceMatch; onManage: () => void }) {
     const yourMove = match.phase === "playing" && match.color === match.turn;
     const status = matchStatus(match, yourMove);
-    const open = () => {
-        cue(() => store.patch({ socialBusy: true }));
-        void (match.incoming ? rivalsClient.accept(match.matchKey) : Promise.resolve(true))
-            .then((accepted) =>
-                accepted
-                    ? startCorrespondenceMatch({
-                          matchKey: match.matchKey,
-                          pace: match.pace,
-                          roomCode: match.roomCode,
-                      })
-                    : false,
-            )
-            .then((ok) => {
-                if (!ok) store.patch({ socialBusy: false });
-            });
-    };
     return (
         <article
             className={`inbox-match${yourMove ? " your-move" : ""}${match.unavailable ? " unavailable" : ""}`}
             data-match-key={match.matchKey}
         >
-            <button type="button" className="inbox-match-open" onClick={open}>
+            <button type="button" className="inbox-match-open" onClick={() => openMatch(match)}>
                 <MiniBoard match={match} />
                 <span className="inbox-match-copy">
                     <small>{status}</small>
@@ -343,7 +373,12 @@ export default function MainMenu() {
     const [managedMatchKey, setManagedMatchKey] = useState<string | null>(null);
     const [notificationBusy, setNotificationBusy] = useState(false);
     const matches = state.correspondenceMatches;
-    const yourMove = matches.filter((match) => match.phase === "playing" && match.color === match.turn);
+    const yourMove = matches
+        .filter((match) => match.phase === "playing" && match.color === match.turn)
+        .sort(
+            (left, right) =>
+                (left.deadlineAt ?? Number.POSITIVE_INFINITY) - (right.deadlineAt ?? Number.POSITIVE_INFINITY),
+        );
     const waiting = matches.filter(
         (match) => match.phase === "waiting" || (match.phase === "playing" && match.color !== match.turn),
     );
@@ -403,22 +438,41 @@ export default function MainMenu() {
     };
 
     return (
-        <main className="dream-menu inbox-menu pt-safe-top pb-safe-bottom" data-testid="main-menu">
+        <main
+            className={`dream-menu inbox-menu pt-safe-top pb-safe-bottom${yourMove.length ? " has-turns" : ""}`}
+            data-testid="main-menu"
+        >
             <header className="dream-topbar inbox-topbar">
                 <div className="dream-wordmark">
-                    <span>CHESS, TOGETHER</span>
+                    <span>CHESS WITH FRIENDS</span>
                     <h1>{GAME_NAME}</h1>
                 </div>
-                <small className="inbox-version">v{packageJson.version}</small>
+                <div className="lobby-meta">
+                    <button
+                        type="button"
+                        className="lobby-wallet"
+                        aria-label={`${formatNumber(state.auras)} auras. Open Store.`}
+                        onClick={() => cue(() => store.patch({ menuScreen: "lounge" }))}
+                    >
+                        <span>
+                            <AuraIcon />
+                        </span>
+                        <strong>{formatNumber(state.auras)}</strong>
+                        <b aria-hidden="true">+</b>
+                    </button>
+                    <small className="inbox-version">v{packageJson.version}</small>
+                </div>
             </header>
+
+            <TurnSpotlight matches={yourMove} />
 
             <button
                 type="button"
                 className="cpu-hero"
                 onClick={() => cue(() => store.patch({ menuScreen: "practice" }))}
             >
-                <span className="cpu-hero-icon">
-                    <CpuIcon />
+                <span className="cpu-hero-art" aria-hidden="true">
+                    <img src={lucidmateRookbot} alt="" />
                 </span>
                 <div>
                     <p>PLAY THE COMPUTER</p>
@@ -537,12 +591,7 @@ export default function MainMenu() {
                     </div>
                 ) : (
                     <div className="inbox-empty">
-                        <span className="empty-board-mark" aria-hidden="true">
-                            <i />
-                            <i />
-                            <i />
-                            <i />
-                        </span>
+                        <img className="inbox-empty-art" src={lucidmateFriendsBoard} alt="" aria-hidden="true" />
                         <div>
                             <strong>No friend games yet</strong>
                             <p>Challenge someone, or play the computer above.</p>
@@ -559,7 +608,11 @@ export default function MainMenu() {
                 <span className="daily-beacon-orbit" aria-hidden="true" />
                 <span>
                     <small>DAILY DREAM</small>
-                    <strong>{reward.claimed ? "Keep today's streak alive" : `${reward.reward} auras are ready`}</strong>
+                    <strong>
+                        {reward.claimed
+                            ? "Keep today's streak alive"
+                            : `${formatNumber(reward.reward)} auras are ready`}
+                    </strong>
                 </span>
                 <b aria-hidden="true">›</b>
             </button>
@@ -573,7 +626,12 @@ export default function MainMenu() {
                         ["settings", "settings", "Settings"],
                     ] as const
                 ).map(([screen, icon, label]) => (
-                    <button key={screen} type="button" onClick={() => cue(() => store.patch({ menuScreen: screen }))}>
+                    <button
+                        key={screen}
+                        type="button"
+                        data-testid={`dock-${screen}`}
+                        onClick={() => cue(() => store.patch({ menuScreen: screen }))}
+                    >
                         <span>
                             <NavIcon name={icon} />
                         </span>

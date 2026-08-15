@@ -177,11 +177,15 @@ for (const recipe of [
     assert.ok(inbox.templates[effect.template], `${recipe} references a shipped inbox template`);
     assert.equal(effect.payload.route, "match", `${recipe} deep-links to a match`);
     assert.equal(effect.payload.matchKey, "{{inputs.matchKey}}", `${recipe} routes to the exact board`);
-    assert.equal(effect.roomNotification.roomId, "{{inputs.matchKey}}", `${recipe} persists against the exact board`);
     assert.equal(
-        effect.roomNotification.notificationKey,
-        "{{inputs.eventKey}}",
-        `${recipe} deduplicates the exact event`,
+        "roomNotification" in effect,
+        false,
+        `${recipe} must stay compatible with the released SDK 5.24 push-only recipe schema`,
+    );
+    assert.equal(
+        "saveToInbox" in effect,
+        false,
+        `${recipe} cannot request the inbox persistence contract before Venus #3849`,
     );
     assert.equal(
         "inputs" in config.recipes[recipe],
@@ -190,4 +194,4 @@ for (const recipe of [
     );
 }
 
-console.log("room notifications: protected push delivery, exact-board routing, one reaction per turn");
+console.log("room notifications: SDK 5.24 push delivery, exact-board routing, one reaction per turn");

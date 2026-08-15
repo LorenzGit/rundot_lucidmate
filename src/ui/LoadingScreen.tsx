@@ -2,6 +2,7 @@
  * Calm branded loading — wordmark + progress, no busy motif.
  */
 import { GAME_NAME, GAME_TAGLINE } from "../game/constants.ts";
+import lucidmateMascots from "../assets/art/lucidmate-mascots.png";
 import { useStore } from "../state/store.ts";
 import { t } from "../systems/localization.ts";
 
@@ -11,7 +12,7 @@ export default function LoadingScreen() {
     return (
         <main className="loading-screen pt-safe-top pb-safe-bottom">
             <div className="loading-mark" aria-hidden="true">
-                <span className="loading-knight" />
+                <img className="loading-mascots" src={lucidmateMascots} alt="" />
             </div>
             <div className="loading-title">
                 <strong>{GAME_NAME}</strong>

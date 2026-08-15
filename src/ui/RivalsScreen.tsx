@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import lucidmateFriendsBoard from "../assets/art/lucidmate-friends-board.png";
+import lucidmateRookbot from "../assets/art/lucidmate-rookbot.png";
 import { audioManager } from "../audio/audioManager.ts";
 import { canUseAuthoritativeRealtime } from "../game/chess/onlineClient.ts";
 import { challengeRival } from "../game/runController.ts";
@@ -37,35 +39,6 @@ function PlayerAvatar({ player }: { player: RivalIdentity }) {
             )}
             <i aria-hidden="true" />
         </span>
-    );
-}
-
-function RivalPartyGraphic() {
-    return (
-        <svg className="rival-party-graphic" viewBox="0 0 150 104" aria-hidden="true">
-            <path className="rival-party-orbit" d="M27 63c20-35 73-47 99-17" />
-            <circle className="rival-party-spark spark-one" cx="76" cy="18" r="4" />
-            <path
-                className="rival-party-spark spark-two"
-                d="m119 16 2.2 5 5.2 2.2-5.2 2.2-2.2 5-2.2-5-5.2-2.2 5.2-2.2z"
-            />
-            <path
-                className="rival-party-spark spark-three"
-                d="m34 20 1.4 3.2 3.3 1.4-3.3 1.4-1.4 3.2-1.4-3.2-3.3-1.4 3.3-1.4z"
-            />
-            <g className="rival-party-piece piece-one">
-                <circle cx="46" cy="58" r="28" />
-                <path d="M34 75h26M37 69h20l-3.5-9.2c4-3.2 5.5-8.4 3.8-13.4C55.7 41.8 51.2 39 46 39s-9.7 2.8-11.3 7.4c-1.7 5 .1 10.5 4.1 13.7z" />
-                <circle cx="41.5" cy="50" r="1.7" />
-                <circle cx="50.5" cy="50" r="1.7" />
-                <path d="M42 55.5c2.4 2 5.6 2 8 0" />
-            </g>
-            <g className="rival-party-piece piece-two">
-                <circle cx="106" cy="66" r="30" />
-                <path d="M91 83h31M94 76h25l-2.2-8.3c-1.2-4.8-5.1-8.4-10-9.3l-5-1 7.4-5.7-3-8.7-6.1 4.7-6.4-1.5 1.8 6.3c-5 3-7.1 8.1-5.5 14l1.4 5" />
-                <circle cx="103.5" cy="50.5" r="1.8" />
-            </g>
-        </svg>
     );
 }
 
@@ -156,7 +129,7 @@ export default function RivalsScreen() {
             <div className="rival-directory">
                 <section className="rival-how-it-works social-panel">
                     <div className="rival-party-art">
-                        <RivalPartyGraphic />
+                        <img src={lucidmateFriendsBoard} alt="" aria-hidden="true" />
                     </div>
                     <div className="rival-party-copy">
                         <span>YOUR NEXT GAME</span>
@@ -233,9 +206,19 @@ export default function RivalsScreen() {
                                     onChallenge={() => challenge(player)}
                                 />
                             ))}
-                            {onlineReady && directoryStatus === "ready" && recommendations.length === 0 && (
-                                <div className="rival-inline-empty">
-                                    You’re early. Another Lucidmate player will appear here after they visit.
+                            {recommendations.length === 0 && (
+                                <div className="rival-inline-empty rival-empty-cute">
+                                    <img src={lucidmateRookbot} alt="" aria-hidden="true" />
+                                    <div>
+                                        <strong>
+                                            {onlineReady ? "New rivals will appear here." : "Meet players in RUN."}
+                                        </strong>
+                                        <span>
+                                            {onlineReady
+                                                ? "Invite a friend while the rookbot keeps watch."
+                                                : "Open Lucidmate in RUN to search and send a challenge."}
+                                        </span>
+                                    </div>
                                 </div>
                             )}
                         </div>

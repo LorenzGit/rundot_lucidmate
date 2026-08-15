@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { normalizeLaunchParams } from "../src/sdk/launchParams.ts";
 import { createPurchaseCoordinator } from "../src/systems/monetization/purchaseCoordinator.ts";
 import { createReturnReminders } from "../src/systems/retention/returnReminders.ts";
 
@@ -33,6 +34,21 @@ assert.deepEqual(scheduled, ["lucidmate-d1", "lucidmate-d2", "lucidmate-d3"]);
 await reminders.cancelAll();
 assert.deepEqual(cancelled, ["lucidmate-d1", "lucidmate-d2", "lucidmate-d3"]);
 assert.equal(await reminders.resolveLaunch(), "d2", "notification launch resolves its reminder id");
+assert.deepEqual(
+    normalizeLaunchParams({ payload: '{"route":"match","matchKey":"lm-notify-001","pace":"daily"}' }),
+    {
+        payload: '{"route":"match","matchKey":"lm-notify-001","pace":"daily"}',
+        route: "match",
+        matchKey: "lm-notify-001",
+        pace: "daily",
+    },
+    "SDK 5.24 recipe push payloads reopen their exact correspondence board",
+);
+assert.deepEqual(
+    normalizeLaunchParams({ payload: "not-json", matchKey: "lm-direct-001" }),
+    { payload: "not-json", matchKey: "lm-direct-001" },
+    "malformed nested payloads fail soft without losing direct launch params",
+);
 
 let pending: {
     intentId: string;

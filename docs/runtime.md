@@ -75,11 +75,12 @@ autoplay. These are browser features, not additional SDK namespaces.
 - The Settings five-second alert uses typed local `submitMessageAsync` and
   proves only permission/scheduling on that phone. Accepted correspondence
   moves and reactions await a protected `send_inbox_message` recipe targeting
-  the server-validated rival. Before Venus #3849, that effect sends the plain
-  remote push and safely ignores the extra `roomNotification` context. Once
-  #3849 is deployed, the same exact-match and event-key metadata also creates a
-  durable, deep-linked RUN inbox row. Delivery failure is logged and never
-  rolls back the move. Real push still requires two RUN identities and a
+  the server-validated rival. Before Venus #3849, that effect must use the
+  released push-only schema: `roomNotification` and `saveToInbox` are omitted.
+  SDK 5.24 wraps deep-link fields in a JSON `payload`, which the client
+  normalizes on launch. Once #3849 is deployed, explicit room context may be
+  added for a durable RUN inbox row. Delivery failure is logged and never rolls
+  back the move. Real push still requires two RUN identities and a
   disconnected-device test.
 - Haptics are optional feedback and never the only feedback.
 - Haptics use root `triggerHapticAsync()` plus

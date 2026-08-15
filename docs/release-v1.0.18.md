@@ -46,3 +46,11 @@ adds native room notification delivery with a protected offline fallback, and
 replaces duplicate-session failures with bounded automatic saved-board recovery.
 The settings notification test previously proved the RUN-to-APNs path; a real
 move/reaction delivery still requires a two-identity physical-device check.
+
+## Post-release finding
+
+The required two-identity device test failed. The offline fallback included
+`roomNotification`, a contract that is not present in released SDK 5.24 and is
+part of the unmerged Venus #3849 work. The next patch removes those future-only
+fields, keeps the fallback on the documented push-only recipe contract, and
+normalizes SDK 5.24's nested notification payload for exact-board reopening.

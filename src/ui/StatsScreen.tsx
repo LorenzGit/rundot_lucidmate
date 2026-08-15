@@ -17,7 +17,7 @@ export default function StatsScreen() {
 
     return (
         <MenuScreenLayout kicker={t("KickerStats")} title={t("MenuStats")}>
-            <p className="lounge-auras">{t("StatsBody")}</p>
+            <p className="screen-copy small">{t("StatsBody")}</p>
             <ul className="stats-list">
                 {rows.map(([label, value]) => (
                     <li key={label}>

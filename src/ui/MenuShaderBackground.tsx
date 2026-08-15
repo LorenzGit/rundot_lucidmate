@@ -27,18 +27,18 @@ void main() {
 
     vec2 cells = floor((warped + vec2(2.5)) * 6.0);
     float tile = mod(cells.x + cells.y, 2.0);
-    vec3 ink = vec3(0.027, 0.071, 0.078);
-    vec3 slate = vec3(0.075, 0.145, 0.145);
+    vec3 ink = vec3(0.018, 0.11, 0.075);
+    vec3 slate = vec3(0.035, 0.25, 0.18);
     vec3 color = mix(ink, slate, tile);
 
     float gold = 0.5 + 0.5 * sin((warped.x + warped.y) * 3.4 - t * 1.2);
     float teal = 0.5 + 0.5 * sin((warped.x - warped.y) * 4.0 + t);
-    color += vec3(0.17, 0.105, 0.018) * pow(gold, 5.0);
-    color += vec3(0.015, 0.12, 0.105) * pow(teal, 6.0);
+    color += vec3(0.15, 0.08, 0.015) * pow(gold, 5.0);
+    color += vec3(0.01, 0.08, 0.07) * pow(teal, 6.0);
 
     float vignette = smoothstep(0.93, 0.2, length((uv - 0.5) * vec2(0.82, 1.0)));
-    color *= 0.58 + 0.42 * vignette;
-    color += (hash(gl_FragCoord.xy + floor(u_time * 8.0)) - 0.5) * 0.018;
+    color *= 0.55 + 0.45 * vignette;
+    color += (hash(gl_FragCoord.xy + floor(u_time * 8.0)) - 0.5) * 0.009;
     gl_FragColor = vec4(color, 1.0);
 }`;
 

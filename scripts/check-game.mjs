@@ -219,6 +219,11 @@ for (const [recipeId, recipe] of Object.entries(socialNotifications.recipes ?? {
         !("inputs" in recipe),
         `${recipeId} message parameters must not be declared as simulation inventory entities`,
     );
+    const effect = recipe.beginEffects?.[0] ?? {};
+    expect(
+        !("roomNotification" in effect) && !("saveToInbox" in effect),
+        `${recipeId} must use the released SDK 5.24 push-only recipe schema until Venus #3849 ships`,
+    );
 }
 expect(
     /this\.reaction\.moveCount === this\.moveCount/.test(roomServer) && /color !== this\.turn/.test(roomServer),

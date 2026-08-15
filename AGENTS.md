@@ -21,5 +21,7 @@ Full gate: `npm run check`.
 ## Notes
 
 - RUN game ID: `RuE1GRalg9GejuPtJD6t`.
-- No image/font/audio files ship; everything is procedural.
+- Chess pieces, board effects, UI decoration, and audio remain procedural.
+  Project-owned Codex-generated PNG illustrations may support menus when the
+  owner explicitly requests them.
 - Use `npm install --cache /tmp/<dir>` if the default npm cache is root-owned.

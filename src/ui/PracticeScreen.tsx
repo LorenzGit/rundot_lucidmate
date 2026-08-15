@@ -1,3 +1,4 @@
+import lucidmateRookbot from "../assets/art/lucidmate-rookbot.png";
 import { audioManager } from "../audio/audioManager.ts";
 import { startMatch } from "../game/runController.ts";
 import { store, useStore } from "../state/store.ts";
@@ -30,7 +31,7 @@ export default function PracticeScreen() {
         startMatch({ opponent: "ai", difficulty, playerColor });
     };
     return (
-        <MenuScreenLayout kicker="PRIVATE BOARD" title="Practice chess">
+        <MenuScreenLayout kicker="PRIVATE BOARD" title="Practice chess" artSrc={lucidmateRookbot} artVariant="rookbot">
             <section className="social-panel practice-panel">
                 <div className="social-section-title">
                     <p>AI DIFFICULTY</p>

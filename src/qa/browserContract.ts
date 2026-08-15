@@ -5,7 +5,7 @@ import { getChessScene, getRunController } from "../game/GameCanvas.tsx";
 import { canUseAuthoritativeRealtime, onlineChess } from "../game/chess/onlineClient.ts";
 import { leaveOnlineMatch, startCorrespondenceMatch, startOnlineMatch } from "../game/runController.ts";
 import { correspondence } from "../social/correspondence.ts";
-import { store } from "../state/store.ts";
+import { type MenuScreen, store } from "../state/store.ts";
 
 export function installBrowserQaContract(): void {
     if (!import.meta.env.DEV) return;
@@ -81,8 +81,68 @@ export function installBrowserQaContract(): void {
         forceMenu() {
             store.patch({ phase: "menu", menuScreen: "main", matchSummary: null });
         },
-        openMenu(screen: "main" | "rivals") {
+        openMenu(screen: MenuScreen) {
             store.patch({ phase: "menu", menuScreen: screen, matchSummary: null });
+        },
+        previewLoading() {
+            store.patch({ phase: "loading", loadProgress: 0.68 });
+        },
+        previewLobbyTurns() {
+            const now = Date.now();
+            store.patch({
+                phase: "menu",
+                menuScreen: "main",
+                matchSummary: null,
+                notificationsConsent: "granted",
+                correspondenceMatches: [
+                    {
+                        matchKey: "lm-preview-your-move-001",
+                        pace: "daily",
+                        phase: "playing",
+                        color: "w",
+                        opponent: { id: "rival-mira", username: "Mira", avatarUrl: null },
+                        turn: "w",
+                        roomCode: "DREAM1",
+                        deadlineAt: now + 7 * 3_600_000,
+                        updatedAt: now,
+                        moveCount: 18,
+                        lastMove: { from: 21, to: 36 },
+                        result: null,
+                        reason: null,
+                        reaction: null,
+                        reactionUsedAtMove: null,
+                        rematchKey: null,
+                        credited: false,
+                        reactionsMuted: false,
+                        unavailable: false,
+                        incoming: false,
+                        challenger: false,
+                    },
+                    {
+                        matchKey: "lm-preview-waiting-002",
+                        pace: "relaxed",
+                        phase: "playing",
+                        color: "b",
+                        opponent: { id: "rival-orion", username: "Orion", avatarUrl: null },
+                        turn: "w",
+                        roomCode: "COSMOS",
+                        deadlineAt: now + 2 * 86_400_000,
+                        updatedAt: now - 3_600_000,
+                        moveCount: 11,
+                        lastMove: { from: 52, to: 36 },
+                        result: null,
+                        reason: null,
+                        reaction: null,
+                        reactionUsedAtMove: null,
+                        rematchKey: null,
+                        credited: false,
+                        reactionsMuted: false,
+                        unavailable: false,
+                        incoming: false,
+                        challenger: false,
+                    },
+                ],
+            });
         },
         previewLocalGame() {
             store.patch({

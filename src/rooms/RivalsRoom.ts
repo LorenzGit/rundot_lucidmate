@@ -57,7 +57,7 @@ export default class RivalsRoom extends GameRoom<RivalsProtocol> {
 
     onPlayerLeave(_player: Player, _reason: LeaveReason): void {}
 
-    onGameMessage(message: GameMessage<RivalsProtocol>): void {
+    async onGameMessage(message: GameMessage<RivalsProtocol>): Promise<void> {
         const { sender, payload } = message;
         if (!sender.connected) return;
         const profile = this.profiles.get(sender.id);
@@ -75,7 +75,7 @@ export default class RivalsRoom extends GameRoom<RivalsProtocol> {
                 this.sendDirectory(sender.id, payload.query);
                 return;
             case "challenge":
-                this.handleChallenge(sender, payload);
+                await this.handleChallenge(sender, payload);
                 return;
             case "acceptChallenge":
                 this.removeInvitation(sender.id, payload.matchKey, true);
@@ -146,7 +146,10 @@ export default class RivalsRoom extends GameRoom<RivalsProtocol> {
         });
     }
 
-    private handleChallenge(sender: Player, payload: Extract<RivalsProtocol, { type: "challenge" }>): void {
+    private async handleChallenge(
+        sender: Player,
+        payload: Extract<RivalsProtocol, { type: "challenge" }>,
+    ): Promise<void> {
         const fail = (reason: string) =>
             this.sendTo(sender.id, { type: "error", requestId: payload.requestId.slice(0, 80), reason });
         if (payload.targetProfileId === sender.id) {
@@ -194,19 +197,19 @@ export default class RivalsRoom extends GameRoom<RivalsProtocol> {
 
         // The trusted room validated both identities and the durable invite.
         // This keeps arbitrary notification targets out of client control.
-        void this.services.simulation
-            .executeRecipe(sender.id, "lucidmate_send_challenge_notification", {
+        try {
+            await this.services.simulation.executeRecipe(sender.id, "lucidmate_send_challenge_notification", {
                 targetId: target.id,
                 matchKey: invitation.matchKey,
                 pace: invitation.pace,
                 eventKey: `challenge_${invitation.matchKey}`,
-            })
-            .catch((error: unknown) =>
-                this.log.warn("challenge notification unavailable", {
-                    target: target.id,
-                    error: error instanceof Error ? error.message : String(error),
-                }),
-            );
+            });
+        } catch (error) {
+            this.log.warn("challenge notification unavailable", {
+                target: target.id,
+                error: error instanceof Error ? error.message : String(error),
+            });
+        }
 
         this.sendTo(sender.id, {
             type: "challengeSent",

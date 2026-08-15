@@ -176,6 +176,13 @@ function assert(cond, msg) {
     const mainMenu = fs.readFileSync(path.join(root, "src/ui/MainMenu.tsx"), "utf8");
     assert(/PLAY THE COMPUTER/.test(mainMenu), "main menu exposes CPU play as a primary action");
     assert(/Start a solo game/.test(mainMenu), "main menu names the solo CPU action plainly");
+    assert(/CHESS WITH FRIENDS/.test(mainMenu), "main menu states its social purpose plainly");
+    assert(/className="lobby-wallet"/.test(mainMenu), "main menu exposes the aura balance in its top bar");
+    assert(/formatNumber\(state\.auras\)/.test(mainMenu), "lobby aura balance uses locale-aware formatting");
+    assert(/data-testid="turn-waiting-hero"/.test(mainMenu), "a waiting turn is promoted above lobby actions");
+    assert(/1 BOARD NEEDS YOU/.test(mainMenu), "turn spotlight explains why it needs attention");
+    assert(/YOUR TURN/.test(mainMenu), "turn spotlight states turn ownership plainly");
+    assert(/PLAY NOW/.test(mainMenu), "turn spotlight has an explicit continuation action");
     assert(/JOIN WITH CODE/.test(mainMenu), "main menu exposes room-code joining plainly");
     assert(
         /onlineReady \? "ENTER CODE" : "OPEN IN RUN TO JOIN"/.test(mainMenu),
@@ -191,6 +198,7 @@ function assert(cond, msg) {
     assert(/inbox-match-manage/.test(mainMenu), "saved-board management is directly discoverable");
     assert(/data-match-key=/.test(mainMenu), "saved-board controls remain uniquely addressable");
     assert(/\["lounge", "store", "Store"\]/.test(mainMenu), "main dock exposes the cosmetic Store");
+    assert(!/\["main", "home", "Home"\]/.test(mainMenu), "main dock omits the redundant Home destination");
     assert(/Finish turn-alert setup/.test(mainMenu), "turn alerts default to setup instead of an off state");
     const stateStore = fs.readFileSync(path.join(root, "src/state/store.ts"), "utf8");
     const save = fs.readFileSync(path.join(root, "src/systems/save.ts"), "utf8");
@@ -208,14 +216,19 @@ function assert(cond, msg) {
         /\.menu-shader\s*\{/.test(css) && /<MenuShaderBackground/.test(app),
         "menus mount a dedicated checkerboard shader layer",
     );
-    assert(
-        /\.challenge-orbit\s*>\s*svg\s*\{[^}]*width:\s*38px[^}]*height:\s*38px/.test(css),
-        "challenge knight uses an explicitly sized vector icon",
-    );
+    assert(/\.challenge-hero-art\s*\{[^}]*object-fit:\s*contain/.test(css), "challenge art preserves its aspect ratio");
     assert(
         /\.inbox-list:not\(\.empty\) \.inbox-match-stack\s*\{[^}]*grid-auto-rows:\s*66px/.test(css),
         "one saved board stays a compact row instead of stretching",
     );
+    assert(/\.turn-spotlight\s*\{[^}]*min-height:\s*92px/.test(css), "turn spotlight has primary-card height");
+    assert(/\.inbox-menu\.has-turns \.cpu-hero\s*\{/.test(css), "solo play yields hierarchy when a turn waits");
+    assert(
+        /\.inbox-dock\s*\{[^}]*grid-template-columns:\s*repeat\(4,/.test(css),
+        "main dock uses four useful destinations",
+    );
+    assert(/\.subscreen-mascots\s*\{/.test(css), "secondary screens share Lucidmate mascot art");
+    assert(/--accent:\s*#168451/.test(css), "lobby uses the intentional green casual palette");
 
     const hud = fs.readFileSync(path.join(root, "src/ui/Hud.tsx"), "utf8");
     assert(/headline: "YOUR TURN"/.test(hud), "HUD explicitly identifies the player's turn");

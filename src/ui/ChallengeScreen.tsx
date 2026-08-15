@@ -1,4 +1,5 @@
 import { useState } from "react";
+import lucidmateFriendsBoard from "../assets/art/lucidmate-friends-board.png";
 import { audioManager } from "../audio/audioManager.ts";
 import { canUseAuthoritativeRealtime } from "../game/chess/onlineClient.ts";
 import { startCorrespondenceMatch } from "../game/runController.ts";
@@ -12,15 +13,6 @@ const paces = [
     { id: "daily" as const, label: "Daily", time: "24 hours per move", copy: "A steady game that keeps momentum." },
     { id: "relaxed" as const, label: "Relaxed", time: "3 days per move", copy: "Plenty of room for busy weeks." },
 ];
-
-function ChallengeKnightIcon() {
-    return (
-        <svg viewBox="0 0 32 32" aria-hidden="true">
-            <path d="M8 25h17M10 22h13l-1.2-4.1c-.7-2.4-2.6-4.2-5-4.8l-2.4-.7 3.7-2.9-1.5-4.4-3.1 2.4-3.2-.8.9 3.2C8.7 11.4 7.7 14 8.5 17l.7 2.5" />
-            <circle cx="15.3" cy="8.5" r="1" />
-        </svg>
-    );
-}
 
 export default function ChallengeScreen() {
     const [pace, setPace] = useState<CorrespondencePace>("daily");
@@ -45,9 +37,7 @@ export default function ChallengeScreen() {
     return (
         <MenuScreenLayout kicker="NEW MATCH" title="Challenge a friend">
             <section className="challenge-hero social-panel">
-                <span className="challenge-orbit" aria-hidden="true">
-                    <ChallengeKnightIcon />
-                </span>
+                <img className="challenge-hero-art" src={lucidmateFriendsBoard} alt="" aria-hidden="true" />
                 <div>
                     <p>CORRESPONDENCE CHESS</p>
                     <h3>Your friend gets the first move.</h3>

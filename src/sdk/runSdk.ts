@@ -20,6 +20,7 @@ import type {
 // erased at build time, so no extra runtime code is pulled in.
 import { HapticFeedbackStyle } from "@series-inc/rundot-game-sdk";
 import RundotGameAPI from "@series-inc/rundot-game-sdk/api";
+import { normalizeLaunchParams } from "./launchParams.ts";
 import { audioManager } from "../audio/audioManager.ts";
 import { safeAreaOffsetsForFrame } from "./safeArea.ts";
 
@@ -854,7 +855,7 @@ export async function resolveLaunchIntent(): Promise<{ kind: string; params: Rec
     try {
         const intent = await RundotGameAPI.app.resolveLaunchIntent({ maxWaitMs: 800 });
         if (!intent || intent.kind === "timed_out") return null;
-        return { kind: intent.kind, params: intent.params ?? {} };
+        return { kind: intent.kind, params: normalizeLaunchParams(intent.params ?? {}) };
     } catch {
         return null;
     }

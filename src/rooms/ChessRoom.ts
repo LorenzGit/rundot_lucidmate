@@ -541,10 +541,9 @@ export default class ChessRoom extends GameRoom<ChessProtocol> {
         }
 
         try {
-            // A protected server recipe can always target the validated rival,
-            // including after their live room membership has expired. Existing
-            // servers send the plain push; Venus #3849 additionally persists the
-            // supplied room context as a deep-linked inbox row.
+            // The SDK 5.24 protected recipe can target the validated rival even
+            // after live room membership expires. Keep its effect strictly on
+            // the released push-only schema until Venus #3849 is available.
             await this.services.simulation.executeRecipe(actor, recipe, {
                 targetId: recipient,
                 matchKey: this.matchKey,

@@ -2,6 +2,7 @@
  * Theme lounge — buy/select trip skins with auras or RB.
  */
 import { useEffect, useState } from "react";
+import lucidmateRookbot from "../assets/art/lucidmate-rookbot.png";
 import { audioManager } from "../audio/audioManager.ts";
 import { THEMES } from "../game/art/palette.ts";
 import { PIECE_STYLES } from "../game/art/pieceStyles.ts";
@@ -72,11 +73,19 @@ export default function LoungeScreen() {
         .filter((view) => view.visible);
 
     return (
-        <MenuScreenLayout kicker="CUSTOMIZE" title={t("MenuLounge")}>
-            <p className="lounge-auras">Boards and pieces are cosmetic — chess stays fair.</p>
-            <p className="lounge-auras">
-                {t("LabelAuras")}: <strong>{auras}</strong>
-            </p>
+        <MenuScreenLayout kicker="CUSTOMIZE" title={t("MenuLounge")} artSrc={lucidmateRookbot} artVariant="rookbot">
+            <section className="lounge-summary" aria-label={`${auras} auras available`}>
+                <div>
+                    <p>YOUR LOOK</p>
+                    <strong>Dress up every board.</strong>
+                    <span>Pieces and themes are cosmetic. Chess stays fair.</span>
+                </div>
+                <aside>
+                    <i className="aura-glyph" aria-hidden="true" />
+                    <strong>{auras}</strong>
+                    <span>{t("LabelAuras")}</span>
+                </aside>
+            </section>
             <section className="piece-style-section" aria-labelledby="piece-style-title">
                 <div className="piece-style-heading">
                     <div>

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import lucidmateMascots from "../assets/art/lucidmate-mascots.png";
 import { audioManager } from "../audio/audioManager.ts";
 import { type MenuScreen, store } from "../state/store.ts";
 import { t } from "../systems/localization.ts";
@@ -9,11 +10,15 @@ export default function MenuScreenLayout({
     kicker,
     children,
     backScreen = "main",
+    artSrc = lucidmateMascots,
+    artVariant = "friends",
 }: {
     title: string;
     kicker: string;
     children: ReactNode;
     backScreen?: MenuScreen;
+    artSrc?: string;
+    artVariant?: "friends" | "rookbot";
 }) {
     const back = async () => {
         store.patch({ menuScreen: backScreen, toast: null });
@@ -39,6 +44,7 @@ export default function MenuScreenLayout({
                     <p className="eyebrow">{kicker}</p>
                     <h2>{title}</h2>
                 </div>
+                <img className={`subscreen-mascots ${artVariant}`} src={artSrc} alt="" aria-hidden="true" />
             </header>
             <div className="subscreen-content" data-testid="screen-scroll-region">
                 {children}
