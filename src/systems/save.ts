@@ -21,6 +21,7 @@ export interface GameSaveV3 {
         | "sfxEnabled"
         | "sfxVolume"
         | "notificationsEnabled"
+        | "notificationsOptOut"
         | "notificationsConsent"
         | "hapticsEnabled"
         | "reducedMotion"
@@ -126,6 +127,7 @@ function snapshot(): GameSaveV3 {
             sfxEnabled: s.sfxEnabled,
             sfxVolume: s.sfxVolume,
             notificationsEnabled: s.notificationsEnabled,
+            notificationsOptOut: s.notificationsOptOut,
             notificationsConsent: s.notificationsConsent,
             hapticsEnabled: s.hapticsEnabled,
             reducedMotion: s.reducedMotion,
@@ -211,6 +213,14 @@ function migrate(raw: unknown): GameSaveV3 {
                 notificationsConsent === "unknown"
                     ? true
                     : booleanOr(settings.notificationsEnabled, notificationsConsent === "granted"),
+            // Additive back-fill: saves written before the opt-out existed have
+            // no field, and "absent" must mean "has not opted out". A player who
+            // had switched reminders off carries notificationsEnabled === false,
+            // so seed the opt-out from that rather than re-arming them.
+            notificationsOptOut: booleanOr(
+                settings.notificationsOptOut,
+                notificationsConsent !== "unknown" && settings.notificationsEnabled === false,
+            ),
             notificationsConsent,
             hapticsEnabled: booleanOr(settings.hapticsEnabled, true),
             reducedMotion: booleanOr(settings.reducedMotion, fallback.settings.reducedMotion),

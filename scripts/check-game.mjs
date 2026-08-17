@@ -210,8 +210,9 @@ expect(
     /lucidmate_send_move_notification/.test(roomServer) &&
         /services\.notifications\.send/.test(roomServer) &&
         /services\.simulation\.executeRecipe/.test(roomServer) &&
+        /roomId: this\.roomId/.test(roomServer) &&
         /eventKey/.test(roomServer),
-    "turn alerts use the native room bridge with an event-keyed protected fallback",
+    "turn alerts run the room-keyed protected recipe with a best-effort push",
 );
 const socialNotifications = readJson("rundot/simulation/social-notifications.json");
 for (const [recipeId, recipe] of Object.entries(socialNotifications.recipes ?? {})) {
@@ -220,10 +221,20 @@ for (const [recipeId, recipe] of Object.entries(socialNotifications.recipes ?? {
         `${recipeId} message parameters must not be declared as simulation inventory entities`,
     );
     const effect = recipe.beginEffects?.[0] ?? {};
-    expect(
-        !("roomNotification" in effect) && !("saveToInbox" in effect),
-        `${recipeId} must use the released SDK 5.24 push-only recipe schema until Venus #3849 ships`,
-    );
+    expect(!("saveToInbox" in effect), `${recipeId} must not request the unreleased inbox persistence contract`);
+    if (recipeId === "lucidmate_send_move_notification") {
+        expect(
+            effect.roomNotification?.sourceType === "room_turn" &&
+                effect.roomNotification?.roomId === "{{inputs.roomId}}" &&
+                effect.roomNotification?.notificationKey === "{{inputs.eventKey}}",
+            `${recipeId} must key one durable room-turn inbox row per turn`,
+        );
+    } else {
+        expect(
+            !("roomNotification" in effect),
+            `${recipeId} stays on the push-only recipe schema; only turn alerts are durable`,
+        );
+    }
 }
 expect(
     /this\.reaction\.moveCount === this\.moveCount/.test(roomServer) && /color !== this\.turn/.test(roomServer),

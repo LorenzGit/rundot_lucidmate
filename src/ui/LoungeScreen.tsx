@@ -8,7 +8,7 @@ import { THEMES } from "../game/art/palette.ts";
 import { PIECE_STYLES } from "../game/art/pieceStyles.ts";
 import { store, useStore } from "../state/store.ts";
 import { analytics } from "../systems/analytics/analyticsConfig.ts";
-import { productView, purchaseProduct, refreshCommerce } from "../systems/commerce.ts";
+import { productView, purchaseProduct, recordStoreOpened, refreshCommerce } from "../systems/commerce.ts";
 import { t } from "../systems/localization.ts";
 import { monetizationTelemetry } from "../systems/monetization/runtime.ts";
 import { PRODUCT_IDS, type ProductId } from "../systems/monetization/config.ts";
@@ -61,7 +61,7 @@ export default function LoungeScreen() {
         // Repeatable by design — every lounge visit counts (StrictMode's dev
         // double-mount is a dev-only artifact).
         analytics.funnelStep("purchase", 1);
-        monetizationTelemetry.record("monetization_surface_viewed", { placement: "lounge" });
+        monetizationTelemetry.record("store_opened", { placement: "lounge" });
         void refreshCommerce().finally(() => setCatalogRevision((revision) => revision + 1));
     }, []);
 
@@ -98,6 +98,9 @@ export default function LoungeScreen() {
     const productViews = PRODUCT_IDS.filter((productId) => productId !== "piece_pack")
         .map((productId) => productView(productId))
         .filter((view) => view.visible);
+    useEffect(() => {
+        recordStoreOpened(PRODUCT_IDS.filter((id) => id !== "piece_pack"));
+    }, []);
 
     return (
         <MenuScreenLayout kicker="CUSTOMIZE" title={t("MenuLounge")} artSrc={lucidmateRookbot} artVariant="rookbot">

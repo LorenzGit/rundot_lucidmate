@@ -34,6 +34,11 @@
             "matchKey": "{{inputs.matchKey}}",
             "pace": "{{inputs.pace}}"
           },
+          "roomNotification": {
+            "sourceType": "room_turn",
+            "roomId": "{{inputs.roomId}}",
+            "notificationKey": "{{inputs.eventKey}}"
+          },
           "as": "delivery"
         }
       ]

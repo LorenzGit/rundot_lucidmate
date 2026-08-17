@@ -31,6 +31,10 @@ import {
 // closes the tab mid-load will ever produce. Emissions here are buffered until
 // markTransportReady() below, once the SDK transport exists.
 analytics.installErrorCapture();
+// The browser's own end-of-session signals. onQuit alone produced two
+// session_end events across the whole fleet in thirty days, because it
+// needs a clean host quit and players just close the tab.
+analytics.installSessionEndCapture();
 analytics.funnelStep("load", 1);
 /**
  * Boot sequence. The ORDER here matters — it's the pattern from a shipped RUN

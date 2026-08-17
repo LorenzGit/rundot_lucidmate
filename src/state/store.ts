@@ -97,6 +97,12 @@ export interface AppState {
     sfxEnabled: boolean;
     sfxVolume: number;
     notificationsEnabled: boolean;
+    /**
+     * The player's own "not in this game" choice, set only from Settings.
+     * Separate from the host permission because that permission is shared by
+     * every RUN game: turning reminders off here must not silence the others.
+     */
+    notificationsOptOut: boolean;
     notificationsConsent: "unknown" | "granted" | "denied";
     hapticsEnabled: boolean;
     reducedMotion: boolean;
@@ -184,6 +190,7 @@ let state: AppState = {
     // Turn alerts are part of correspondence. The OS permission prompt still
     // waits for a player tap, as required by the host.
     notificationsEnabled: true,
+    notificationsOptOut: false,
     notificationsConsent: "unknown",
     hapticsEnabled: true,
     reducedMotion: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false,

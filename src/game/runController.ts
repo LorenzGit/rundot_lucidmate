@@ -18,7 +18,7 @@ import type { ChessScene } from "./scene/chessScene.ts";
 import { correspondence } from "../social/correspondence.ts";
 import type { CorrespondenceMatch, CorrespondencePace } from "../social/model.ts";
 import { rivalsClient } from "../social/rivalsClient.ts";
-import { getRunPlayerProfile, shareRunLink } from "../sdk/runSdk.ts";
+import { getRunPlayerProfile, shareRunLink, submitBestWinStreak } from "../sdk/runSdk.ts";
 
 export const UNDO_COST = 12;
 export const HINT_COST = 8;
@@ -483,6 +483,16 @@ export class RunController {
         });
         // Shipped step 3 — first match reaching a result, whatever the result.
         // Once-ever dedupes; finishing is causally downstream of step 2.
+        // Canonical loop name: RUN's core-loop query reads run_completed, and
+        // the funnel step above travels a separate pipeline it cannot see.
+        runtimeServices.track("run_completed", {
+            result: summary.result,
+            matches_played: matchesPlayed,
+            captures: summary.captures,
+        });
+        // Boards were configured but nothing ever submitted, so they read as
+        // "zero scored players". Fire-and-forget: never blocks the result card.
+        void submitBestWinStreak(bestWinStreak, (performance.now() - matchStartedAt) / 1000);
         analytics.funnelStep("lucidmate_first_run", 3, { result: summary.result });
         // Repeatable depth plot: `run_completed_N` = Nth lifetime finished
         // match; counts past 12 no-op via the out-of-range rule.
@@ -503,9 +513,14 @@ export class RunController {
     }
 }
 
+/** Wall clock at match entry — the duration the leaderboard submission carries. */
+let matchStartedAt = performance.now();
+
 export function startMatch(opts: { opponent: OpponentMode; difficulty: AiDifficulty; playerColor: Color }): void {
     // Shipped step 2 — the first real intent beat. Every entry into a match
     // (local AND online) funnels through here; once-ever dedupes replays.
+    matchStartedAt = performance.now();
+    runtimeServices.track("run_started", { opponent: opts.opponent, difficulty: opts.difficulty });
     analytics.funnelStep("lucidmate_first_run", 2, { opponent: opts.opponent });
     store.patch({
         phase: "playing",

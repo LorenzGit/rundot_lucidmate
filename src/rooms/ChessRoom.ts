@@ -22,6 +22,27 @@ type SocialNotificationRecipe =
     | "lucidmate_send_reaction_notification"
     | "lucidmate_send_rematch_notification";
 
+const NOTIFICATION_COPY: Record<
+    SocialNotificationRecipe,
+    { template: string; title: string; body: (params: Record<string, string>) => string }
+> = {
+    lucidmate_send_move_notification: {
+        template: "lucidmate_your_move",
+        title: "Your move in LUCIDMATE",
+        body: (params) => `${params.opponent ?? "Your opponent"} moved. Your board is waiting.`,
+    },
+    lucidmate_send_reaction_notification: {
+        template: "lucidmate_reaction",
+        title: "A rival reacted",
+        body: (params) => `${params.opponent ?? "Your rival"}: ${params.reaction ?? "New reaction"}`,
+    },
+    lucidmate_send_rematch_notification: {
+        template: "lucidmate_rematch",
+        title: "Rematch?",
+        body: (params) => `${params.opponent ?? "Your rival"} wants another game.`,
+    },
+};
+
 export default class ChessRoom extends GameRoom<ChessProtocol> {
     private board: Board = startingBoard();
     private turn: Color = "w";
@@ -493,59 +514,79 @@ export default class ChessRoom extends GameRoom<ChessProtocol> {
     ): Promise<void> {
         if (!this.matchKey || !this.pace) return;
 
-        if (this.players.has(recipient)) {
-            const template =
-                recipe === "lucidmate_send_move_notification"
-                    ? "lucidmate_your_move"
-                    : recipe === "lucidmate_send_reaction_notification"
-                      ? "lucidmate_reaction"
-                      : "lucidmate_rematch";
-            const fallbackTitle =
-                recipe === "lucidmate_send_move_notification"
-                    ? "Your move in LUCIDMATE"
-                    : recipe === "lucidmate_send_reaction_notification"
-                      ? "A rival reacted"
-                      : "Rematch?";
-            const fallbackBody =
-                recipe === "lucidmate_send_move_notification"
-                    ? `${params.opponent ?? "Your opponent"} moved. Your board is waiting.`
-                    : recipe === "lucidmate_send_reaction_notification"
-                      ? `${params.opponent ?? "Your rival"}: ${params.reaction ?? "New reaction"}`
-                      : `${params.opponent ?? "Your rival"} wants another game.`;
-            try {
-                await this.services.notifications.send({
-                    recipientProfileIds: [recipient],
-                    template,
-                    params,
-                    data: {
-                        route: "match",
-                        matchKey: this.matchKey,
-                        pace: this.pace,
-                        eventKey,
-                        ...(recipe === "lucidmate_send_move_notification"
-                            ? { turn: this.moveCount }
-                            : { messageId: eventKey }),
-                    },
-                    fallbackTitle,
-                    fallbackBody,
-                });
-                return;
-            } catch (error) {
-                this.log.warn("room notification unavailable; trying protected recipe", {
-                    recipient,
-                    template,
-                    eventKey,
-                    error: error instanceof Error ? error.message : String(error),
-                });
-            }
+        if (recipe === "lucidmate_send_move_notification") {
+            // A rival watching the board sees the move land in the live state
+            // broadcast, so neither a push nor an inbox row is warranted.
+            if (this.isWatching(recipient)) return;
+            // Everyone else gets the durable inbox row first — the push is a
+            // best-effort extra and its failure must never cancel the row.
+            await this.executeNotificationRecipe(actor, recipient, recipe, eventKey, params);
+            await this.pushNotification(recipient, recipe, eventKey, params);
+            return;
         }
 
+        // Reactions and rematch offers keep their original delivery: push a room
+        // member directly, and fall back to the recipe when that push fails.
+        if (this.players.has(recipient) && (await this.pushNotification(recipient, recipe, eventKey, params))) return;
+        await this.executeNotificationRecipe(actor, recipient, recipe, eventKey, params);
+    }
+
+    /** True while the rival still holds a live, connected seat in this room. */
+    private isWatching(playerId: string): boolean {
+        return this.players.get(playerId)?.connected === true;
+    }
+
+    private async pushNotification(
+        recipient: string,
+        recipe: SocialNotificationRecipe,
+        eventKey: string,
+        params: Record<string, string>,
+    ): Promise<boolean> {
+        const copy = NOTIFICATION_COPY[recipe];
         try {
-            // The SDK 5.24 protected recipe can target the validated rival even
-            // after live room membership expires. Keep its effect strictly on
-            // the released push-only schema until Venus #3849 is available.
+            await this.services.notifications.send({
+                recipientProfileIds: [recipient],
+                template: copy.template,
+                params,
+                data: {
+                    route: "match",
+                    matchKey: this.matchKey,
+                    pace: this.pace,
+                    eventKey,
+                    ...(recipe === "lucidmate_send_move_notification"
+                        ? { turn: this.moveCount }
+                        : { messageId: eventKey }),
+                },
+                fallbackTitle: copy.title,
+                fallbackBody: copy.body(params),
+            });
+            return true;
+        } catch (error) {
+            this.log.warn("room notification unavailable", {
+                recipient,
+                template: copy.template,
+                eventKey,
+                error: error instanceof Error ? error.message : String(error),
+            });
+            return false;
+        }
+    }
+
+    private async executeNotificationRecipe(
+        actor: string,
+        recipient: string,
+        recipe: SocialNotificationRecipe,
+        eventKey: string,
+        params: Record<string, string>,
+    ): Promise<void> {
+        try {
+            // The protected recipe targets the validated rival even after live
+            // room membership expires. `roomId` plus the stable per-turn
+            // `eventKey` let Venus key one durable inbox row, so a retry of the
+            // same logical turn replaces it instead of stacking another.
             await this.services.simulation.executeRecipe(actor, recipe, {
                 targetId: recipient,
+                roomId: this.roomId,
                 matchKey: this.matchKey,
                 pace: this.pace,
                 eventKey,

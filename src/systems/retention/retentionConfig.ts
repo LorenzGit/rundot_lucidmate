@@ -91,8 +91,11 @@ export const returnReminders = createReturnReminders({
     // The cached permission annotates the scheduled event; it must never gate
     // scheduling. A stale or failed boot probe would otherwise silence the
     // whole cadence for the session, and a mid-session grant would never arm.
-    // The settings toggle is a real player choice and does gate.
-    isOptedOut: () => !store.get().notificationsEnabled,
+    // The settings toggle is a real player choice and does gate. It reads the
+    // explicit opt-out, NOT `notificationsEnabled` — that field mirrors the
+    // app-wide host permission, and gating on it would make an unread or
+    // not-yet-granted permission look like a player who asked us to stop.
+    isOptedOut: () => store.get().notificationsOptOut,
     permissionHint: () => notificationsGranted,
     track: (event, payload) => analytics.event(event, payload),
 });

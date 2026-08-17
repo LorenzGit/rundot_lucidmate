@@ -272,6 +272,21 @@ export function productView(productId: ProductId): ProductView {
     };
 }
 
+/**
+ * The store surface was shown, with these offers on it.
+ *
+ * `offer_clicked` and the purchase outcome were already recorded, but without
+ * an impression the funnel has no denominator — a low purchase count reads
+ * identically whether the store is never opened or never converts. Call once
+ * per store open, not per render.
+ */
+export function recordStoreOpened(productIds: readonly string[], placement = "shop"): void {
+    monetizationTelemetry.record("store_opened", { placement, offers: productIds.length });
+    for (const productId of productIds) {
+        monetizationTelemetry.record("offer_shown", { product_id: productId, placement });
+    }
+}
+
 export async function purchaseProduct(
     productId: ProductId,
     placement = "lounge",
@@ -281,12 +296,16 @@ export async function purchaseProduct(
     if (!view.purchasable || !definition) return null;
 
     analytics.funnelStep("purchase", 2);
-    monetizationTelemetry.record("purchase_tapped", { product_id: productId, placement });
+    monetizationTelemetry.record("offer_clicked", { product_id: productId, placement });
     analytics.funnelStep("purchase", 3);
-    monetizationTelemetry.record("checkout_started", { product_id: productId, placement });
+    monetizationTelemetry.record("iap_purchase_started", { product_id: productId, placement });
     const outcome = await purchaseCoordinator.purchase(productId, definition.catalogItemId);
     analytics.funnelStep("purchase", 4);
-    monetizationTelemetry.record("checkout_result", { product_id: productId, placement, result: outcome.status });
+    monetizationTelemetry.record(outcome.status === "confirmed" ? "iap_purchase_complete" : "iap_purchase_failed", {
+        product_id: productId,
+        placement,
+        result: outcome.status,
+    });
     return outcome;
 }
 
@@ -296,7 +315,7 @@ export async function reconcilePendingPurchase(): Promise<void> {
     if (!pending) return;
     const outcome = await purchaseCoordinator.reconcilePending();
     if (!outcome) return;
-    monetizationTelemetry.record("checkout_result", {
+    monetizationTelemetry.record(outcome.status === "confirmed" ? "iap_purchase_complete" : "iap_purchase_failed", {
         product_id: pending.productId,
         placement: "resume_reconciliation",
         result: outcome.status,

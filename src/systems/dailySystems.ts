@@ -121,12 +121,21 @@ export const dailySystems = {
             dailyRewardStreak: view.streak,
             dailyRewardClaimIds: [...state.dailyRewardClaimIds, claimId].slice(-90),
         });
-        if (ok)
+        if (ok) {
             runtimeServices.track("daily_reward_claimed", {
                 streak: view.streak,
                 auras: view.reward,
                 authoritative: view.authoritative,
             });
+            // Canonical payout name alongside the game's own: only
+            // reward_claimed reaches RUN's economy query.
+            runtimeServices.track("reward_claimed", {
+                amount: view.reward,
+                currency: "aura",
+                source: "daily_reward",
+                streak: view.streak,
+            });
+        }
         // Kill switch: the 24h reminder promises this reward. Leaving it scheduled
         // pings the player about something they just claimed, which is exactly how
         // a useful notification becomes a muted one.

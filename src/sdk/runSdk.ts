@@ -380,6 +380,34 @@ function watchForLateHostAttach(): void {
     }, 500);
 }
 
+/**
+ * Submits the player's best win streak to the default leaderboard.
+ *
+ * This game has no score — the only `bestScore` in the source is a minimax
+ * local in the chess AI. Best win streak is the comparable, monotonic skill
+ * metric the boards can rank. Fire-and-forget; never fabricates acceptance.
+ */
+export async function submitBestWinStreak(streak: number, durationSeconds: number): Promise<number | null> {
+    const api = RundotGameAPI as unknown as Record<string, unknown>;
+    if (typeof api.leaderboard !== "object" || api.leaderboard === null || streak <= 0) return null;
+    try {
+        const result = await withTimeout(
+            RundotGameAPI.leaderboard.submitScore({
+                score: Math.max(0, Math.round(streak)),
+                duration: Math.max(1, Math.round(durationSeconds)),
+                mode: "classic",
+                period: "alltime",
+            }),
+            8_000,
+            "leaderboard.submitScore",
+        );
+        return result?.accepted ? (result.rank ?? null) : null;
+    } catch (error) {
+        console.warn("[runSdk] leaderboard submit unavailable", error);
+        return null;
+    }
+}
+
 export async function readAppStorage(key: string): Promise<{ ok: boolean; value: string | null }> {
     if (!capabilities.storage) return { ok: false, value: null };
     try {
@@ -604,6 +632,11 @@ export async function rearmLocalNotification(input: {
                 delaySeconds: Math.max(60, input.delaySeconds),
                 notificationId: input.id,
                 collapseKey: input.id,
+                // Rides back as `LaunchIntent.params` when the player taps the
+                // notification. Without it the deep-link in main.tsx depends on
+                // the host echoing notificationId, which is not guaranteed — and
+                // a notification-driven return looks identical to an organic one.
+                payload: { reminder_id: input.id },
             }),
             3_000,
             "notifications.submitMessage",

@@ -98,6 +98,9 @@ export const runtimeServices = {
     bootstrap(): void {
         startRefreshCycle();
         this.track("game_boot", { version: packageJson.version, host: getRunCapabilities().host });
+        // Canonical core-loop name RUN's query filters on. The `game_loaded`
+        // funnel step keeps its shipped name; this is the queryable event.
+        this.track("game_opened", { version: packageJson.version });
     },
     resume(): void {
         startRefreshCycle();
