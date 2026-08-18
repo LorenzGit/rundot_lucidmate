@@ -18,7 +18,7 @@ import type { ChessScene } from "./scene/chessScene.ts";
 import { correspondence } from "../social/correspondence.ts";
 import type { CorrespondenceMatch, CorrespondencePace } from "../social/model.ts";
 import { rivalsClient } from "../social/rivalsClient.ts";
-import { getRunPlayerProfile, shareRunLink, submitBestWinStreak } from "../sdk/runSdk.ts";
+import { getRunPlayerProfile, shareRunLink, submitBestWinStreak, showContextualLikePrompt } from "../sdk/runSdk.ts";
 
 export const UNDO_COST = 12;
 export const HINT_COST = 8;
@@ -485,6 +485,8 @@ export class RunController {
         // Once-ever dedupes; finishing is causally downstream of step 2.
         // Canonical loop name: RUN's core-loop query reads run_completed, and
         // the funnel step above travels a separate pipeline it cannot see.
+        // Ask for the like on a win. The wrapper owns the policy (3 wins, once ever).
+        void showContextualLikePrompt();
         runtimeServices.track("run_completed", {
             result: summary.result,
             matches_played: matchesPlayed,
