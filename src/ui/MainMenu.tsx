@@ -1,26 +1,29 @@
-import packageJson from "../../package.json";
 import { useEffect, useState } from "react";
+import packageJson from "../../package.json";
 import lucidmateFriendsBoard from "../assets/art/lucidmate-friends-board.png";
 import lucidmateRookbot from "../assets/art/lucidmate-rookbot.png";
 import { audioManager } from "../audio/audioManager.ts";
 import { canUseAuthoritativeRealtime } from "../game/chess/onlineClient.ts";
+import { soloResumeCopy } from "../game/chess/soloSave.ts";
 import { GAME_NAME } from "../game/constants.ts";
 import {
+    discardSoloMatch,
     endCorrespondenceMatch,
     leaveOnlineMatch,
+    resumeSoloMatch,
     shareCorrespondenceInvite,
     startCorrespondenceMatch,
     startOnlineMatch,
 } from "../game/runController.ts";
 import { correspondence } from "../social/correspondence.ts";
-import { CHESS_REACTIONS, type CorrespondenceMatch, type RivalIdentity } from "../social/model.ts";
-import { paceLabel } from "../social/model.ts";
+import { inboxActivity, inboxDueCopy, inboxStatus } from "../social/matchCopy.ts";
+import { type CorrespondenceMatch, paceLabel, type RivalIdentity } from "../social/model.ts";
 import { rivalryLevel } from "../social/rivalry.ts";
 import { rivalsClient } from "../social/rivalsClient.ts";
 import { store, useStore } from "../state/store.ts";
 import { dailySystems } from "../systems/dailySystems.ts";
-import { formatNumber } from "../systems/numberFormat.ts";
 import { updateNotificationPreference } from "../systems/notificationPreference.ts";
+import { formatNumber } from "../systems/numberFormat.ts";
 import { runtimeServices } from "../systems/runtimeServices.ts";
 import GearIcon from "./GearIcon.tsx";
 import ToyPieceIcon from "./ToyPieceIcon.tsx";
@@ -111,40 +114,6 @@ function OpponentAvatar({ identity, urgent = false }: { identity: RivalIdentity 
     );
 }
 
-function squareName(square: number): string {
-    return `${"abcdefgh"[square % 8] ?? "?"}${Math.floor(square / 8) + 1}`;
-}
-
-function latestActivity(match: CorrespondenceMatch): string {
-    if (match.reaction) {
-        return CHESS_REACTIONS.find((entry) => entry.id === match.reaction?.id)?.label ?? "New reaction";
-    }
-    if (match.lastMove) return `Last move ${squareName(match.lastMove.from)}–${squareName(match.lastMove.to)}`;
-    return match.incoming ? "A fresh challenge" : "Board ready";
-}
-
-function dueCopy(match: CorrespondenceMatch): string {
-    if (match.unavailable) return "Tap to reconnect";
-    if (match.phase === "waiting") return match.incoming ? "You play White" : "Waiting for their first move";
-    if (match.phase === "over") {
-        if (match.reason === "cancelled") return "Match ended";
-        if (match.result === "win") return "You won";
-        if (match.result === "loss") return "Rival won";
-        return "Draw";
-    }
-    if (!match.deadlineAt) return paceLabel(match.pace);
-    const remaining = Math.max(0, match.deadlineAt - Date.now());
-    const hours = Math.max(1, Math.ceil(remaining / 3_600_000));
-    return hours < 24 ? `${hours}h left` : `${Math.ceil(hours / 24)}d left`;
-}
-
-function matchStatus(match: CorrespondenceMatch, yourMove: boolean): string {
-    if (match.unavailable) return "RECONNECT";
-    if (match.phase === "waiting") return match.incoming ? "YOUR FIRST MOVE" : "CHALLENGE SENT";
-    if (yourMove) return "YOUR MOVE";
-    return match.phase === "over" ? "FINAL" : "WAITING";
-}
-
 function openMatch(match: CorrespondenceMatch): void {
     cue(() => store.patch({ socialBusy: true }));
     void (match.incoming ? rivalsClient.accept(match.matchKey) : Promise.resolve(true))
@@ -188,7 +157,7 @@ function TurnSpotlight({ matches, allMatches }: { matches: CorrespondenceMatch[]
                 <small>{matches.length === 1 ? "1 BOARD NEEDS YOU" : `${matches.length} BOARDS NEED YOU`}</small>
                 <strong>{primary.unavailable ? "RECONNECT TO PLAY" : "YOUR TURN"}</strong>
                 <em>
-                    {matches.length === 1 ? opponent : `First: ${opponent}`} · {dueCopy(primary)}
+                    {matches.length === 1 ? opponent : `First: ${opponent}`} · {inboxDueCopy(primary)}
                 </em>
                 <span className="turn-spotlight-rivalry">
                     <i style={{ "--rival-progress": rivalry.progress } as React.CSSProperties} />
@@ -212,7 +181,8 @@ function MatchCard({
     onManage: () => void;
 }) {
     const yourMove = match.phase === "playing" && match.color === match.turn;
-    const status = matchStatus(match, yourMove);
+    const status = inboxStatus(match, yourMove);
+    const activity = inboxActivity(match);
     return (
         <article
             className={`inbox-match${yourMove ? " your-move" : ""}${match.unavailable ? " unavailable" : ""}`}
@@ -226,11 +196,13 @@ function MatchCard({
                     <strong>{match.opponent?.username ?? "Waiting for a friend"}</strong>
                     <em>
                         {match.moveCount ? `${match.moveCount} moves · ` : ""}
-                        {dueCopy(match)}
+                        {inboxDueCopy(match)}
                     </em>
-                    <span>
-                        {latestActivity(match)} · Rivalry {rivalryLevel(rivalryGames).level}
-                    </span>
+                    {activity && (
+                        <span>
+                            {match.opponent ? `${activity} · Rivalry ${rivalryLevel(rivalryGames).level}` : activity}
+                        </span>
+                    )}
                 </span>
                 <span className="inbox-match-arrow" aria-hidden="true">
                     ›
@@ -337,7 +309,7 @@ function BoardActions({ match, onClose }: { match: CorrespondenceMatch; onClose:
                         <span>
                             {match.unavailable
                                 ? "The last connection attempt failed. Your saved board is still here."
-                                : `${paceLabel(match.pace)} · ${dueCopy(match)}`}
+                                : `${paceLabel(match.pace)} · ${inboxDueCopy(match)}`}
                         </span>
                         {actionError && (
                             <p className="board-action-error" role="alert">
@@ -429,6 +401,8 @@ export default function MainMenu() {
     const state = useStore((value) => value);
     const [managedMatchKey, setManagedMatchKey] = useState<string | null>(null);
     const [notificationBusy, setNotificationBusy] = useState(false);
+    const savedSolo = state.savedSoloMatch;
+    const resumeCopy = savedSolo ? soloResumeCopy(savedSolo) : null;
     const matches = state.correspondenceMatches;
     const yourMove = matches
         .filter((match) => match.phase === "playing" && match.color === match.turn)
@@ -523,21 +497,65 @@ export default function MainMenu() {
 
             <TurnSpotlight matches={yourMove} allMatches={matches} />
 
-            <button
-                type="button"
-                className="cpu-hero"
-                onClick={() => cue(() => store.patch({ menuScreen: "practice" }))}
-            >
-                <span className="cpu-hero-art" aria-hidden="true">
-                    <img src={lucidmateRookbot} alt="" />
-                </span>
-                <div>
-                    <p>PLAY THE COMPUTER</p>
-                    <h2>Start a solo game</h2>
-                    <small>Easy, Standard or Expert · choose your side</small>
+            {resumeCopy ? (
+                <div className="cpu-hero-wrap">
+                    <button
+                        type="button"
+                        className="cpu-hero continue"
+                        data-testid="continue-solo"
+                        onClick={() => {
+                            audioManager.play("start");
+                            void runtimeServices.haptic("medium");
+                            resumeSoloMatch();
+                        }}
+                    >
+                        <span className="cpu-hero-art" aria-hidden="true">
+                            <img src={lucidmateRookbot} alt="" />
+                        </span>
+                        <div>
+                            <p>{resumeCopy.kicker}</p>
+                            <h2>{resumeCopy.title}</h2>
+                            <small>{resumeCopy.detail}</small>
+                        </div>
+                        <b aria-hidden="true">›</b>
+                    </button>
+                    <div className="cpu-hero-actions">
+                        <button
+                            type="button"
+                            className="cpu-hero-new"
+                            onClick={() => cue(() => store.patch({ menuScreen: "practice" }))}
+                        >
+                            New game
+                        </button>
+                        <button
+                            type="button"
+                            className="cpu-hero-discard"
+                            onClick={() => {
+                                cue(() => discardSoloMatch());
+                                store.patch({ toast: "Saved board discarded." });
+                            }}
+                        >
+                            Discard
+                        </button>
+                    </div>
                 </div>
-                <b aria-hidden="true">›</b>
-            </button>
+            ) : (
+                <button
+                    type="button"
+                    className="cpu-hero"
+                    onClick={() => cue(() => store.patch({ menuScreen: "practice" }))}
+                >
+                    <span className="cpu-hero-art" aria-hidden="true">
+                        <img src={lucidmateRookbot} alt="" />
+                    </span>
+                    <div>
+                        <p>PLAY THE COMPUTER</p>
+                        <h2>Start a solo game</h2>
+                        <small>Easy, Standard or Expert · choose your side</small>
+                    </div>
+                    <b aria-hidden="true">›</b>
+                </button>
+            )}
 
             <div className="inbox-start-panel">
                 <section className="inbox-actions" aria-label="Start a game">

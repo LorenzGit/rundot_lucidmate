@@ -2,23 +2,25 @@
  * Bridge between the chess match, the Pixi scene, the store, and monetization hooks.
  */
 import { audioManager } from "../audio/audioManager.ts";
+import { getRunPlayerProfile, shareRunLink, showContextualLikePrompt, submitBestWinStreak } from "../sdk/runSdk.ts";
+import { correspondence } from "../social/correspondence.ts";
+import { normalizeEndReason } from "../social/matchCopy.ts";
+import type { CorrespondenceMatch, CorrespondencePace } from "../social/model.ts";
+import { rivalsClient } from "../social/rivalsClient.ts";
 import { store } from "../state/store.ts";
 import { analytics } from "../systems/analytics/analyticsConfig.ts";
 import { dailySystems } from "../systems/dailySystems.ts";
 import { dreamMastery, masteryRewardsBetween } from "../systems/mastery.ts";
-import { saveSystem } from "../systems/save.ts";
 import { runtimeServices } from "../systems/runtimeServices.ts";
+import { saveSystem } from "../systems/save.ts";
 import type { AiDifficulty } from "./chess/ai.ts";
 import { moveFromAuthoritativeTransition } from "./chess/authoritativeMove.ts";
 import { ChessMatch, type MatchConfig, type OpponentMode } from "./chess/game.ts";
-import { onlineChess, type OnlineConnectMode, type OnlineSessionSnapshot } from "./chess/onlineClient.ts";
-import { wireToBoard, type ChessServerMessage } from "./chess/protocol.ts";
-import type { Color, GameStatus, Move, PieceType } from "./chess/types.ts";
+import { type OnlineConnectMode, type OnlineSessionSnapshot, onlineChess } from "./chess/onlineClient.ts";
+import { type ChessServerMessage, wireToBoard } from "./chess/protocol.ts";
+import { serializeSoloMatch } from "./chess/soloSave.ts";
+import type { Color, GameStatus, MatchEndReason, Move, PieceType } from "./chess/types.ts";
 import type { ChessScene } from "./scene/chessScene.ts";
-import { correspondence } from "../social/correspondence.ts";
-import type { CorrespondenceMatch, CorrespondencePace } from "../social/model.ts";
-import { rivalsClient } from "../social/rivalsClient.ts";
-import { getRunPlayerProfile, shareRunLink, submitBestWinStreak, showContextualLikePrompt } from "../sdk/runSdk.ts";
 
 export const UNDO_COST = 12;
 export const HINT_COST = 8;
@@ -43,6 +45,8 @@ export class RunController {
     private lastAppliedKey: string | null = null;
     private pendingAsyncMoveKey: string | null = null;
     private lastReactionKey: string | null = null;
+    private lastEndReason: MatchEndReason | null = null;
+    private abandoned = false;
 
     constructor(config?: Partial<MatchConfig>) {
         const state = store.get();
@@ -51,6 +55,10 @@ export class RunController {
             opponent: config?.opponent ?? state.opponentMode,
             difficulty: config?.difficulty ?? state.difficulty,
         });
+        const saved = state.savedSoloMatch;
+        if (saved && this.match.config.opponent !== "online" && saved.opponent === this.match.config.opponent) {
+            this.match.hydrateSaved(saved);
+        }
         if (this.match.config.opponent === "online") {
             this.match.setInteractionLocked(true);
         }
@@ -62,6 +70,8 @@ export class RunController {
             onPlayerMoved: (move: Move) => this.afterPlayerMove(move),
             onNeedPromotion: () => {
                 store.patch({ pendingPromotion: true });
+                this.persistSoloProgress();
+                saveSystem.scheduleFlush();
             },
             onIllegal: () => {
                 audioManager.play("reject");
@@ -95,6 +105,24 @@ export class RunController {
             this.onlineWired = false;
         }
         this.scene = null;
+    }
+
+    persistSoloProgress(): void {
+        if (this.abandoned || this.match.config.opponent === "online") return;
+        if (this.match.isOver()) {
+            if (store.get().savedSoloMatch) store.patch({ savedSoloMatch: null });
+            return;
+        }
+        store.patch({ savedSoloMatch: serializeSoloMatch(this.match) });
+    }
+
+    abandonSolo(): void {
+        this.abandoned = true;
+        if (this.aiTimer) {
+            clearTimeout(this.aiTimer);
+            this.aiTimer = null;
+        }
+        store.patch({ savedSoloMatch: null, matchSummary: null });
     }
 
     private wireOnline(): void {
@@ -176,7 +204,8 @@ export class RunController {
             state.status === "check"
                 ? state.status
                 : "playing";
-        if (state.phase === "over" && state.winner && state.reason === "resign") {
+        this.lastEndReason = normalizeEndReason(state.reason, applyStatus);
+        if (state.phase === "over" && state.winner && (state.reason === "resign" || state.reason === "timeout")) {
             applyStatus = "checkmate";
             applyTurn = state.winner === "w" ? "b" : "w";
         } else if (state.phase === "over" && state.winner && applyStatus === "checkmate") {
@@ -265,13 +294,6 @@ export class RunController {
         }
 
         if (state.phase === "over" || this.match.isOver()) {
-            // Align local terminal status with server winner if needed
-            if (state.reason === "resign" || state.reason === "checkmate") {
-                // summary() derives from turn/status; ensure checkmate if resign
-                if (state.winner && state.status !== "stalemate" && state.status !== "draw") {
-                    // force mated side to be the loser side-to-move
-                }
-            }
             this.finishMatch();
         }
     }
@@ -332,6 +354,8 @@ export class RunController {
         }
 
         this.mirrorStore();
+        this.persistSoloProgress();
+        saveSystem.scheduleFlush();
         if (this.match.isOver()) {
             this.finishMatch();
             return;
@@ -366,6 +390,8 @@ export class RunController {
         this.scene.applyExternalMove(move);
         this.playMoveFeedback(move);
         this.mirrorStore();
+        this.persistSoloProgress();
+        saveSystem.scheduleFlush();
         if (this.match.isOver()) this.finishMatch();
     }
 
@@ -375,6 +401,8 @@ export class RunController {
         void runtimeServices.haptic("success");
         store.patch({ pendingPromotion: false });
         this.mirrorStore();
+        this.persistSoloProgress();
+        saveSystem.scheduleFlush();
         if (this.match.isOver()) this.finishMatch();
         else this.maybeScheduleAi();
     }
@@ -404,6 +432,7 @@ export class RunController {
         }
         this.scene?.syncFromMatch();
         this.mirrorStore();
+        this.persistSoloProgress();
         audioManager.play("undo");
         void runtimeServices.haptic("medium");
         void saveSystem.flush();
@@ -441,6 +470,7 @@ export class RunController {
         this.finished = true;
         const summary = this.match.summary();
         if (!summary) return;
+        if (this.lastEndReason) summary.reason = this.lastEndReason;
 
         const state = store.get();
         const isCorrespondence = state.onlineExperience === "async" && state.activeMatchKey;
@@ -470,6 +500,7 @@ export class RunController {
         store.patch({
             matchSummary: summary,
             matchStatus: summary.status,
+            savedSoloMatch: null,
             auras,
             wins,
             losses,
@@ -518,12 +549,18 @@ export class RunController {
 /** Wall clock at match entry — the duration the leaderboard submission carries. */
 let matchStartedAt = performance.now();
 
-export function startMatch(opts: { opponent: OpponentMode; difficulty: AiDifficulty; playerColor: Color }): void {
+export function startMatch(opts: {
+    opponent: OpponentMode;
+    difficulty: AiDifficulty;
+    playerColor: Color;
+    resume?: boolean;
+}): void {
     // Shipped step 2 — the first real intent beat. Every entry into a match
     // (local AND online) funnels through here; once-ever dedupes replays.
     matchStartedAt = performance.now();
     runtimeServices.track("run_started", { opponent: opts.opponent, difficulty: opts.difficulty });
     analytics.funnelStep("lucidmate_first_run", 2, { opponent: opts.opponent });
+    const resume = opts.resume === true && opts.opponent !== "online";
     store.patch({
         phase: "playing",
         opponentMode: opts.opponent,
@@ -538,8 +575,31 @@ export function startMatch(opts: { opponent: OpponentMode; difficulty: AiDifficu
         masteryBonusAuras: 0,
         ...(opts.opponent === "online"
             ? {}
-            : { activeMatchKey: null, activeMatchPace: null, onlineExperience: "live" as const }),
+            : {
+                  activeMatchKey: null,
+                  activeMatchPace: null,
+                  onlineExperience: "live" as const,
+                  savedSoloMatch: resume ? store.get().savedSoloMatch : null,
+              }),
     });
+    void saveSystem.flush();
+}
+
+export function resumeSoloMatch(): boolean {
+    const saved = store.get().savedSoloMatch;
+    if (!saved) return false;
+    startMatch({
+        opponent: saved.opponent,
+        difficulty: saved.difficulty,
+        playerColor: saved.playerColor,
+        resume: true,
+    });
+    return true;
+}
+
+export function discardSoloMatch(): void {
+    if (!store.get().savedSoloMatch) return;
+    store.patch({ savedSoloMatch: null });
     void saveSystem.flush();
 }
 

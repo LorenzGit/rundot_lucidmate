@@ -12,8 +12,9 @@ import { getFrameSafeArea } from "../sdk/runSdk.ts";
 import { store, useStore } from "../state/store.ts";
 import { createPixiApp } from "./pixiApp.ts";
 import { RunController } from "./runController.ts";
-import type { Insets } from "./scene/layout.ts";
 import { ChessScene } from "./scene/chessScene.ts";
+import type { Insets } from "./scene/layout.ts";
+import { setSoloPersister } from "./soloProgress.ts";
 import { createStage, type Stage } from "./stage.ts";
 
 interface BenchRuntime {
@@ -73,8 +74,12 @@ async function initializeBench(scope: RendererLifecycleScope, host: HTMLElement)
         callbacks: controller.sceneCallbacks,
     });
     scope.manage(() => {
+        controller.persistSoloProgress();
         controller.detach();
-        if (activeController === controller) activeController = null;
+        if (activeController === controller) {
+            activeController = null;
+            setSoloPersister(null);
+        }
         if (activeScene === scene) activeScene = null;
         scene.destroy();
     });
@@ -82,6 +87,7 @@ async function initializeBench(scope: RendererLifecycleScope, host: HTMLElement)
     controller.attach(scene);
     activeController = controller;
     activeScene = scene;
+    setSoloPersister(controller);
 
     const sync = () => scene.setInsets(designInsets(stage.scale()));
     scope.manage(stage.onResize(sync));

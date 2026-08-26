@@ -176,6 +176,14 @@ function assert(cond, msg) {
     const mainMenu = fs.readFileSync(path.join(root, "src/ui/MainMenu.tsx"), "utf8");
     assert(/PLAY THE COMPUTER/.test(mainMenu), "main menu exposes CPU play as a primary action");
     assert(/Start a solo game/.test(mainMenu), "main menu names the solo CPU action plainly");
+    const soloSave = fs.readFileSync(path.join(root, "src/game/chess/soloSave.ts"), "utf8");
+    assert(/Continue your game/.test(soloSave), "an unfinished solo board can be resumed from home");
+    assert(/BOARD SAVED/.test(soloSave), "resume copy says the board was kept");
+    assert(/cpu-hero-discard/.test(mainMenu), "a saved solo board can be discarded");
+    assert(
+        /Starting a new game replaces/.test(fs.readFileSync(path.join(root, "src/ui/PracticeScreen.tsx"), "utf8")),
+        "practice warns before replacing a saved board",
+    );
     assert(/CHESS WITH FRIENDS/.test(mainMenu), "main menu states its social purpose plainly");
     assert(/className="lobby-wallet"/.test(mainMenu), "main menu exposes the aura balance in its top bar");
     assert(/formatNumber\(state\.auras\)/.test(mainMenu), "lobby aura balance uses locale-aware formatting");
@@ -218,7 +226,7 @@ function assert(cond, msg) {
     );
     assert(/\.challenge-hero-art\s*\{[^}]*object-fit:\s*contain/.test(css), "challenge art preserves its aspect ratio");
     assert(
-        /\.inbox-list:not\(\.empty\) \.inbox-match-stack\s*\{[^}]*grid-auto-rows:\s*66px/.test(css),
+        /\.inbox-list:not\(\.empty\) \.inbox-match-stack\s*\{[^}]*grid-auto-rows:\s*minmax\(66px,\s*auto\)/.test(css),
         "one saved board stays a compact row instead of stretching",
     );
     assert(/\.turn-spotlight\s*\{[^}]*min-height:\s*92px/.test(css), "turn spotlight has primary-card height");
@@ -231,17 +239,23 @@ function assert(cond, msg) {
     assert(/--accent:\s*#168451/.test(css), "lobby uses the intentional green casual palette");
 
     const hud = fs.readFileSync(path.join(root, "src/ui/Hud.tsx"), "utf8");
-    assert(/headline: "YOUR TURN"/.test(hud), "HUD explicitly identifies the player's turn");
-    assert(/OPPONENT'S TURN/.test(hud), "HUD explicitly identifies the opponent's turn");
-    assert(/PASS & PLAY/.test(hud) && /TO MOVE/.test(hud), "local HUD names the moving side");
+    const matchCopy = fs.readFileSync(path.join(root, "src/social/matchCopy.ts"), "utf8");
+    assert(/headline: "YOUR TURN"/.test(matchCopy), "HUD explicitly identifies the player's turn");
+    assert(/OPPONENT'S TURN/.test(matchCopy), "HUD explicitly identifies the opponent's turn");
+    assert(/PASS & PLAY/.test(matchCopy) && /TO MOVE/.test(matchCopy), "local HUD names the moving side");
     assert(/const isYourTurn =/.test(hud), "HUD derives the local player's active turn");
     assert(/helper-bar\$\{isYourTurn \? " your-turn"/.test(hud), "helper rail marks the local player's turn");
     assert(/className="reaction-actions"/.test(hud), "reactions have a dedicated responsive action grid");
     assert(/Send a friendly chess phrase/.test(hud), "reaction UI explains its purpose");
-    assert(/CHECKMATE!/.test(hud), "checkmate is the dominant terminal result message");
-    assert(/The king has no legal escape/.test(hud), "checkmate explains why the game ended");
+    assert(/CHECKMATE!/.test(matchCopy), "checkmate is the dominant terminal result message");
+    assert(/The king has no legal escape/.test(matchCopy), "checkmate explains why the game ended");
+    assert(/stamp: "TIME OUT"/.test(matchCopy), "a clock loss is labeled time out, not checkmate");
     assert(/role="alertdialog"/.test(hud), "terminal results are announced assertively");
-    assert(/data-testid=\{isCheckmate \? "checkmate-result"/.test(hud), "checkmate has a stable visual QA target");
+    assert(/data-testid=\{[\s\S]*checkmate-result/.test(hud), "checkmate has a stable visual QA target");
+    assert(/data-testid=\{[\s\S]*timeout-result/.test(hud), "timeout results have a stable visual QA target");
+    assert(/solo-leave-sheet/.test(hud), "solo MENU offers a leave sheet");
+    assert(/Save and leave/.test(hud) && /End game/.test(hud), "a solo board can be saved or ended from the table");
+    assert(/abandonSolo/.test(hud), "ending a solo game discards the saved board");
     assert(/className="connection-card/.test(hud), "lost connections show a dedicated recovery card");
     assert(/Your board is safe/.test(hud), "reconnect copy reassures the player that progress is preserved");
     assert(/const reconnectingSavedBoard =/.test(hud), "background resume identifies saved-board recovery");

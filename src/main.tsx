@@ -1,8 +1,9 @@
 import React from "react";
-import { analytics } from "./systems/analytics/analyticsConfig.ts";
 import { createRoot } from "react-dom/client";
 import { warmAssets } from "./assets/preload.ts";
 import { audioManager } from "./audio/audioManager.ts";
+import { leaveOnlineMatch, startCorrespondenceMatch } from "./game/runController.ts";
+import { captureSoloBoardIfNeeded } from "./game/soloProgress.ts";
 import { installBrowserQaContract } from "./qa/browserContract.ts";
 import {
     applyRunSafeArea,
@@ -11,13 +12,13 @@ import {
     registerLifecycles,
     requestHostExit,
 } from "./sdk/runSdk.ts";
+import { correspondence } from "./social/correspondence.ts";
+import { rivalsClient } from "./social/rivalsClient.ts";
 import { store } from "./state/store.ts";
+import { analytics } from "./systems/analytics/analyticsConfig.ts";
 import { restoreLocale } from "./systems/localization.ts";
 import { runtimeServices } from "./systems/runtimeServices.ts";
 import { saveSystem } from "./systems/save.ts";
-import { correspondence } from "./social/correspondence.ts";
-import { rivalsClient } from "./social/rivalsClient.ts";
-import { leaveOnlineMatch, startCorrespondenceMatch } from "./game/runController.ts";
 import App from "./ui/App.tsx";
 import ErrorBoundary from "./ui/ErrorBoundary.tsx";
 import "./styles/app.css";
@@ -27,6 +28,7 @@ import {
     resolveReturnLaunch,
     returnReminders,
 } from "./systems/retention/retentionConfig";
+
 // Fired at module scope, before any await: this is the only row a player who
 // closes the tab mid-load will ever produce. Emissions here are buffered until
 // markTransportReady() below, once the SDK transport exists.
@@ -126,6 +128,7 @@ async function boot() {
     //    before they land.
     registerLifecycles({
         onPause: () => {
+            captureSoloBoardIfNeeded();
             store.patch({ paused: true });
             audioManager.setPaused(true);
             void saveSystem.flush();
@@ -139,6 +142,7 @@ async function boot() {
         },
         onSleep: () => {
             analytics.sessionPause();
+            captureSoloBoardIfNeeded();
             store.patch({ paused: true });
             audioManager.setPaused(true);
             void saveSystem.flush();
@@ -155,6 +159,7 @@ async function boot() {
         },
         onQuit: () => {
             analytics.sessionEnd();
+            captureSoloBoardIfNeeded();
             void saveSystem.flush();
         },
         onIdentityChanged: (event) => {
@@ -166,8 +171,9 @@ async function boot() {
         onBackButton: () => {
             const state = store.get();
             if (state.phase === "playing") {
+                captureSoloBoardIfNeeded();
                 if (state.opponentMode === "online") void leaveOnlineMatch();
-                store.patch({ phase: "menu", menuScreen: "main", paused: false });
+                store.patch({ phase: "menu", menuScreen: "main", paused: false, matchSummary: null });
                 void saveSystem.flush();
             } else if (state.menuScreen !== "main") {
                 store.patch({ menuScreen: "main" });

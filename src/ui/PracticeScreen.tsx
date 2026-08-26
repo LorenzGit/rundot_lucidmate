@@ -20,6 +20,7 @@ function feedback(): void {
 export default function PracticeScreen() {
     const difficulty = useStore((state) => state.difficulty);
     const playerColor = useStore((state) => state.playerColor);
+    const replacing = Boolean(useStore((state) => state.savedSoloMatch));
     const update = (patch: Parameters<typeof store.patch>[0]) => {
         feedback();
         store.patch(patch);
@@ -70,6 +71,11 @@ export default function PracticeScreen() {
                         Black
                     </button>
                 </fieldset>
+                {replacing && (
+                    <p className="practice-replace-note" role="status">
+                        Starting a new game replaces the board you left.
+                    </p>
+                )}
                 <button type="button" className="social-primary" onClick={play}>
                     PLAY {levels.find((level) => level.id === difficulty)?.label.toUpperCase()} AI
                 </button>

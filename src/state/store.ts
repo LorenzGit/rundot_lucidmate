@@ -2,11 +2,12 @@
  * Global UI state. The Pixi scene pushes match mirrors here; React reads them.
  */
 import { useSyncExternalStore } from "react";
-import type { AiDifficulty } from "../game/chess/ai.ts";
-import type { OpponentMode } from "../game/chess/game.ts";
-import type { Color, GameStatus, MatchSummary } from "../game/chess/types.ts";
 import { DEFAULT_THEME, type ThemeId } from "../game/art/palette.ts";
 import { DEFAULT_PIECE_STYLE, type PieceStyleId } from "../game/art/pieceStyles.ts";
+import type { AiDifficulty } from "../game/chess/ai.ts";
+import type { OpponentMode } from "../game/chess/game.ts";
+import type { SavedSoloMatch } from "../game/chess/soloSave.ts";
+import type { Color, GameStatus, MatchSummary } from "../game/chess/types.ts";
 import type { CorrespondenceMatch, CorrespondencePace } from "../social/model.ts";
 import type { RivalDirectoryProfile, RivalInvitation } from "../social/rivalsProtocol.ts";
 
@@ -66,6 +67,9 @@ export interface AppState {
     onlineExperience: "live" | "async";
     activeMatchKey: string | null;
     activeMatchPace: CorrespondencePace | null;
+
+    /** One in-progress AI or pass-and-play board. Friend games use correspondenceMatches. */
+    savedSoloMatch: SavedSoloMatch | null;
 
     /** Durable social layer. Match moves remain authoritative in GameRoom. */
     correspondenceMatches: CorrespondenceMatch[];
@@ -160,6 +164,8 @@ let state: AppState = {
     onlineExperience: "live",
     activeMatchKey: null,
     activeMatchPace: null,
+
+    savedSoloMatch: null,
 
     correspondenceMatches: [],
     profileName: "Dreamer",

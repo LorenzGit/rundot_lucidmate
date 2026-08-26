@@ -5,28 +5,29 @@ import { useCallback, useEffect, useState } from "react";
 import lucidmateReactionStickers from "../assets/art/lucidmate-reaction-stickers.png";
 import lucidmateVictoryDuo from "../assets/art/lucidmate-victory-duo.png";
 import { audioManager } from "../audio/audioManager.ts";
+import type { PieceType } from "../game/chess/types.ts";
 import { getRunController } from "../game/GameCanvas.tsx";
-import type { OpponentMode } from "../game/chess/game.ts";
-import type { Color, GameStatus, PieceType } from "../game/chess/types.ts";
 import {
     HINT_COST,
-    UNDO_COST,
     leaveOnlineMatch,
     shareCorrespondenceInvite,
     startCorrespondenceMatch,
     startCorrespondenceRematch,
     startMatch,
+    UNDO_COST,
 } from "../game/runController.ts";
+import { captureSoloBoardIfNeeded } from "../game/soloProgress.ts";
 import { correspondence } from "../social/correspondence.ts";
+import { resultPresentation, turnHeadline } from "../social/matchCopy.ts";
 import { CHESS_REACTIONS, type CorrespondenceMatch, paceLabel } from "../social/model.ts";
 import { store, useStore } from "../state/store.ts";
 import { recordCompletedRun, rewardedAvailable, showRewarded } from "../systems/ads.ts";
 import { t } from "../systems/localization.ts";
+import { dreamMastery } from "../systems/mastery.ts";
 import { PLACEMENT } from "../systems/monetization/config.ts";
+import { formatNumber } from "../systems/numberFormat.ts";
 import { runtimeServices } from "../systems/runtimeServices.ts";
 import { saveSystem } from "../systems/save.ts";
-import { formatNumber } from "../systems/numberFormat.ts";
-import { dreamMastery } from "../systems/mastery.ts";
 import { copyPlainText } from "../systems/shareText.ts";
 import GearIcon from "./GearIcon.tsx";
 import SettingToggle from "./SettingToggle.tsx";
@@ -118,45 +119,6 @@ function tapFeedback(): void {
     void runtimeServices.haptic("light");
 }
 
-function turnPresentation(input: {
-    turn: Color;
-    playerColor: Color;
-    opponentMode: OpponentMode;
-    matchStatus: GameStatus;
-    thinking: boolean;
-    waitingOnline: boolean;
-    connectingOnline: boolean;
-}): { eyebrow: string; headline: string; tone: "own-turn" | "opponent-turn" | "local-turn" | "muted" | "alert" } {
-    const color = input.turn === "w" ? "WHITE" : "BLACK";
-    if (input.matchStatus === "checkmate") return { eyebrow: "GAME OVER", headline: "CHECKMATE", tone: "alert" };
-    if (input.matchStatus === "stalemate") return { eyebrow: "GAME OVER", headline: "STALEMATE", tone: "muted" };
-    if (input.matchStatus === "draw") return { eyebrow: "GAME OVER", headline: "DRAW", tone: "muted" };
-    if (input.waitingOnline) {
-        return {
-            eyebrow: "ONLINE MATCH",
-            headline: input.connectingOnline ? "CONNECTING…" : "WAITING…",
-            tone: "muted",
-        };
-    }
-
-    const eyebrow = `${input.matchStatus === "check" ? "IN CHECK · " : ""}${color} TO MOVE`;
-    if (input.opponentMode === "local") {
-        return {
-            eyebrow: input.matchStatus === "check" ? "PASS & PLAY · IN CHECK" : "PASS & PLAY",
-            headline: `${color} TO MOVE`,
-            tone: input.matchStatus === "check" ? "alert" : "local-turn",
-        };
-    }
-    if (input.turn === input.playerColor) {
-        return { eyebrow, headline: "YOUR TURN", tone: input.matchStatus === "check" ? "alert" : "own-turn" };
-    }
-    return {
-        eyebrow,
-        headline: input.thinking && input.opponentMode === "ai" ? "AI THINKING" : "OPPONENT'S TURN",
-        tone: input.matchStatus === "check" ? "alert" : "opponent-turn",
-    };
-}
-
 export default function Hud() {
     const auras = useStore((s) => s.auras);
     const turn = useStore((s) => s.turn);
@@ -179,6 +141,7 @@ export default function Hud() {
     const playerColor = useStore((s) => s.playerColor);
     const showPause = usePauseGate();
     const [settingsOpen, setSettingsOpen] = useState(false);
+    const [leaveOpen, setLeaveOpen] = useState(false);
     const isOnline = opponentMode === "online";
     const isCorrespondence = isOnline && onlineExperience === "async";
     const activeMatch = activeMatchKey
@@ -189,14 +152,16 @@ export default function Hud() {
     const showOnlineWaitCard = waitingOnline && !reconnectingSavedBoard;
     const connectionFailed =
         isCorrespondence && (onlineStatus === "error" || onlineStatus === "disconnected") && !summary;
-    const turnCopy = turnPresentation({
+    const turnCopy = turnHeadline({
         turn,
         playerColor,
         opponentMode,
         matchStatus,
+        endReason: summary?.reason ?? activeMatch?.reason ?? null,
         thinking,
         waitingOnline,
         connectingOnline: onlineStatus === "connecting",
+        friendMatch: isCorrespondence,
     });
     const isYourTurn =
         !summary &&
@@ -212,10 +177,21 @@ export default function Hud() {
 
     const leave = useCallback(() => {
         tapFeedback();
+        captureSoloBoardIfNeeded();
         if (isOnline) void leaveOnlineMatch();
-        store.patch({ phase: "menu", menuScreen: "main", matchSummary: null });
+        store.patch({ phase: "menu", menuScreen: "main", matchSummary: null, paused: false });
         void saveSystem.flush();
     }, [isOnline]);
+
+    const endSolo = useCallback(() => {
+        tapFeedback();
+        getRunController()?.abandonSolo();
+        store.patch({ phase: "menu", menuScreen: "main", matchSummary: null, paused: false, savedSoloMatch: null });
+        void saveSystem.flush();
+        store.patch({ toast: "Game ended." });
+    }, []);
+
+    const canEndSolo = !isOnline && !summary;
 
     return (
         <div className="pointer-events-none absolute inset-0 pt-safe-top">
@@ -239,7 +215,18 @@ export default function Hud() {
                 >
                     <GearIcon />
                 </button>
-                <button type="button" className="hud-menu pointer-events-auto" onClick={leave}>
+                <button
+                    type="button"
+                    className="hud-menu pointer-events-auto"
+                    onClick={() => {
+                        if (canEndSolo) {
+                            tapFeedback();
+                            setLeaveOpen(true);
+                            return;
+                        }
+                        leave();
+                    }}
+                >
                     {t("ButtonMenu")}
                 </button>
             </div>
@@ -279,49 +266,58 @@ export default function Hud() {
             {isCorrespondence && <IncomingReaction match={activeMatch} />}
 
             {showOnlineWaitCard && (
-                <div className="online-wait-card pointer-events-auto" role="status">
-                    <p className="eyebrow">ONLINE MATCH</p>
-                    <h2>{onlineStatus === "connecting" ? "Connecting…" : "Waiting for opponent"}</h2>
-                    {onlineRoomCode && (
-                        <button
-                            type="button"
-                            className="online-code-btn online-wait-code"
-                            title="Tap to copy room code"
-                            aria-label={`Room code ${onlineRoomCode}. Tap to copy.`}
-                            onClick={() => void copyRoomCode(onlineRoomCode)}
-                        >
-                            <span>Code</span>
-                            <strong>{onlineRoomCode}</strong>
-                            <span className="online-code-hint">Tap to copy</span>
-                        </button>
-                    )}
-                    <p className="online-wait-hint">
-                        {isCorrespondence
-                            ? onlineRoomCode
-                                ? "Your board is saved. Send the invite link, then come back when your friend moves."
-                                : "No room code is available. Return to the menu and create a new board."
-                            : "Share the code with a friend, or keep this open for a quick match."}
-                    </p>
-                    {isCorrespondence &&
-                        onlineStatus !== "connecting" &&
-                        activeMatch?.roomCode &&
-                        !activeMatch.opponent && (
+                <>
+                    <div className="online-wait-backdrop" aria-hidden="true" />
+                    <div className="online-wait-card pointer-events-auto" role="status">
+                        <p className="eyebrow">{isCorrespondence ? "FRIEND MATCH" : "ONLINE MATCH"}</p>
+                        <h2>
+                            {onlineStatus === "connecting"
+                                ? "Connecting…"
+                                : isCorrespondence
+                                  ? "Waiting for a friend"
+                                  : "Waiting for opponent"}
+                        </h2>
+                        {onlineRoomCode && (
                             <button
                                 type="button"
-                                className="online-share-invite"
-                                disabled={socialBusy}
-                                onClick={() => {
-                                    tapFeedback();
-                                    void shareCorrespondenceInvite(activeMatch);
-                                }}
+                                className="online-code-btn online-wait-code"
+                                title="Tap to copy room code"
+                                aria-label={`Room code ${onlineRoomCode}. Tap to copy.`}
+                                onClick={() => void copyRoomCode(onlineRoomCode)}
                             >
-                                Share invite link
+                                <span>Code</span>
+                                <strong>{onlineRoomCode}</strong>
+                                <span className="online-code-hint">Tap to copy</span>
                             </button>
                         )}
-                    <button type="button" className="secondary-button" onClick={leave}>
-                        Cancel
-                    </button>
-                </div>
+                        <p className="online-wait-hint">
+                            {isCorrespondence
+                                ? onlineRoomCode
+                                    ? "Your board is saved. Send the invite, then come back when they move."
+                                    : "No room code is available. Return to the menu and create a new board."
+                                : "Share the code with a friend, or keep this open for a quick match."}
+                        </p>
+                        {isCorrespondence &&
+                            onlineStatus !== "connecting" &&
+                            activeMatch?.roomCode &&
+                            !activeMatch.opponent && (
+                                <button
+                                    type="button"
+                                    className="online-share-invite"
+                                    disabled={socialBusy}
+                                    onClick={() => {
+                                        tapFeedback();
+                                        void shareCorrespondenceInvite(activeMatch);
+                                    }}
+                                >
+                                    Share invite
+                                </button>
+                            )}
+                        <button type="button" className="secondary-button" onClick={leave}>
+                            Cancel
+                        </button>
+                    </div>
+                </>
             )}
 
             {connectionFailed && activeMatch && (
@@ -412,7 +408,12 @@ export default function Hud() {
             {pendingPromotion && <PromotionCard />}
             {summary && <ResultsCard />}
             {showPause && <PauseCard />}
-            {settingsOpen && <InGameSettings onClose={() => setSettingsOpen(false)} />}
+            {leaveOpen && canEndSolo && (
+                <LeaveSheet onStay={() => setLeaveOpen(false)} onSave={leave} onEnd={endSolo} />
+            )}
+            {settingsOpen && (
+                <InGameSettings onClose={() => setSettingsOpen(false)} onEndSolo={canEndSolo ? endSolo : null} />
+            )}
         </div>
     );
 }
@@ -494,47 +495,54 @@ function ResultsCard() {
     const mastery = dreamMastery({ matchesPlayed, wins, capturesLifetime, bestWinStreak });
     if (!summary) return null;
 
-    const title = summary.result === "win" ? "You win" : summary.result === "loss" ? "You lose" : "Draw";
-    const isCheckmate = summary.status === "checkmate";
-    const outcomeTitle = isCheckmate && summary.result === "loss" ? "Rival wins" : title;
+    const presentation = resultPresentation(summary);
+    const stamped =
+        presentation.kind === "checkmate" || presentation.kind === "timeout" || presentation.kind === "resign";
     const doubleOffered = !auraDoubled && summary.aurasEarned > 0 && rewardedAvailable(PLACEMENT.doubleAuras);
     const isOnline = opponentMode === "online";
     const isCorrespondence = isOnline && onlineExperience === "async";
 
     return (
         <>
-            <div className={`match-result-backdrop${isCheckmate ? " checkmate" : ""}`} aria-hidden="true" />
             <div
-                className={`modal-card pointer-events-auto results-card${isCheckmate ? " checkmate-card" : ""}`}
+                className={`match-result-backdrop${presentation.kind === "checkmate" ? " checkmate" : ""}`}
+                aria-hidden="true"
+            />
+            <div
+                className={`modal-card pointer-events-auto results-card${stamped ? ` ${presentation.kind}-card` : ""}`}
                 role="alertdialog"
                 aria-modal="true"
                 aria-labelledby="match-result-title"
-                aria-describedby={isCheckmate ? "checkmate-explanation" : undefined}
-                data-testid={isCheckmate ? "checkmate-result" : "match-result"}
+                aria-describedby={stamped ? "match-result-explanation" : undefined}
+                data-testid={
+                    presentation.kind === "checkmate"
+                        ? "checkmate-result"
+                        : presentation.kind === "timeout"
+                          ? "timeout-result"
+                          : "match-result"
+                }
             >
-                <div className={`results-celebration ${summary.result}${isCheckmate ? " checkmate" : ""}`}>
-                    {isCheckmate && (
+                <div className={`results-celebration ${summary.result}${stamped ? ` ${presentation.kind}` : ""}`}>
+                    {stamped && presentation.stamp && (
                         <div className="checkmate-verdict">
-                            <span>GAME OVER</span>
-                            <strong>CHECKMATE!</strong>
-                            <small id="checkmate-explanation">The king has no legal escape. The game is over.</small>
+                            <span>{presentation.eyebrow}</span>
+                            <strong>{presentation.stamp}</strong>
+                            <small id="match-result-explanation">{presentation.explanation}</small>
                         </div>
                     )}
                     <img src={lucidmateVictoryDuo} alt="" aria-hidden="true" />
                     <div className="results-outcome">
-                        {!isCheckmate && <p className="eyebrow">{summary.status}</p>}
-                        <h2 id="match-result-title">{outcomeTitle}</h2>
-                        <span>
-                            {isCheckmate
-                                ? summary.result === "win"
+                        {!stamped && <p className="eyebrow">{presentation.eyebrow}</p>}
+                        <h2 id="match-result-title">{presentation.title}</h2>
+                        {presentation.kind === "checkmate" ? (
+                            <span>
+                                {summary.result === "win"
                                     ? "You trapped their king. Victory is yours!"
-                                    : "Your rival trapped the king. Good game!"
-                                : summary.result === "win"
-                                  ? "Brilliant board!"
-                                  : summary.result === "draw"
-                                    ? "A perfectly balanced dream."
-                                    : "Good game—your next idea is waiting."}
-                        </span>
+                                    : "Your rival trapped the king. Good game!"}
+                            </span>
+                        ) : presentation.kind === "timeout" || presentation.kind === "resign" ? null : (
+                            <span>{presentation.explanation}</span>
+                        )}
                     </div>
                 </div>
                 <div className="results-details">
@@ -663,6 +671,30 @@ function ResultsCard() {
     );
 }
 
+function LeaveSheet({ onStay, onSave, onEnd }: { onStay: () => void; onSave: () => void; onEnd: () => void }) {
+    return (
+        <div
+            className="modal-card pointer-events-auto leave-sheet"
+            role="dialog"
+            aria-modal="true"
+            data-testid="solo-leave-sheet"
+        >
+            <p className="eyebrow">LEAVE BOARD</p>
+            <h2>Keep this game?</h2>
+            <p>Save it to continue later, or end it now. Ending does not count as a loss.</p>
+            <button type="button" className="play-button" onClick={onSave}>
+                Save and leave
+            </button>
+            <button type="button" className="secondary-button leave-end" onClick={onEnd}>
+                End game
+            </button>
+            <button type="button" className="secondary-button" onClick={onStay}>
+                Keep playing
+            </button>
+        </div>
+    );
+}
+
 function PauseCard() {
     return (
         <div className="modal-card pointer-events-auto">
@@ -682,7 +714,7 @@ function PauseCard() {
     );
 }
 
-function InGameSettings({ onClose }: { onClose: () => void }) {
+function InGameSettings({ onClose, onEndSolo }: { onClose: () => void; onEndSolo: (() => void) | null }) {
     const musicEnabled = useStore((s) => s.musicEnabled);
     const sfxEnabled = useStore((s) => s.sfxEnabled);
     const hapticsEnabled = useStore((s) => s.hapticsEnabled);
@@ -728,6 +760,11 @@ function InGameSettings({ onClose }: { onClose: () => void }) {
                     void saveSystem.flush();
                 }}
             />
+            {onEndSolo && (
+                <button type="button" className="secondary-button leave-end" onClick={onEndSolo}>
+                    End game
+                </button>
+            )}
             <button
                 type="button"
                 className="secondary-button"

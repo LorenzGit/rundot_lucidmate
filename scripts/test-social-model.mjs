@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
+import { inboxActivity, inboxDueCopy, inboxStatus, resultPresentation, turnHeadline } from "../src/social/matchCopy.ts";
 import {
     CHESS_REACTIONS,
     createMatchReference,
@@ -70,5 +71,44 @@ assert.equal(
     null,
     "legacy reactions without an authoritative turn cannot lock the controls",
 );
+
+const timeoutLoss = {
+    ...createMatchReference(keyA, "daily"),
+    phase: "over",
+    result: "loss",
+    reason: "timeout",
+    opponent: { id: "rival-1", username: "Mira", avatarUrl: null },
+};
+assert.equal(inboxStatus(timeoutLoss, false), "LOST ON TIME", "timeout loss is not labeled checkmate");
+assert.equal(inboxDueCopy(timeoutLoss), "Lost on time", "timeout inbox copy names the clock");
+assert.equal(inboxActivity({ ...timeoutLoss, phase: "waiting", opponent: null, result: null, reason: null }), null);
+
+const timeoutResult = resultPresentation({
+    status: "checkmate",
+    reason: "timeout",
+    winner: "b",
+    result: "loss",
+    movesPlayed: 18,
+    captures: 2,
+    checksGiven: 1,
+    aurasEarned: 8,
+    playerWon: false,
+});
+assert.equal(timeoutResult.kind, "timeout");
+assert.equal(timeoutResult.stamp, "TIME OUT");
+assert.equal(timeoutResult.title, "You ran out of time");
+assert.notEqual(timeoutResult.stamp.includes("CHECK"), true, "timeout stamp never says checkmate");
+
+const timeoutTurn = turnHeadline({
+    turn: "w",
+    playerColor: "w",
+    opponentMode: "online",
+    matchStatus: "checkmate",
+    endReason: "timeout",
+    thinking: false,
+    waitingOnline: false,
+    connectingOnline: false,
+});
+assert.equal(timeoutTurn.headline, "TIME OUT", "HUD names a clock loss, not checkmate");
 
 console.log("social model checks passed");

@@ -36,6 +36,9 @@ const screens = [
     { name: "reactions", screen: "game", reactions: true },
     { name: "reconnecting", screen: "game", socialPreview: "reconnecting" },
     { name: "connection", screen: "game", connection: true },
+    { name: "waiting", screen: "game", socialPreview: "waiting" },
+    { name: "results", screen: "game", results: true },
+    { name: "timeout", screen: "game", timeout: true },
 ];
 
 function note(message) {
@@ -129,6 +132,17 @@ try {
             if (shot.connection) {
                 await page.evaluate(() => globalThis.__LUCIDMATE_QA__.previewConnectionFailure());
                 await page.waitForSelector(".connection-card", { timeout: 10_000 });
+            }
+            if (shot.socialPreview === "waiting") {
+                await page.waitForSelector(".online-wait-card", { timeout: 10_000 });
+            }
+            if (shot.results) {
+                await page.evaluate(() => globalThis.__LUCIDMATE_QA__.previewResults());
+                await page.waitForSelector(".results-card", { timeout: 10_000 });
+            }
+            if (shot.timeout) {
+                await page.evaluate(() => globalThis.__LUCIDMATE_QA__.previewTimeoutResults());
+                await page.waitForSelector(".results-card", { timeout: 10_000 });
             }
             if (shot.socialPreview === "reconnecting") {
                 await page.waitForFunction(

@@ -3,17 +3,18 @@
  */
 import { DEFAULT_THEME, isThemeId, THEMES, type ThemeId } from "../game/art/palette.ts";
 import { DEFAULT_PIECE_STYLE, isPieceStyleId } from "../game/art/pieceStyles.ts";
+import { type SavedSoloMatch, sanitizeSoloMatch } from "../game/chess/soloSave.ts";
 import { getRunCapabilities, readAppStorage, writeAppStorage } from "../sdk/runSdk.ts";
-import { type AppState, type PendingPurchaseIntent, store } from "../state/store.ts";
 import { sanitizeMatches } from "../social/model.ts";
+import { type AppState, type PendingPurchaseIntent, store } from "../state/store.ts";
 
 const SAVE_KEY = "lucidmate:save";
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 const QUEST_IDS = ["matches", "wins", "captures"] as const;
 
 export interface GameSaveV3 {
-    version: 3;
+    version: 3 | 4;
     settings: Pick<
         AppState,
         | "musicEnabled"
@@ -54,6 +55,7 @@ export interface GameSaveV3 {
     >;
     commerce: { pendingPurchaseIntent: PendingPurchaseIntent | null };
     social: Pick<AppState, "correspondenceMatches">;
+    solo: { savedMatch: SavedSoloMatch | null };
 }
 
 export type SaveSource = "run" | "local" | "defaults";
@@ -162,6 +164,7 @@ function snapshot(): GameSaveV3 {
         },
         commerce: { pendingPurchaseIntent: s.pendingPurchaseIntent },
         social: { correspondenceMatches: s.correspondenceMatches },
+        solo: { savedMatch: s.savedSoloMatch },
     };
 }
 
@@ -176,7 +179,9 @@ function migrate(raw: unknown): GameSaveV3 {
         version?: number;
         social?: unknown;
     };
-    if (candidate.version !== 1 && candidate.version !== 2 && candidate.version !== 3) return fallback;
+    if (candidate.version !== 1 && candidate.version !== 2 && candidate.version !== 3 && candidate.version !== 4) {
+        return fallback;
+    }
 
     const progress = candidate.progress ?? fallback.progress;
     const settings = candidate.settings ?? fallback.settings;
@@ -200,8 +205,13 @@ function migrate(raw: unknown): GameSaveV3 {
         "unknown",
     );
 
+    const soloRaw =
+        candidate.version >= 4 && "solo" in candidate && candidate.solo && typeof candidate.solo === "object"
+            ? (candidate.solo as { savedMatch?: unknown }).savedMatch
+            : null;
+
     return {
-        version: 3,
+        version: 4,
         settings: {
             musicEnabled: booleanOr(settings.musicEnabled, true),
             musicVolume: clamp01(settings.musicVolume, 0.38),
@@ -262,6 +272,7 @@ function migrate(raw: unknown): GameSaveV3 {
                     ? sanitizeMatches((candidate.social as { correspondenceMatches?: unknown }).correspondenceMatches)
                     : [],
         },
+        solo: { savedMatch: sanitizeSoloMatch(soloRaw) },
     };
 }
 
@@ -273,6 +284,7 @@ function apply(save: GameSaveV3): void {
         ...save.retention,
         pendingPurchaseIntent: save.commerce.pendingPurchaseIntent,
         correspondenceMatches: save.social.correspondenceMatches,
+        savedSoloMatch: save.solo.savedMatch,
     });
 }
 

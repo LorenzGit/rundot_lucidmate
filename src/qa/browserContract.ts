@@ -1,8 +1,11 @@
 /**
  * Development QA hooks exposed on window for visual-qa scripts.
  */
-import { getChessScene, getRunController } from "../game/GameCanvas.tsx";
+
+import { ChessMatch } from "../game/chess/game.ts";
 import { canUseAuthoritativeRealtime, onlineChess } from "../game/chess/onlineClient.ts";
+import { serializeSoloMatch } from "../game/chess/soloSave.ts";
+import { getChessScene, getRunController } from "../game/GameCanvas.tsx";
 import { leaveOnlineMatch, startCorrespondenceMatch, startOnlineMatch } from "../game/runController.ts";
 import { correspondence } from "../social/correspondence.ts";
 import { type MenuScreen, store } from "../state/store.ts";
@@ -35,7 +38,19 @@ export function installBrowserQaContract(): void {
                 rivalSearchResults: state.rivalSearchResults,
                 rivalInvitations: state.rivalInvitations,
                 correspondenceMatches: state.correspondenceMatches,
+                savedSoloMatch: state.savedSoloMatch,
             };
+        },
+        previewSavedSolo() {
+            const match = new ChessMatch({ playerColor: "w", opponent: "ai", difficulty: "trippy" });
+            match.tapSquare(12);
+            match.tapSquare(28);
+            store.patch({
+                phase: "menu",
+                menuScreen: "main",
+                matchSummary: null,
+                savedSoloMatch: serializeSoloMatch(match),
+            });
         },
         multiplayerReady() {
             return canUseAuthoritativeRealtime();
@@ -294,6 +309,7 @@ export function installBrowserQaContract(): void {
                 masteryBonusAuras: 40,
                 matchSummary: {
                     status: "checkmate",
+                    reason: "checkmate",
                     winner: "w",
                     result: "win",
                     movesPlayed: 31,
@@ -301,6 +317,31 @@ export function installBrowserQaContract(): void {
                     checksGiven: 4,
                     aurasEarned: 28,
                     playerWon: true,
+                },
+            });
+        },
+        previewTimeoutResults() {
+            store.patch({
+                phase: "playing",
+                opponentMode: "online",
+                playerColor: "w",
+                onlineExperience: "async",
+                matchStatus: "checkmate",
+                matchesPlayed: 7,
+                wins: 4,
+                capturesLifetime: 62,
+                bestWinStreak: 3,
+                masteryBonusAuras: 40,
+                matchSummary: {
+                    status: "checkmate",
+                    reason: "timeout",
+                    winner: "b",
+                    result: "loss",
+                    movesPlayed: 18,
+                    captures: 5,
+                    checksGiven: 2,
+                    aurasEarned: 8,
+                    playerWon: false,
                 },
             });
         },

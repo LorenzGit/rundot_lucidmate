@@ -33,8 +33,12 @@ export interface Move {
 
 export type GameStatus = "playing" | "check" | "checkmate" | "stalemate" | "draw";
 
+export type MatchEndReason = "checkmate" | "stalemate" | "draw" | "timeout" | "resign" | "cancelled";
+
 export interface MatchSummary {
     status: GameStatus;
+    /** How the match actually ended. Timeout and resign are not checkmate. */
+    reason: MatchEndReason;
     winner: Color | null;
     result: "win" | "loss" | "draw";
     movesPlayed: number;

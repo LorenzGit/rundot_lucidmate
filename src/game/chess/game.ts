@@ -1,9 +1,11 @@
 /**
  * Chess match state machine. Renderer-free: the scene mirrors this, never owns it.
  */
-import { pickAiMove, type AiDifficulty } from "./ai.ts";
+import { type AiDifficulty, pickAiMove } from "./ai.ts";
 import { cloneBoard, cloneCastling, fullCastling, startingBoard } from "./board.ts";
-import { applyMove, generateLegalMoves, inCheck, findMove, movesFrom } from "./moves.ts";
+import { applyMove, findMove, generateLegalMoves, inCheck, movesFrom } from "./moves.ts";
+import { wireToBoard } from "./protocol.ts";
+import type { SavedSoloMatch } from "./soloSave.ts";
 import {
     type Board,
     type CastlingRights,
@@ -11,8 +13,8 @@ import {
     type GameStatus,
     type MatchSummary,
     type Move,
-    type PieceType,
     opposite,
+    type PieceType,
 } from "./types.ts";
 
 export type OpponentMode = "ai" | "local" | "online";
@@ -140,6 +142,29 @@ export class ChessMatch {
     /** Online / external seat assignment (e.g. second joiner is black). */
     setPlayerColor(color: Color): void {
         (this.config as { playerColor: Color }).playerColor = color;
+    }
+
+    hydrateSaved(saved: SavedSoloMatch): void {
+        const config = this.config as MatchConfig;
+        config.opponent = saved.opponent;
+        config.difficulty = saved.difficulty;
+        config.playerColor = saved.playerColor;
+        this.board = cloneBoard(wireToBoard(saved.board));
+        this.turn = saved.turn;
+        this.castling = cloneCastling(saved.castling);
+        this.epTarget = saved.epTarget;
+        this.lastMove = saved.lastMove;
+        this.halfmoveClock = saved.halfmoveClock;
+        this.fullmoveNumber = saved.fullmoveNumber;
+        this.history = [...saved.history];
+        this.captures = saved.captures;
+        this.checksGiven = saved.checksGiven;
+        this.pendingPromotion = saved.pendingPromotion;
+        this.selected = null;
+        this.legalTargets = [];
+        this.thinking = false;
+        this.undoStack = [];
+        this.refreshStatus();
     }
 
     /**
@@ -405,6 +430,7 @@ export class ChessMatch {
 
         return {
             status: this.status,
+            reason: this.status === "checkmate" ? "checkmate" : this.status === "stalemate" ? "stalemate" : "draw",
             winner,
             result,
             movesPlayed: this.history.length,
