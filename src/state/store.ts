@@ -75,6 +75,8 @@ export interface AppState {
     correspondenceMatches: CorrespondenceMatch[];
     profileName: string;
     socialBusy: boolean;
+    /** Non-null while opening or joining a live/async board. */
+    joinBusyLabel: string | null;
     rivalDirectoryStatus: "idle" | "connecting" | "ready" | "error";
     rivalDirectoryError: string | null;
     rivalRecommendations: RivalDirectoryProfile[];
@@ -170,6 +172,7 @@ let state: AppState = {
     correspondenceMatches: [],
     profileName: "Dreamer",
     socialBusy: false,
+    joinBusyLabel: null,
     rivalDirectoryStatus: "idle",
     rivalDirectoryError: null,
     rivalRecommendations: [],

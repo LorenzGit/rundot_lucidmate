@@ -8,6 +8,13 @@ Portrait-first Neon chess. Pure-Pixi 8 WebGPU-first, SDK 5.24, Vite 6.
 - Chess rules live in `src/game/chess/` (renderer-free)
 - Themes are cosmetic only (`src/game/art/palette.ts`)
 
+## Version
+
+The menu stamp is `package.json`. RUN catalog versions only bump Major/Minor/Patch
+off the latest upload, so they drift if local patches ship without a deploy.
+On RUNSHIP: `npm run version:sync` then `rundot deploy --bump Patch`. That writes
+the next platform patch into `package.json` so the two numbers match.
+
 ## Verify
 
 ```bash

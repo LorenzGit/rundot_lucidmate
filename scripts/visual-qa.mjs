@@ -39,6 +39,7 @@ const screens = [
     { name: "waiting", screen: "game", socialPreview: "waiting" },
     { name: "results", screen: "game", results: true },
     { name: "timeout", screen: "game", timeout: true },
+    { name: "join", screen: "main", join: true },
 ];
 
 function note(message) {
@@ -143,6 +144,10 @@ try {
             if (shot.timeout) {
                 await page.evaluate(() => globalThis.__LUCIDMATE_QA__.previewTimeoutResults());
                 await page.waitForSelector(".results-card", { timeout: 10_000 });
+            }
+            if (shot.join) {
+                await page.evaluate(() => globalThis.__LUCIDMATE_QA__.previewJoinOverlay());
+                await page.waitForSelector("[data-testid='match-join-overlay']", { timeout: 10_000 });
             }
             if (shot.socialPreview === "reconnecting") {
                 await page.waitForFunction(

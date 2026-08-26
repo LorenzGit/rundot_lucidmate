@@ -39,7 +39,15 @@ export function installBrowserQaContract(): void {
                 rivalInvitations: state.rivalInvitations,
                 correspondenceMatches: state.correspondenceMatches,
                 savedSoloMatch: state.savedSoloMatch,
+                joinBusyLabel: state.joinBusyLabel,
             };
+        },
+        previewJoinOverlay() {
+            store.patch({
+                phase: "menu",
+                menuScreen: "main",
+                joinBusyLabel: "Opening board…",
+            });
         },
         previewSavedSolo() {
             const match = new ChessMatch({ playerColor: "w", opponent: "ai", difficulty: "trippy" });

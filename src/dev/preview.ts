@@ -214,6 +214,9 @@ export function applyDevelopmentScreenPreview(): void {
                 ],
             });
         }
+        if (qa && (params.get("joinOverlay") === "1" || socialPreview === "join")) {
+            store.patch({ joinBusyLabel: "Opening board…" });
+        }
         return;
     }
     console.warn(`[dev] Unknown screen preview "${requested}".`);

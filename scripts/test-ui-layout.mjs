@@ -16,6 +16,7 @@ import {
     LANDSCAPE_RAIL_WIDTH,
     topReserveFor,
 } from "../src/game/scene/layout.ts";
+import { nextVersion, parseVersions } from "./sync-platform-version.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 let failures = 0;
@@ -253,6 +254,34 @@ function assert(cond, msg) {
     assert(/role="alertdialog"/.test(hud), "terminal results are announced assertively");
     assert(/data-testid=\{[\s\S]*checkmate-result/.test(hud), "checkmate has a stable visual QA target");
     assert(/data-testid=\{[\s\S]*timeout-result/.test(hud), "timeout results have a stable visual QA target");
+    const overlay = fs.readFileSync(path.join(root, "src/ui/MatchJoinOverlay.tsx"), "utf8");
+    const controller = fs.readFileSync(path.join(root, "src/game/runController.ts"), "utf8");
+    assert(
+        /joinBusyLabel/.test(fs.readFileSync(path.join(root, "src/state/store.ts"), "utf8")),
+        "store tracks multiplayer join overlay copy",
+    );
+    assert(/<MatchJoinOverlay/.test(app), "the app mounts a multiplayer join overlay");
+    assert(/Opening board/.test(controller) && /Joining match/.test(controller), "join overlay names the connection");
+    assert(
+        /if \(store\.get\(\)\.joinBusyLabel\) return false/.test(controller),
+        "a second join cannot stack while connecting",
+    );
+    assert(/match-join-spinner/.test(overlay), "join overlay uses a spinner");
+    assert(/\.match-join-overlay\s*\{/.test(css), "join overlay covers the game frame");
+    assert(
+        /html\[data-reduced-motion="true"\] \.match-join-spinner/.test(css),
+        "join spinner has a reduced-motion treatment",
+    );
+    assert(
+        /version:sync/.test(fs.readFileSync(path.join(root, "package.json"), "utf8")),
+        "package.json can sync to the next RUN platform version",
+    );
+    {
+        const listing = "rundot CLI 7.12.0\n\nVersions:\n  1.0.22  public\n  1.0.23  private\n";
+        const versions = parseVersions(listing);
+        assert(versions.at(-1)?.raw === "1.0.23", "version sync ignores the rundot CLI banner");
+        assert(nextVersion(versions.at(-1), "patch") === "1.0.24", "version sync writes the next platform patch");
+    }
     assert(/solo-leave-sheet/.test(hud), "solo MENU offers a leave sheet");
     assert(/Save and leave/.test(hud) && /End game/.test(hud), "a solo board can be saved or ended from the table");
     assert(/abandonSolo/.test(hud), "ending a solo game discards the saved board");
@@ -265,7 +294,6 @@ function assert(cond, msg) {
     );
     assert(/shareCorrespondenceInvite/.test(hud), "waiting friend board exposes the SDK share-link action");
 
-    const controller = fs.readFileSync(path.join(root, "src/game/runController.ts"), "utf8");
     assert(/matchKey: match\.matchKey/.test(controller), "share links carry the exact board key");
     assert(/roomCode: match\.roomCode/.test(controller), "share links carry the board room code");
     assert(

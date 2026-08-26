@@ -18,6 +18,7 @@ import PracticeScreen from "./PracticeScreen.tsx";
 import ChallengeScreen from "./ChallengeScreen.tsx";
 import RivalsScreen from "./RivalsScreen.tsx";
 import LeagueScreen from "./LeagueScreen.tsx";
+import MatchJoinOverlay from "./MatchJoinOverlay.tsx";
 import MenuShaderBackground from "./MenuShaderBackground.tsx";
 import { analytics } from "../systems/analytics/analyticsConfig.ts";
 
@@ -95,6 +96,7 @@ export default function App() {
                     <Hud />
                 </div>
             )}
+            <MatchJoinOverlay />
             <Toast />
             <DevelopmentToolsSlot />
         </div>

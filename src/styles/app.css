@@ -4823,6 +4823,100 @@ html[data-reduced-motion="true"] .reaction-bar.your-turn::before {
     font-weight: 500;
 }
 
+.match-join-overlay {
+    position: absolute;
+    z-index: 110;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    box-sizing: border-box;
+    padding: max(16px, var(--safe-top)) max(16px, var(--safe-right)) max(16px, var(--safe-bottom))
+        max(16px, var(--safe-left));
+    background: rgba(1, 25, 21, 0.72);
+    pointer-events: auto;
+    cursor: progress;
+    touch-action: none;
+}
+
+.match-join-card {
+    display: grid;
+    width: min(16rem, 100%);
+    justify-items: center;
+    gap: 14px;
+    padding: 22px 24px 20px;
+    border: 3px solid #fff0c6;
+    border-radius: 22px;
+    background: linear-gradient(145deg, #fff7dc, #dfe8c7);
+    color: #173e35;
+    box-shadow:
+        0 7px 0 #4a705f,
+        0 18px 42px rgba(1, 19, 16, 0.42);
+    text-align: center;
+}
+
+.match-join-card strong {
+    color: #173e35;
+    font-size: max(0.95rem, 16px);
+    font-weight: 950;
+}
+
+.match-join-spinner {
+    display: block;
+    width: 42px;
+    height: 42px;
+    border: 4px solid #c9d9b8;
+    border-top-color: #168451;
+    border-radius: 50%;
+    animation: match-join-spin 700ms linear infinite;
+}
+
+@keyframes match-join-spin {
+    to {
+        transform: rotate(1turn);
+    }
+}
+
+@keyframes match-join-fade {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+html:not([data-reduced-motion="true"]) .match-join-overlay {
+    animation: match-join-fade 160ms ease-out both;
+}
+
+html[data-reduced-motion="true"] .match-join-spinner {
+    animation: none;
+    border-top-color: #c9d9b8;
+    background: conic-gradient(#168451 0 40%, #c9d9b8 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .match-join-spinner {
+        animation: none;
+        border-top-color: #c9d9b8;
+        background: conic-gradient(#168451 0 40%, #c9d9b8 0);
+    }
+}
+
+@media (orientation: landscape) {
+    .match-join-card {
+        width: min(14rem, 100%);
+        gap: 10px;
+        padding: 16px 20px 14px;
+    }
+
+    .match-join-spinner {
+        width: 32px;
+        height: 32px;
+        border-width: 3px;
+    }
+}
+
 .leave-sheet p:not(.eyebrow) {
     margin: 0 0 4px;
     color: var(--lm-muted);

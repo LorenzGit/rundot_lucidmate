@@ -605,6 +605,7 @@ export function discardSoloMatch(): void {
 
 /** Connect to a realtime chess room, then enter the playing phase. */
 export async function startOnlineMatch(opts: { mode: OnlineConnectMode; joinCode?: string }): Promise<boolean> {
+    if (store.get().joinBusyLabel) return false;
     await rivalsClient.disconnect();
     store.patch({
         opponentMode: "online",
@@ -620,7 +621,8 @@ export async function startOnlineMatch(opts: { mode: OnlineConnectMode; joinCode
         matchSummary: null,
         pendingPromotion: false,
         thinking: true,
-        toast: opts.mode === "join" ? "Joining room…" : "Creating room…",
+        joinBusyLabel: opts.mode === "join" ? "Joining match…" : "Creating match…",
+        toast: null,
     });
 
     const ok = await onlineChess.connect(opts.mode, opts.joinCode);
@@ -634,11 +636,12 @@ export async function startOnlineMatch(opts: { mode: OnlineConnectMode; joinCode
         onlineExperience: snap.experience,
         activeMatchKey: snap.experience === "async" ? snap.matchKey : null,
         activeMatchPace: snap.experience === "async" ? snap.pace : null,
+        joinBusyLabel: null,
         toast: ok ? null : (snap.error ?? "Online match failed"),
     });
 
     if (!ok) {
-        store.patch({ thinking: false, opponentMode: "online" });
+        store.patch({ thinking: false, opponentMode: "online", joinBusyLabel: null });
         return false;
     }
 
@@ -693,6 +696,7 @@ export async function startCorrespondenceMatch(input: {
     roomCode?: string | null;
     isNew?: boolean;
 }): Promise<boolean> {
+    if (store.get().joinBusyLabel) return false;
     await rivalsClient.disconnect();
     const reconnectingInGame = store.get().phase === "playing" && store.get().activeMatchKey === input.matchKey;
     const reference = input.isNew ? null : correspondence.ensureReference(input.matchKey, input.pace);
@@ -711,6 +715,7 @@ export async function startCorrespondenceMatch(input: {
         pendingPromotion: false,
         thinking: true,
         socialBusy: true,
+        joinBusyLabel: input.isNew ? "Creating board…" : "Opening board…",
         toast: null,
     });
 
@@ -728,6 +733,7 @@ export async function startCorrespondenceMatch(input: {
         onlineSeat: snapshot.you,
         onlinePlayerCount: snapshot.playerCount,
         socialBusy: false,
+        joinBusyLabel: null,
         toast: ok ? (snapshot.status === "waiting" ? "Board ready — share its private invite link." : null) : null,
     });
     if (!ok) {
@@ -746,6 +752,7 @@ export async function startCorrespondenceMatch(input: {
                       onlineExperience: "async",
                       thinking: false,
                       socialBusy: false,
+                      joinBusyLabel: null,
                       toast: null,
                   }
                 : {
@@ -759,6 +766,7 @@ export async function startCorrespondenceMatch(input: {
                       onlineExperience: "live",
                       thinking: false,
                       socialBusy: false,
+                      joinBusyLabel: null,
                       toast: `${connectionError} Your saved board is safe.`,
                   },
         );
