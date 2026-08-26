@@ -6,7 +6,7 @@
     },
     "lucidmate_your_move": {
       "title": { "en": "Your move in LUCIDMATE" },
-      "text": { "en": "{{opponent}} moved. Your board is waiting." }
+      "text": { "en": "{{opponent}} moved to {{position}}. Tap here to complete your turn!" }
     },
     "lucidmate_reaction": {
       "title": { "en": "A rival reacted" },

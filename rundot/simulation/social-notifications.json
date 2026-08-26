@@ -28,7 +28,7 @@
           "type": "send_inbox_message",
           "recipientProfileId": "{{inputs.targetId}}",
           "template": "lucidmate_your_move",
-          "params": { "opponent": "{{inputs.opponent}}" },
+          "params": { "opponent": "{{inputs.opponent}}", "position": "{{inputs.position}}" },
           "payload": {
             "route": "match",
             "matchKey": "{{inputs.matchKey}}",

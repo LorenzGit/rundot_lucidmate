@@ -1,7 +1,8 @@
 import { onlineChess, type OnlineSessionSnapshot } from "../game/chess/onlineClient.ts";
 import type { ChessServerMessage } from "../game/chess/protocol.ts";
 import type { RivalInvitation } from "./rivalsProtocol.ts";
-import { getRunPlayerProfile, resolveLaunchIntent } from "../sdk/runSdk.ts";
+import { matchFromLaunchParams } from "../sdk/launchParams.ts";
+import { getRunPlayerProfile, resolveLaunchIntent, snapshotNotificationParams } from "../sdk/runSdk.ts";
 import { store } from "../state/store.ts";
 import { analytics } from "../systems/analytics/analyticsConfig.ts";
 import { saveSystem } from "../systems/save.ts";
@@ -181,27 +182,34 @@ export const correspondence = {
         return sent;
     },
 
+    matchFromLaunchParams,
+
+    applyLaunchParams(
+        params: Record<string, string>,
+        kind = "notification",
+    ): {
+        matchKey: string;
+        pace: CorrespondencePace;
+        roomCode: string | null;
+    } | null {
+        const match = this.matchFromLaunchParams(params);
+        if (!match) return null;
+        this.ensureReference(match.matchKey, match.pace);
+        analytics.event("correspondence_link_opened", { kind, pace: match.pace });
+        return match;
+    },
+
     async resolveLaunchMatch(): Promise<{
         matchKey: string;
         pace: CorrespondencePace;
         roomCode: string | null;
     } | null> {
         const intent = await resolveLaunchIntent();
-        if (!intent || (intent.kind !== "share" && intent.kind !== "notification" && intent.kind !== "deeplink")) {
-            return null;
-        }
-        // Push taps carry matchKey directly. Durable RUN inbox rows also expose
-        // their canonical roomId; Lucidmate deliberately stores the match key
-        // there so both entry paths reopen the exact same board.
-        const matchKey = intent.params.matchKey ?? intent.params.roomId;
-        if (!isMatchKey(matchKey)) return null;
-        const pace = intent.params.pace === "relaxed" ? "relaxed" : "daily";
-        this.ensureReference(matchKey, pace);
-        analytics.event("correspondence_link_opened", { kind: intent.kind, pace });
-        const roomCodeParam = intent.params.roomCode;
-        const roomCode =
-            typeof roomCodeParam === "string" && /^[A-Z0-9]{6}$/.test(roomCodeParam) ? roomCodeParam : null;
-        return { matchKey, pace, roomCode };
+        const params = {
+            ...snapshotNotificationParams(),
+            ...(intent?.params ?? {}),
+        };
+        return this.applyLaunchParams(params, intent?.kind ?? "notification");
     },
 
     newRematchKey(pace: CorrespondencePace): string {

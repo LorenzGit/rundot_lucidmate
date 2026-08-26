@@ -82,7 +82,7 @@ function createRoom(roomId: string): Harness {
                 contribute: async () => ({ remaining: 0 }),
                 remaining: async () => 0,
             },
-            getGameConfig: async () => ({}),
+            getGameConfig: async () => ({ thumbnailUrl: "https://cdn.test/lucidmate.jpg" }),
         },
     });
 
@@ -169,20 +169,24 @@ assert.deepEqual(turnRecipe?.input, {
     pace: "daily",
     eventKey: "turn_3",
     opponent: recipient.username,
+    position: "f3",
 });
 assert.deepEqual(room.notificationCalls[1], {
     recipientProfileIds: [challenger.id],
     template: "lucidmate_your_move",
-    params: { opponent: recipient.username },
+    params: { opponent: recipient.username, position: "f3" },
     data: {
         route: "match",
         matchKey,
         pace: "daily",
         eventKey: "turn_3",
+        payload: JSON.stringify({ route: "match", matchKey, pace: "daily" }),
         turn: 3,
+        iconUrl: "https://cdn.test/lucidmate.jpg",
+        imageUrl: "https://cdn.test/lucidmate.jpg",
     },
     fallbackTitle: "Your move in LUCIDMATE",
-    fallbackBody: `${recipient.username} moved. Your board is waiting.`,
+    fallbackBody: `${recipient.username} moved to f3. Tap here to complete your turn!`,
 });
 
 // Reconnecting restores the silent path.
@@ -256,6 +260,12 @@ for (const recipe of [
                 notificationKey: "{{inputs.eventKey}}",
             },
             "turn alerts request one durable room-keyed inbox row",
+        );
+        assert.equal(effect.params.position, "{{inputs.position}}", "turn alerts name the destination square");
+        assert.equal(
+            inbox.templates.lucidmate_your_move.text.en,
+            "{{opponent}} moved to {{position}}. Tap here to complete your turn!",
+            "turn push copy names the move and asks the player to finish their turn",
         );
     } else {
         assert.equal("roomNotification" in effect, false, `${recipe} stays on the push-only recipe schema`);

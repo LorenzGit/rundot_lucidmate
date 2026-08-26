@@ -2,12 +2,13 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import { warmAssets } from "./assets/preload.ts";
 import { audioManager } from "./audio/audioManager.ts";
-import { leaveOnlineMatch, startCorrespondenceMatch } from "./game/runController.ts";
+import { leaveOnlineMatch, openLaunchedCorrespondence } from "./game/runController.ts";
 import { captureSoloBoardIfNeeded } from "./game/soloProgress.ts";
 import { installBrowserQaContract } from "./qa/browserContract.ts";
 import {
     applyRunSafeArea,
     initSdk,
+    onNotificationParamsUpdate,
     refreshRunCapabilities,
     registerLifecycles,
     requestHostExit,
@@ -100,19 +101,12 @@ async function boot() {
     //    assets keep loading in the background after this resolves.
     await warmAssets((p) => store.patch({ loadProgress: p }));
 
-    // 6. Loading done — a challenge/turn link lands directly on its board.
-    // The shared match key routes both players to the same persistent authority.
-    const launchMatch = await correspondence.resolveLaunchMatch();
-    const launchReference = launchMatch
-        ? store.get().correspondenceMatches.find((match) => match.matchKey === launchMatch.matchKey)
-        : null;
-    const launchRoomCode = launchMatch?.roomCode ?? launchReference?.roomCode;
-    const launched = launchMatch
-        ? await startCorrespondenceMatch({
-              ...launchMatch,
-              ...(launchRoomCode === undefined ? {} : { roomCode: launchRoomCode }),
-          })
-        : false;
+    // 6. Loading done — a challenge/turn tap must open that board, including a
+    //    tap that arrives while Lucidmate is already running.
+    onNotificationParamsUpdate((params) => {
+        void openLaunchedCorrespondence(params);
+    });
+    const launched = await openLaunchedCorrespondence();
     if (!launched) store.patch({ phase: "menu" });
     if (!launched) void rivalsClient.connect();
     if (import.meta.env.DEV) {

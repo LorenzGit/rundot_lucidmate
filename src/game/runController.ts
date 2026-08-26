@@ -689,6 +689,22 @@ export async function challengeRival(target: { id: string; username: string }): 
     return true;
 }
 
+/** Open the board a notification or share tap named. No-ops if that board is already up. */
+export async function openLaunchedCorrespondence(params?: Record<string, string>): Promise<boolean> {
+    const match = params ? correspondence.applyLaunchParams(params) : await correspondence.resolveLaunchMatch();
+    if (!match) return false;
+    const state = store.get();
+    if (state.phase === "playing" && state.activeMatchKey === match.matchKey && state.onlineStatus !== "error") {
+        return true;
+    }
+    const saved = state.correspondenceMatches.find((entry) => entry.matchKey === match.matchKey);
+    return startCorrespondenceMatch({
+        matchKey: match.matchKey,
+        pace: match.pace,
+        ...((match.roomCode ?? saved?.roomCode) ? { roomCode: match.roomCode ?? saved?.roomCode ?? null } : {}),
+    });
+}
+
 /** Open one durable correspondence board. Only the match reference persists client-side. */
 export async function startCorrespondenceMatch(input: {
     matchKey: string;

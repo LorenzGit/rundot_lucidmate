@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { normalizeLaunchParams } from "../src/sdk/launchParams.ts";
+import { matchFromLaunchParams, normalizeLaunchParams } from "../src/sdk/launchParams.ts";
 import { createPurchaseCoordinator } from "../src/systems/monetization/purchaseCoordinator.ts";
 import { createReturnReminders } from "../src/systems/retention/returnReminders.ts";
 
@@ -48,6 +48,19 @@ assert.deepEqual(
     normalizeLaunchParams({ payload: "not-json", matchKey: "lm-direct-001" }),
     { payload: "not-json", matchKey: "lm-direct-001" },
     "malformed nested payloads fail soft without losing direct launch params",
+);
+assert.deepEqual(
+    matchFromLaunchParams({
+        payload: '{"route":"match","matchKey":"lm-notify-board01","pace":"relaxed"}',
+        roomId: "platform-room-id",
+    }),
+    { matchKey: "lm-notify-board01", pace: "relaxed", roomCode: null },
+    "a turn tap unwraps the recipe payload and ignores the platform room id",
+);
+assert.equal(
+    matchFromLaunchParams({ roomId: "platform-room-id", route: "match" }),
+    null,
+    "a tap without a match key cannot invent a board",
 );
 
 let pending: {

@@ -894,6 +894,48 @@ export async function resolveLaunchIntent(): Promise<{ kind: string; params: Rec
     }
 }
 
+/** INIT_SDK snapshot plus any later notification tap the SDK wrote onto context. */
+export function snapshotNotificationParams(): Record<string, string> {
+    try {
+        const params = RundotGameAPI.context?.notificationParams;
+        if (!params || typeof params !== "object") return {};
+        return normalizeLaunchParams(
+            Object.fromEntries(
+                Object.entries(params).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
+            ),
+        );
+    } catch {
+        return {};
+    }
+}
+
+type NotificationParamsHost = {
+    onNotificationParamsUpdate?: (callback: (params: Record<string, string>) => void) => () => void;
+};
+
+/**
+ * Warm notification taps never re-run boot. The SDK writes them onto
+ * `context.notificationParams`; this also listens for the live host event so a
+ * tap while Lucidmate is already open can open the named board.
+ */
+export function onNotificationParamsUpdate(callback: (params: Record<string, string>) => void): () => void {
+    const deliver = (params: Record<string, string>) => {
+        try {
+            callback(normalizeLaunchParams(params));
+        } catch (error) {
+            console.warn("[runSdk] notification launch handler failed", error);
+        }
+    };
+    const host = (RundotGameAPI as unknown as { host?: NotificationParamsHost }).host;
+    try {
+        const unsubscribe = host?.onNotificationParamsUpdate?.(deliver);
+        if (typeof unsubscribe === "function") return unsubscribe;
+    } catch (error) {
+        console.warn("[runSdk] notification params subscription failed", error);
+    }
+    return () => undefined;
+}
+
 export interface RunPlayerProfile {
     id: string;
     username: string;

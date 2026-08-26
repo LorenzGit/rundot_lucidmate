@@ -7,7 +7,7 @@ import { cloneCastling, fullCastling, startingBoard } from "../game/chess/board.
 import { applyMove, generateLegalMoves, findMove, inCheck } from "../game/chess/moves.ts";
 import { boardToWire, type ChessProtocol, type ChessServerMessage, type WireBoard } from "../game/chess/protocol.ts";
 import type { Board, CastlingRights, Color, GameStatus, Move, PieceType } from "../game/chess/types.ts";
-import { opposite } from "../game/chess/types.ts";
+import { algebraic, opposite } from "../game/chess/types.ts";
 import {
     type ChessReaction,
     type CorrespondencePace,
@@ -29,7 +29,13 @@ const NOTIFICATION_COPY: Record<
     lucidmate_send_move_notification: {
         template: "lucidmate_your_move",
         title: "Your move in LUCIDMATE",
-        body: (params) => `${params.opponent ?? "Your opponent"} moved. Your board is waiting.`,
+        body: (params) => {
+            const who = params.opponent ?? "Your opponent";
+            const position = params.position;
+            return position
+                ? `${who} moved to ${position}. Tap here to complete your turn!`
+                : `${who} moved. Tap here to complete your turn!`;
+        },
     },
     lucidmate_send_reaction_notification: {
         template: "lucidmate_reaction",
@@ -65,6 +71,7 @@ export default class ChessRoom extends GameRoom<ChessProtocol> {
     private checkCount = 0;
     private reaction: { id: ChessReaction; from: string; at: number; moveCount: number } | null = null;
     private rematch: { matchKey: string; offeredBy: string } | null = null;
+    private gameIconUrl: string | null | undefined;
 
     private get correspondence(): boolean {
         return this.roomType === "lucidmate-correspondence";
@@ -210,8 +217,10 @@ export default class ChessRoom extends GameRoom<ChessProtocol> {
             const recipient = this.seats[this.turn];
             if (recipient) {
                 const mover = this.profiles[opposite(this.turn)]?.username ?? "Your opponent";
+                const position = this.lastMove ? algebraic(this.lastMove.to) : "";
                 await this.notify(sender.id, recipient, "lucidmate_send_move_notification", `turn_${this.moveCount}`, {
                     opponent: mover,
+                    ...(position ? { position } : {}),
                 });
             }
         }
@@ -536,6 +545,21 @@ export default class ChessRoom extends GameRoom<ChessProtocol> {
         return this.players.get(playerId)?.connected === true;
     }
 
+    private async resolveGameIconUrl(): Promise<string | null> {
+        if (this.gameIconUrl !== undefined) return this.gameIconUrl;
+        try {
+            const config = await this.services.getGameConfig();
+            const candidate = config.thumbnailUrl ?? config.iconUrl;
+            this.gameIconUrl =
+                typeof candidate === "string" && /^https:\/\//i.test(candidate) && !/\.png(?:$|\?)/i.test(candidate)
+                    ? candidate
+                    : null;
+        } catch {
+            this.gameIconUrl = null;
+        }
+        return this.gameIconUrl;
+    }
+
     private async pushNotification(
         recipient: string,
         recipe: SocialNotificationRecipe,
@@ -543,6 +567,7 @@ export default class ChessRoom extends GameRoom<ChessProtocol> {
         params: Record<string, string>,
     ): Promise<boolean> {
         const copy = NOTIFICATION_COPY[recipe];
+        const iconUrl = await this.resolveGameIconUrl();
         try {
             await this.services.notifications.send({
                 recipientProfileIds: [recipient],
@@ -553,9 +578,15 @@ export default class ChessRoom extends GameRoom<ChessProtocol> {
                     matchKey: this.matchKey,
                     pace: this.pace,
                     eventKey,
+                    payload: JSON.stringify({
+                        route: "match",
+                        matchKey: this.matchKey,
+                        pace: this.pace,
+                    }),
                     ...(recipe === "lucidmate_send_move_notification"
                         ? { turn: this.moveCount }
                         : { messageId: eventKey }),
+                    ...(iconUrl ? { iconUrl, imageUrl: iconUrl } : {}),
                 },
                 fallbackTitle: copy.title,
                 fallbackBody: copy.body(params),

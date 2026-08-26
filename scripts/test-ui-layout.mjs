@@ -261,6 +261,9 @@ function assert(cond, msg) {
         "store tracks multiplayer join overlay copy",
     );
     assert(/<MatchJoinOverlay/.test(app), "the app mounts a multiplayer join overlay");
+    const boot = fs.readFileSync(path.join(root, "src/main.tsx"), "utf8");
+    assert(/onNotificationParamsUpdate/.test(boot), "a notification tap while the game is open still opens its board");
+    assert(/openLaunchedCorrespondence/.test(boot), "boot and live taps share one correspondence launch path");
     assert(/Opening board/.test(controller) && /Joining match/.test(controller), "join overlay names the connection");
     assert(
         /if \(store\.get\(\)\.joinBusyLabel\) return false/.test(controller),
