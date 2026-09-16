@@ -1,7 +1,33 @@
 import assert from "node:assert/strict";
-import { matchFromLaunchParams, normalizeLaunchParams } from "../src/sdk/launchParams.ts";
+import { matchFromLaunchParams, matchFromLaunchSources, normalizeLaunchParams } from "../src/sdk/launchParams.ts";
 import { createPurchaseCoordinator } from "../src/systems/monetization/purchaseCoordinator.ts";
 import { createReturnReminders } from "../src/systems/retention/returnReminders.ts";
+
+const routeOnly = { matchKey: "lm-route-board01", pace: "relaxed", roomCode: "ABC123" };
+const staleIntent = { matchKey: "lm-old-board001", pace: "daily", roomCode: "OLD123" };
+assert.deepEqual(
+    matchFromLaunchSources({}, routeOnly, staleIntent),
+    {
+        matchKey: "lm-route-board01",
+        pace: "relaxed",
+        roomCode: "ABC123",
+    },
+    "URL launch extras take precedence over stale process intent",
+);
+assert.deepEqual(
+    matchFromLaunchSources({ matchKey: "lm-tap-board001" }, routeOnly, staleIntent),
+    {
+        matchKey: "lm-tap-board001",
+        pace: "daily",
+        roomCode: null,
+    },
+    "fresh notification does not inherit another board's room code or pace",
+);
+assert.equal(
+    matchFromLaunchSources({ matchKey: "invalid" }, routeOnly)?.matchKey,
+    routeOnly.matchKey,
+    "malformed notification data does not shadow valid route data",
+);
 
 const scheduled: string[] = [];
 const cancelled: string[] = [];
@@ -61,6 +87,11 @@ assert.equal(
     matchFromLaunchParams({ roomId: "platform-room-id", route: "match" }),
     null,
     "a tap without a match key cannot invent a board",
+);
+assert.deepEqual(
+    matchFromLaunchParams({ matchKey: "lm-notify-board01", pace: "daily", route: "match" }),
+    { matchKey: "lm-notify-board01", pace: "daily", roomCode: null },
+    "a tap with flattened URL extras opens the exact board",
 );
 
 let pending: {

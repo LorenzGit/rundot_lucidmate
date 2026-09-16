@@ -10,7 +10,7 @@ import { leaveOnlineMatch, startCorrespondenceMatch, startOnlineMatch } from "..
 import { correspondence } from "../social/correspondence.ts";
 import { type MenuScreen, store } from "../state/store.ts";
 
-export function installBrowserQaContract(): void {
+export function installBrowserQaContract(onLaunch: (params: Record<string, string>) => Promise<boolean>): void {
     if (!import.meta.env.DEV) return;
     const api = {
         snapshot() {
@@ -69,6 +69,10 @@ export function installBrowserQaContract(): void {
                 pace,
                 ...(roomCode === undefined ? {} : { roomCode }),
             });
+        },
+        /** Same path a RUN notification tap uses: extras → applyLaunchParams → board. */
+        openFromLaunch(params: Record<string, string>) {
+            return onLaunch(params);
         },
         joinCode(roomCode: string) {
             return startOnlineMatch({ mode: "join", joinCode: roomCode });

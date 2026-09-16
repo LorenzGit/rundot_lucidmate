@@ -14,6 +14,7 @@ import {
     requestHostExit,
 } from "./sdk/runSdk.ts";
 import { correspondence } from "./social/correspondence.ts";
+import { createMatchLaunchRouter } from "./sdk/matchLaunchRouter.ts";
 import { rivalsClient } from "./social/rivalsClient.ts";
 import { store } from "./state/store.ts";
 import { analytics } from "./systems/analytics/analyticsConfig.ts";
@@ -48,6 +49,30 @@ async function boot() {
     // 1. SDK first. Nothing may call RundotGameAPI before this resolves.
     //    Resolves even if init fails (local dev outside the RUN host).
     await initSdk();
+    const launchRouter = createMatchLaunchRouter({
+        resolve: () => correspondence.resolveLaunchMatch(),
+        open: (match) =>
+            openLaunchedCorrespondence({
+                matchKey: match.matchKey,
+                pace: match.pace,
+                ...(match.roomCode ? { roomCode: match.roomCode } : {}),
+            }),
+        waitUntilIdle: () => {
+            if (!store.get().joinBusyLabel) return Promise.resolve();
+            return new Promise<void>((resolve) => {
+                const unsubscribe = store.subscribe(() => {
+                    if (store.get().joinBusyLabel) return;
+                    unsubscribe();
+                    resolve();
+                });
+            });
+        },
+        onError: (error) => console.warn("[launch] could not open board", error),
+    });
+    // Subscribe before loading saves/assets; taps during boot must survive.
+    onNotificationParamsUpdate((params) => {
+        void launchRouter.receive(params);
+    });
     // The transport exists now — flush everything boot recorded before this
     // point, then keep emitting in real time.
     analytics.markTransportReady();
@@ -103,10 +128,7 @@ async function boot() {
 
     // 6. Loading done — a challenge/turn tap must open that board, including a
     //    tap that arrives while Lucidmate is already running.
-    onNotificationParamsUpdate((params) => {
-        void openLaunchedCorrespondence(params);
-    });
-    const launched = await openLaunchedCorrespondence();
+    const launched = await launchRouter.start();
     if (!launched) store.patch({ phase: "menu" });
     if (!launched) void rivalsClient.connect();
     if (import.meta.env.DEV) {
@@ -185,7 +207,7 @@ async function boot() {
     analytics.funnelStep("load", 4);
     analytics.funnelStep("lucidmate_first_run", 1);
     analytics.sessionStart(store.get().matchesPlayed === 0);
-    installBrowserQaContract();
+    installBrowserQaContract((params) => launchRouter.receive(params));
 }
 
 function preventBrowserChrome(event: Event): void {

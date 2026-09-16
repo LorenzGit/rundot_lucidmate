@@ -53,9 +53,9 @@ export function canUseAuthoritativeRealtime(): boolean {
     if (!realtimeAvailable()) return false;
     try {
         // isAvailable() only means the SDK object exists; it returns true in
-        // Preview App's offline mock too. Multiplayer is authoritative only
-        // when the initialized SDK explicitly reports a non-mock host, or when
-        // a dev/playground room server URL was positively injected.
+        // Preview App's offline mock too. Multiplayer is authoritative when the
+        // initialized SDK reports a non-mock host, or when a dev/playground
+        // room server URL was positively injected.
         const runtime = window as unknown as {
             __RUNDOT_MULTIPLAYER_DEV_SERVER__?: string;
             __RUNDOT_GAME_PLAYGROUND__?: { enabled?: boolean; roomServerUrl?: string; versionTag?: string };
@@ -63,13 +63,9 @@ export function canUseAuthoritativeRealtime(): boolean {
         const playground = runtime.__RUNDOT_GAME_PLAYGROUND__;
         if (runtime.__RUNDOT_MULTIPLAYER_DEV_SERVER__) return true;
         if (playground?.enabled) return Boolean(playground.roomServerUrl && playground.versionTag);
-        if (RundotGameAPI.isMock()) return false;
-
-        // SDK 5.24 does not expose room-server readiness as a public
-        // capability. Its initialized RemoteHost does retain the positive
-        // INIT_SDK roomServerUrl; fail closed when Preview App omits it.
-        const api = RundotGameAPI as unknown as { host?: { _roomServerUrl?: unknown } };
-        return typeof api.host?._roomServerUrl === "string" && /^https?:\/\//.test(api.host._roomServerUrl);
+        // RemoteHost sets isMock=false after INIT_SDK. Use this public signal;
+        // private room-server fields are not a supported readiness contract.
+        return !RundotGameAPI.isMock();
     } catch {
         return false;
     }

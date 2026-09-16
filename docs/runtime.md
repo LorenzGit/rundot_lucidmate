@@ -75,15 +75,19 @@ autoplay. These are browser features, not additional SDK namespaces.
 - The Settings five-second alert uses typed local `submitMessageAsync` and
   proves only permission/scheduling on that phone. Accepted correspondence
   moves and reactions await a protected `send_inbox_message` recipe targeting
-  the server-validated rival. A turn alert is skipped entirely while the rival
-  still holds a connected seat in the room; otherwise the move recipe always
-  runs — its `roomNotification` (`room_turn`, the authoritative `roomId`, and
+  the server-validated rival. Every accepted non-terminal correspondence move
+  runs the move recipe, including connected recipients because a socket may
+  remain connected while the phone is backgrounded — its `roomNotification` (`room_turn`, the authoritative `roomId`, and
   the stable per-turn `notificationKey`) keys one durable RUN inbox row, so a
   retry of the same turn updates that row instead of stacking another. The push
   is a best-effort extra whose failure is logged and never withdraws the inbox
-  row or rolls back the move. Reaction and rematch alerts stay on the push-only
-  schema. `saveToInbox` remains unavailable. SDK 5.24 wraps deep-link fields in
-  a JSON `payload`, which the client normalizes on launch. Real push still
+  row or rolls back the move. Challenge, reaction, and rematch recipes use the
+  same `roomNotification` contract with `room_message` so a tap opens that
+  board. `saveToInbox` remains unavailable. SDK 5.24 wraps deep-link fields in
+  a JSON `payload`, which the client normalizes on launch. The client also reads
+  URL launch extras, keeps each destination intact, and queues taps during boot
+  or another join. Both notification transports use the same `turn_N` key;
+  Venus deduplicates room events by recipient, game, room, template and event. Real push still
   requires two RUN identities and a disconnected-device test.
 - Haptics are optional feedback and never the only feedback.
 - Haptics use root `triggerHapticAsync()` plus

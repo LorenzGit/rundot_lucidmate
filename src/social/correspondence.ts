@@ -1,8 +1,13 @@
 import { onlineChess, type OnlineSessionSnapshot } from "../game/chess/onlineClient.ts";
 import type { ChessServerMessage } from "../game/chess/protocol.ts";
 import type { RivalInvitation } from "./rivalsProtocol.ts";
-import { matchFromLaunchParams } from "../sdk/launchParams.ts";
-import { getRunPlayerProfile, resolveLaunchIntent, snapshotNotificationParams } from "../sdk/runSdk.ts";
+import { matchFromLaunchParams, matchFromLaunchSources } from "../sdk/launchParams.ts";
+import {
+    getRunPlayerProfile,
+    resolveLaunchIntent,
+    snapshotLaunchParams,
+    snapshotNotificationParams,
+} from "../sdk/runSdk.ts";
 import { store } from "../state/store.ts";
 import { analytics } from "../systems/analytics/analyticsConfig.ts";
 import { saveSystem } from "../systems/save.ts";
@@ -205,11 +210,8 @@ export const correspondence = {
         roomCode: string | null;
     } | null> {
         const intent = await resolveLaunchIntent();
-        const params = {
-            ...snapshotNotificationParams(),
-            ...(intent?.params ?? {}),
-        };
-        return this.applyLaunchParams(params, intent?.kind ?? "notification");
+        // A warm tap or route remount is newer than the process-launch intent.
+        return matchFromLaunchSources(snapshotNotificationParams(), snapshotLaunchParams(), intent?.params ?? {});
     },
 
     newRematchKey(pace: CorrespondencePace): string {

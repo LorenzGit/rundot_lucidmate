@@ -200,6 +200,7 @@ export default class RivalsRoom extends GameRoom<RivalsProtocol> {
         try {
             await this.services.simulation.executeRecipe(sender.id, "lucidmate_send_challenge_notification", {
                 targetId: target.id,
+                roomId: this.roomId,
                 matchKey: invitation.matchKey,
                 pace: invitation.pace,
                 eventKey: `challenge_${invitation.matchKey}`,

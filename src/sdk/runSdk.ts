@@ -894,16 +894,28 @@ export async function resolveLaunchIntent(): Promise<{ kind: string; params: Rec
     }
 }
 
+function snapshotContextRecord(value: unknown): Record<string, string> {
+    if (!value || typeof value !== "object") return {};
+    return normalizeLaunchParams(
+        Object.fromEntries(
+            Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
+        ),
+    );
+}
+
 /** INIT_SDK snapshot plus any later notification tap the SDK wrote onto context. */
 export function snapshotNotificationParams(): Record<string, string> {
     try {
-        const params = RundotGameAPI.context?.notificationParams;
-        if (!params || typeof params !== "object") return {};
-        return normalizeLaunchParams(
-            Object.fromEntries(
-                Object.entries(params).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
-            ),
-        );
+        return snapshotContextRecord(RundotGameAPI.context?.notificationParams);
+    } catch {
+        return {};
+    }
+}
+
+/** URL extras a host tap put on the game route. */
+export function snapshotLaunchParams(): Record<string, string> {
+    try {
+        return snapshotContextRecord(RundotGameAPI.context?.launchParams);
     } catch {
         return {};
     }
@@ -915,8 +927,8 @@ type NotificationParamsHost = {
 
 /**
  * Warm notification taps never re-run boot. The SDK writes them onto
- * `context.notificationParams`; this also listens for the live host event so a
- * tap while Lucidmate is already open can open the named board.
+ * `context.notificationParams` and notifies host subscribers. Subscribe so a
+ * tap while this game is already open can open the named destination.
  */
 export function onNotificationParamsUpdate(callback: (params: Record<string, string>) => void): () => void {
     const deliver = (params: Record<string, string>) => {

@@ -524,10 +524,8 @@ export default class ChessRoom extends GameRoom<ChessProtocol> {
         if (!this.matchKey || !this.pace) return;
 
         if (recipe === "lucidmate_send_move_notification") {
-            // A rival watching the board sees the move land in the live state
-            // broadcast, so neither a push nor an inbox row is warranted.
-            if (this.isWatching(recipient)) return;
-            // Everyone else gets the durable inbox row first — the push is a
+            // A socket can remain connected while the phone is backgrounded.
+            // Every turn gets the durable inbox row first — the push is a
             // best-effort extra and its failure must never cancel the row.
             await this.executeNotificationRecipe(actor, recipient, recipe, eventKey, params);
             await this.pushNotification(recipient, recipe, eventKey, params);
@@ -538,11 +536,6 @@ export default class ChessRoom extends GameRoom<ChessProtocol> {
         // member directly, and fall back to the recipe when that push fails.
         if (this.players.has(recipient) && (await this.pushNotification(recipient, recipe, eventKey, params))) return;
         await this.executeNotificationRecipe(actor, recipient, recipe, eventKey, params);
-    }
-
-    /** True while the rival still holds a live, connected seat in this room. */
-    private isWatching(playerId: string): boolean {
-        return this.players.get(playerId)?.connected === true;
     }
 
     private async resolveGameIconUrl(): Promise<string | null> {
@@ -578,13 +571,14 @@ export default class ChessRoom extends GameRoom<ChessProtocol> {
                     matchKey: this.matchKey,
                     pace: this.pace,
                     eventKey,
+                    notificationKey: eventKey,
                     payload: JSON.stringify({
                         route: "match",
                         matchKey: this.matchKey,
                         pace: this.pace,
                     }),
                     ...(recipe === "lucidmate_send_move_notification"
-                        ? { turn: this.moveCount }
+                        ? { turn: Number(eventKey.slice("turn_".length)) }
                         : { messageId: eventKey }),
                     ...(iconUrl ? { iconUrl, imageUrl: iconUrl } : {}),
                 },

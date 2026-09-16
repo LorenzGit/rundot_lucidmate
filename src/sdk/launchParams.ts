@@ -1,5 +1,20 @@
 import { isMatchKey, type CorrespondencePace } from "../social/model.ts";
 
+export interface MatchLaunch {
+    matchKey: string;
+    pace: CorrespondencePace;
+    roomCode: string | null;
+}
+
+/** Sources are newest first. Never mix fields from different destinations. */
+export function matchFromLaunchSources(...sources: Record<string, string>[]): MatchLaunch | null {
+    for (const params of sources) {
+        const match = matchFromLaunchParams(params);
+        if (match) return match;
+    }
+    return null;
+}
+
 /** SDK 5.24 recipe pushes wrap their routing fields in a JSON `payload` value. */
 export function normalizeLaunchParams(params: Record<string, string>): Record<string, string> {
     if (typeof params.payload !== "string") return params;
@@ -17,11 +32,7 @@ export function normalizeLaunchParams(params: Record<string, string>): Record<st
     }
 }
 
-export function matchFromLaunchParams(params: Record<string, string>): {
-    matchKey: string;
-    pace: CorrespondencePace;
-    roomCode: string | null;
-} | null {
+export function matchFromLaunchParams(params: Record<string, string>): MatchLaunch | null {
     const launched = normalizeLaunchParams(params);
     const matchKey = launched.matchKey;
     if (!isMatchKey(matchKey)) return null;

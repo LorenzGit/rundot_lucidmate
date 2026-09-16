@@ -162,6 +162,11 @@ expect(
     /criteria:\s*\{\s*directory:\s*RIVALS_DIRECTORY_KEY\s*\}/.test(rivalsClient),
     "rival discovery must keep local/legacy routers on one directory room",
 );
+const rivalsRoom = read("src/rooms/RivalsRoom.ts");
+expect(
+    /lucidmate_send_challenge_notification/.test(rivalsRoom) && /roomId: this\.roomId/.test(rivalsRoom),
+    "challenge alerts key a durable inbox row to the exact board",
+);
 const roomServer = read("src/rooms/ChessRoom.ts");
 expect(
     /this\.reason = this\.winner \? "resign" : "cancelled"/.test(roomServer),
@@ -222,19 +227,13 @@ for (const [recipeId, recipe] of Object.entries(socialNotifications.recipes ?? {
     );
     const effect = recipe.beginEffects?.[0] ?? {};
     expect(!("saveToInbox" in effect), `${recipeId} must not request the unreleased inbox persistence contract`);
-    if (recipeId === "lucidmate_send_move_notification") {
-        expect(
-            effect.roomNotification?.sourceType === "room_turn" &&
-                effect.roomNotification?.roomId === "{{inputs.roomId}}" &&
-                effect.roomNotification?.notificationKey === "{{inputs.eventKey}}",
-            `${recipeId} must key one durable room-turn inbox row per turn`,
-        );
-    } else {
-        expect(
-            !("roomNotification" in effect),
-            `${recipeId} stays on the push-only recipe schema; only turn alerts are durable`,
-        );
-    }
+    const sourceType = recipeId === "lucidmate_send_move_notification" ? "room_turn" : "room_message";
+    expect(
+        effect.roomNotification?.sourceType === sourceType &&
+            effect.roomNotification?.roomId === "{{inputs.roomId}}" &&
+            effect.roomNotification?.notificationKey === "{{inputs.eventKey}}",
+        `${recipeId} must key one durable inbox row to the exact board`,
+    );
 }
 expect(
     /this\.reaction\.moveCount === this\.moveCount/.test(roomServer) && /color !== this\.turn/.test(roomServer),

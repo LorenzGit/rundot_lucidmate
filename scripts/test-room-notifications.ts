@@ -111,11 +111,13 @@ await room.protocol.handleMessage(recipient.id, "move", { from: 12, to: 36, prom
 assert.equal(room.simulationCalls.length, 0);
 assert.equal(room.notificationCalls.length, 0);
 
-// A rival who is still in the room sees the move in the state broadcast, so the
-// turn alert is suppressed on both channels.
+// A connected socket may belong to a backgrounded phone. It still gets an alert.
 await room.protocol.handleMessage(recipient.id, "move", { from: 12, to: 28, promotion: null });
-assert.equal(room.notificationCalls.length, 0, "a watching rival is never pushed a turn alert");
-assert.equal(room.simulationCalls.length, 0, "a watching rival never receives a durable inbox row");
+assert.equal(room.notificationCalls.length, 1, "connected recipients still receive move alerts");
+assert.equal(room.simulationCalls.length, 1, "connected recipients still receive the inbox row");
+assert.equal(room.simulationCalls[0]?.input.eventKey, "turn_1");
+room.notificationCalls.length = 0;
+room.simulationCalls.length = 0;
 
 // Reactions are available only to the player whose turn it is.
 await room.protocol.handleMessage(recipient.id, "react", { reaction: "nice_move" });
@@ -137,10 +139,12 @@ const duplicateReactionError = room.messages.findLast(
 )?.data as { reason: string } | undefined;
 assert.equal(duplicateReactionError?.reason, "You already reacted this turn");
 
-// The reply alerts nobody either: White is watching too.
+// The reply gets a distinct turn key even though both sockets remain connected.
 await room.protocol.handleMessage(challenger.id, "move", { from: 52, to: 36, promotion: null });
-assert.equal(room.notificationCalls.length, 1);
-assert.equal(room.simulationCalls.length, 0);
+assert.equal(room.notificationCalls.length, 2);
+assert.equal(room.simulationCalls[0]?.input.eventKey, "turn_2");
+room.notificationCalls.pop();
+room.simulationCalls.length = 0;
 
 // A rival whose socket dropped is no longer watching, even during the SDK
 // reconnect grace period, and must get the durable inbox row.
@@ -180,6 +184,7 @@ assert.deepEqual(room.notificationCalls[1], {
         matchKey,
         pace: "daily",
         eventKey: "turn_3",
+        notificationKey: "turn_3",
         payload: JSON.stringify({ route: "match", matchKey, pace: "daily" }),
         turn: 3,
         iconUrl: "https://cdn.test/lucidmate.jpg",
@@ -189,11 +194,13 @@ assert.deepEqual(room.notificationCalls[1], {
     fallbackBody: `${recipient.username} moved to f3. Tap here to complete your turn!`,
 });
 
-// Reconnecting restores the silent path.
+// Reconnecting does not suppress subsequent moves.
 await room.protocol.handleMessage(challenger.id, "__system:reconnected", {});
 await room.protocol.handleMessage(challenger.id, "move", { from: 51, to: 35, promotion: null });
-assert.equal(room.simulationCalls.length, 1, "a reconnected rival is watching again");
-assert.equal(room.notificationCalls.length, 2);
+assert.equal(room.simulationCalls.at(-1)?.input.eventKey, "turn_4");
+assert.equal(room.notificationCalls.length, 3);
+room.simulationCalls.pop();
+room.notificationCalls.pop();
 
 // Reactions to a departed member still fall through to the protected recipe.
 await room.protocol.handleLeave(challenger.id, "leave");
@@ -201,6 +208,8 @@ await room.protocol.handleMessage(recipient.id, "react", { reaction: "nice_move"
 assert.equal(room.simulationCalls[1]?.recipe, "lucidmate_send_reaction_notification");
 assert.equal(room.simulationCalls[1]?.input.targetId, challenger.id);
 assert.equal(room.simulationCalls[1]?.input.eventKey, "reaction_4_nice_move");
+assert.equal(room.simulationCalls[1]?.input.roomId, ROOM_ID);
+assert.equal(room.simulationCalls[1]?.input.matchKey, matchKey);
 
 // A failed push never withdraws or blocks the inbox row.
 room.hooks.failNextMovePush = true;
@@ -220,6 +229,8 @@ await room.protocol.handleMessage(recipient.id, "rematch", { matchKey: "lm-notif
 assert.equal(room.simulationCalls[3]?.recipe, "lucidmate_send_rematch_notification");
 assert.equal(room.simulationCalls[3]?.input.targetId, challenger.id);
 assert.equal(room.simulationCalls[3]?.input.eventKey, "rematch_lm-notification-flow-002");
+assert.equal(room.simulationCalls[3]?.input.roomId, ROOM_ID);
+assert.equal(room.simulationCalls[3]?.input.matchKey, matchKey);
 
 // The same logical turn, replayed on the same board, keys the same inbox row —
 // a retry updates one message instead of stacking another.
@@ -227,9 +238,31 @@ const replay = createRoom(ROOM_ID);
 await seatBothPlayers(replay);
 await replay.protocol.handleMessage(recipient.id, "move", { from: 12, to: 28, promotion: null });
 await replay.protocol.handleMessage(challenger.id, "move", { from: 52, to: 36, promotion: null });
+replay.simulationCalls.length = 0;
+replay.notificationCalls.length = 0;
 await replay.protocol.handleMessage(challenger.id, "__system:disconnected", {});
 await replay.protocol.handleMessage(recipient.id, "move", { from: 6, to: 21, promotion: null });
 assert.deepEqual(replay.simulationCalls[0]?.input, turnRecipe?.input, "a replayed turn reuses room id and event key");
+
+// A slow recipe must not relabel its push with a later move's turn number.
+const overlapping = createRoom("overlapping-turns");
+await seatBothPlayers(overlapping);
+let releaseFirst!: () => void;
+overlapping.hooks.holdMoveRecipe = new Promise<void>((resolve) => {
+    releaseFirst = resolve;
+});
+const firstMove = overlapping.protocol.handleMessage(recipient.id, "move", { from: 12, to: 28 });
+await overlapping.protocol.handleMessage(challenger.id, "move", { from: 52, to: 36 });
+releaseFirst();
+await firstMove;
+for (const call of overlapping.notificationCalls) {
+    const data = call.data as Record<string, unknown>;
+    assert.equal(data.notificationKey, `turn_${data.turn}`, "both transports identify the original move");
+}
+assert.deepEqual(
+    overlapping.notificationCalls.map((call) => (call.data as Record<string, unknown>).turn),
+    [2, 1],
+);
 
 const config = JSON.parse(fs.readFileSync("rundot/simulation/social-notifications.json", "utf8"));
 const inbox = JSON.parse(fs.readFileSync("rundot/inbox.config.json", "utf8"));
@@ -251,25 +284,23 @@ for (const recipe of [
         false,
         `${recipe} must not declare message parameters as inventory entities`,
     );
+    assert.deepEqual(
+        effect.roomNotification,
+        {
+            sourceType: recipe === "lucidmate_send_move_notification" ? "room_turn" : "room_message",
+            roomId: "{{inputs.roomId}}",
+            notificationKey: "{{inputs.eventKey}}",
+        },
+        `${recipe} requests one durable room-keyed inbox row`,
+    );
     if (recipe === "lucidmate_send_move_notification") {
-        assert.deepEqual(
-            effect.roomNotification,
-            {
-                sourceType: "room_turn",
-                roomId: "{{inputs.roomId}}",
-                notificationKey: "{{inputs.eventKey}}",
-            },
-            "turn alerts request one durable room-keyed inbox row",
-        );
         assert.equal(effect.params.position, "{{inputs.position}}", "turn alerts name the destination square");
         assert.equal(
             inbox.templates.lucidmate_your_move.text.en,
             "{{opponent}} moved to {{position}}. Tap here to complete your turn!",
             "turn push copy names the move and asks the player to finish their turn",
         );
-    } else {
-        assert.equal("roomNotification" in effect, false, `${recipe} stays on the push-only recipe schema`);
     }
 }
 
-console.log("room notifications: silent while watching, durable room-keyed inbox off-room, exact-board routing");
+console.log("room notifications: connected and disconnected recipients, durable room-keyed inbox, exact-board routing");

@@ -41,8 +41,9 @@ function main() {
     const packagePath = path.join(root, "package.json");
     const bump = process.argv.includes("--minor") ? "minor" : process.argv.includes("--major") ? "major" : "patch";
     const dryRun = process.argv.includes("--dry-run");
+    const targetArgs = process.argv.slice(2).filter((arg) => !["--major", "--minor", "--dry-run"].includes(arg));
 
-    const listing = execFileSync("rundot", ["game", "list-versions"], {
+    const listing = execFileSync("rundot", ["game", "list-versions", ...targetArgs], {
         encoding: "utf8",
         cwd: root,
         env: process.env,
