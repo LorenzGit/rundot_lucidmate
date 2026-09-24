@@ -53,9 +53,11 @@ export default defineConfig(({ command }) => {
                      * does not pile everything into one chunk over the 600 kB
                      * budget `scripts/check-build.mjs` enforces.
                      *
-                     * Firebase deliberately has no rule: nothing on this game's
-                     * code path imports it, and giving it one emits an empty chunk
-                     * and an extra request for zero bytes.
+                     * Firebase stays a dependency because the RUN SDK dynamically
+                     * imports `firebase/app` and `firebase/auth`; the build fails
+                     * to resolve them without it. It deliberately has no chunk
+                     * rule: nothing on this game's own code path imports it, and
+                     * a rule would emit an empty chunk and a request for zero bytes.
                      */
                     manualChunks(id) {
                         if (!id.includes("node_modules")) return undefined;

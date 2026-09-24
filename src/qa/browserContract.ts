@@ -5,6 +5,7 @@
 import { ChessMatch } from "../game/chess/game.ts";
 import { canUseAuthoritativeRealtime, onlineChess } from "../game/chess/onlineClient.ts";
 import { serializeSoloMatch } from "../game/chess/soloSave.ts";
+import { holdPreviewState } from "../dev/preview.ts";
 import { getChessScene, getRunController } from "../game/GameCanvas.tsx";
 import { leaveOnlineMatch, startCorrespondenceMatch, startOnlineMatch } from "../game/runController.ts";
 import { correspondence } from "../social/correspondence.ts";
@@ -199,10 +200,7 @@ export function installBrowserQaContract(onLaunch: (params: Record<string, strin
                     onlineSeat: "w",
                     onlinePlayerCount: 1,
                 });
-            apply();
-            window.requestAnimationFrame(apply);
-            window.setTimeout(apply, 300);
-            window.setTimeout(apply, 900);
+            holdPreviewState(apply);
         },
         previewCorrespondenceWaiting() {
             const now = Date.now();
@@ -246,10 +244,7 @@ export function installBrowserQaContract(onLaunch: (params: Record<string, strin
                     activeMatchPace: match.pace,
                     correspondenceMatches: [match],
                 });
-            apply();
-            window.requestAnimationFrame(apply);
-            window.setTimeout(apply, 300);
-            window.setTimeout(apply, 900);
+            holdPreviewState(apply);
         },
         previewCorrespondenceGame() {
             const now = Date.now();
@@ -293,69 +288,70 @@ export function installBrowserQaContract(onLaunch: (params: Record<string, strin
                     activeMatchPace: match.pace,
                     correspondenceMatches: [match],
                 });
-            apply();
-            window.requestAnimationFrame(apply);
-            window.setTimeout(apply, 300);
+            holdPreviewState(apply);
         },
         previewConnectionFailure() {
             this.previewCorrespondenceGame();
-            const apply = () =>
+            holdPreviewState(() =>
                 store.patch({
                     onlineStatus: "disconnected",
                     onlineError: "The live connection paused.",
                     thinking: false,
-                });
-            window.requestAnimationFrame(apply);
-            window.setTimeout(apply, 320);
+                }),
+            );
         },
         previewResults() {
-            store.patch({
-                phase: "playing",
-                opponentMode: "ai",
-                playerColor: "w",
-                matchStatus: "checkmate",
-                matchesPlayed: 7,
-                wins: 4,
-                capturesLifetime: 62,
-                bestWinStreak: 3,
-                masteryBonusAuras: 40,
-                matchSummary: {
-                    status: "checkmate",
-                    reason: "checkmate",
-                    winner: "w",
-                    result: "win",
-                    movesPlayed: 31,
-                    captures: 9,
-                    checksGiven: 4,
-                    aurasEarned: 28,
-                    playerWon: true,
-                },
-            });
+            holdPreviewState(() =>
+                store.patch({
+                    phase: "playing",
+                    opponentMode: "ai",
+                    playerColor: "w",
+                    matchStatus: "checkmate",
+                    matchesPlayed: 7,
+                    wins: 4,
+                    capturesLifetime: 62,
+                    bestWinStreak: 3,
+                    masteryBonusAuras: 40,
+                    matchSummary: {
+                        status: "checkmate",
+                        reason: "checkmate",
+                        winner: "w",
+                        result: "win",
+                        movesPlayed: 31,
+                        captures: 9,
+                        checksGiven: 4,
+                        aurasEarned: 28,
+                        playerWon: true,
+                    },
+                }),
+            );
         },
         previewTimeoutResults() {
-            store.patch({
-                phase: "playing",
-                opponentMode: "online",
-                playerColor: "w",
-                onlineExperience: "async",
-                matchStatus: "checkmate",
-                matchesPlayed: 7,
-                wins: 4,
-                capturesLifetime: 62,
-                bestWinStreak: 3,
-                masteryBonusAuras: 40,
-                matchSummary: {
-                    status: "checkmate",
-                    reason: "timeout",
-                    winner: "b",
-                    result: "loss",
-                    movesPlayed: 18,
-                    captures: 5,
-                    checksGiven: 2,
-                    aurasEarned: 8,
-                    playerWon: false,
-                },
-            });
+            holdPreviewState(() =>
+                store.patch({
+                    phase: "playing",
+                    opponentMode: "online",
+                    playerColor: "w",
+                    onlineExperience: "async",
+                    matchStatus: "checkmate",
+                    matchesPlayed: 7,
+                    wins: 4,
+                    capturesLifetime: 62,
+                    bestWinStreak: 3,
+                    masteryBonusAuras: 40,
+                    matchSummary: {
+                        status: "checkmate",
+                        reason: "timeout",
+                        winner: "b",
+                        result: "loss",
+                        movesPlayed: 18,
+                        captures: 5,
+                        checksGiven: 2,
+                        aurasEarned: 8,
+                        playerWon: false,
+                    },
+                }),
+            );
         },
         controller() {
             return getRunController();

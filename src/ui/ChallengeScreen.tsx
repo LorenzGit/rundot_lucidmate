@@ -1,5 +1,5 @@
 import { useState } from "react";
-import lucidmateFriendsBoard from "../assets/art/lucidmate-friends-board.png";
+import lucidmateFriendsBoard from "../assets/art/lucidmate-friends-board.webp";
 import { audioManager } from "../audio/audioManager.ts";
 import { canUseAuthoritativeRealtime } from "../game/chess/onlineClient.ts";
 import { startCorrespondenceMatch } from "../game/runController.ts";

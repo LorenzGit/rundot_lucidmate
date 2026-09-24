@@ -132,7 +132,6 @@ function assert(cond, msg) {
         /ResultsBench/,
     ];
     const files = [
-        "src/assets/strings.csv",
         "src/ui/MainMenu.tsx",
         "src/ui/Hud.tsx",
         "src/ui/LoadingScreen.tsx",
@@ -216,8 +215,8 @@ function assert(cond, msg) {
         /notificationsConsent === "unknown"\s*\?\s*true/.test(save),
         "older undecided saves migrate to turn-alert setup",
     );
-    const strings = fs.readFileSync(path.join(root, "src/assets/strings.csv"), "utf8");
-    assert(/^MenuLounge,STORE,LOJA,TIENDA$/m.test(strings), "the cosmetic route is titled Store");
+    const loungeSource = fs.readFileSync(path.join(root, "src/ui/LoungeScreen.tsx"), "utf8");
+    assert(/title=\{"STORE"\}/.test(loungeSource), "the cosmetic route is titled Store");
 
     const css = fs.readFileSync(path.join(root, "src/styles/app.css"), "utf8");
     const app = fs.readFileSync(path.join(root, "src/ui/App.tsx"), "utf8");

@@ -3,11 +3,10 @@
  * Render `public/thumbnail.jpg` from the game's own art.
  *
  * Boots a Vite dev server, opens `scripts/thumbnail.html` in headless Chromium,
- * and writes the composed canvas out as a 512x512 JPEG. The composition is
- * fully deterministic — no clock, no randomness at all — so
- * re-running this produces the same tile until the glass art or the layout
- * actually changes. That is the point: the store tile can never drift away from
- * what the game looks like, because it IS what the game looks like.
+ * and screenshots the 512x512 tile as a JPEG. The page composes the tile from
+ * the game's own mascot art, palette and type, with no clock or randomness, so
+ * re-running this produces the same tile until the art or layout changes and
+ * the store tile cannot drift away from what the game looks like.
  *
  *   node scripts/make-thumbnail.mjs
  */
@@ -39,12 +38,11 @@ try {
     });
 
     await page.goto(`http://localhost:${PORT}/scripts/thumbnail.html`, { waitUntil: "networkidle" });
-    await page.waitForFunction(() => typeof window.__thumbnail === "function", null, { timeout: 20_000 });
+    await page.locator("#tile img").evaluate((img) => img.decode());
+    await page.evaluate(() => document.fonts.ready);
     if (failures.length > 0) throw new Error(`Thumbnail page errored: ${failures.join("; ")}`);
 
-    const dataUrl = await page.evaluate(() => window.__thumbnail());
-    if (!dataUrl.startsWith("data:image/jpeg")) throw new Error("Thumbnail did not render as a JPEG");
-    const bytes = Buffer.from(dataUrl.slice(dataUrl.indexOf(",") + 1), "base64");
+    const bytes = await page.locator("#tile").screenshot({ type: "jpeg", quality: 92, animations: "disabled" });
     if (bytes.length < 8_000) throw new Error(`Thumbnail looks empty (${bytes.length} bytes)`);
 
     fs.mkdirSync(path.dirname(output), { recursive: true });

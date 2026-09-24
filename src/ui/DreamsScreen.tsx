@@ -1,6 +1,6 @@
 import { useState } from "react";
-import lucidmateDreamPath from "../assets/art/lucidmate-dream-path.png";
-import lucidmateReactionStickers from "../assets/art/lucidmate-reaction-stickers.png";
+import lucidmateDreamPath from "../assets/art/lucidmate-dream-path.webp";
+import lucidmateReactionStickers from "../assets/art/lucidmate-reaction-stickers.webp";
 import { audioManager } from "../audio/audioManager.ts";
 import { store, useStore } from "../state/store.ts";
 import { dailySystems } from "../systems/dailySystems.ts";

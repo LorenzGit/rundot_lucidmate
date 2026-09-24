@@ -175,8 +175,8 @@ expect(
 const onlineClient = read("src/game/chess/onlineClient.ts");
 expect(/canUseAuthoritativeRealtime/.test(onlineClient), "offline multiplayer mock must not fabricate join success");
 expect(
-    /RundotGameAPI\.isMock\(\)/.test(onlineClient) && /_roomServerUrl/.test(onlineClient),
-    "authoritative multiplayer requires a non-mock host with a positive room-server URL",
+    /return !RundotGameAPI\.isMock\(\)/.test(onlineClient) && !/_roomServerUrl/.test(onlineClient),
+    "authoritative multiplayer readiness uses the SDK's public mock status, never private host fields",
 );
 expect(
     /playground\.roomServerUrl && playground\.versionTag/.test(onlineClient),

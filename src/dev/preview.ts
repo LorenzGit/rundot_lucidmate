@@ -1,4 +1,5 @@
 import { type MenuScreen, store } from "../state/store.ts";
+import { getRunController } from "../game/GameCanvas.tsx";
 
 const MENU_SCREENS = new Set<MenuScreen>([
     "main",
@@ -20,6 +21,31 @@ const MENU_SCREENS = new Set<MenuScreen>([
  * The query changes local in-memory navigation only; it never bypasses a RUN
  * permission, purchase, ad, entitlement, or other authoritative outcome.
  */
+/**
+ * Keep a preview's store patch in place across the boot beats that overwrite
+ * it: the board's `attach()` mirrors a fresh match (status "playing", no
+ * summary) into the store, and wiring the online client re-reports its idle
+ * status. Once the controller exists it is detached — previews are frozen
+ * screens, so no AI timer or socket handler may move the state again — and the
+ * patch is re-applied on a few later beats for the async paths.
+ */
+export function holdPreviewState(apply: () => void, durationMs = 2_000): void {
+    apply();
+    const startedAt = performance.now();
+    let frozen = false;
+    const tick = () => {
+        const controller = getRunController();
+        if (controller && !frozen) {
+            frozen = true;
+            controller.detach();
+            apply();
+        }
+        if (performance.now() - startedAt < durationMs) window.requestAnimationFrame(tick);
+    };
+    window.requestAnimationFrame(tick);
+    for (const delay of [300, 900, 1500]) window.setTimeout(apply, delay);
+}
+
 export function applyDevelopmentScreenPreview(): void {
     if (!import.meta.env.DEV) return;
     const params = new URLSearchParams(window.location.search);
@@ -174,22 +200,25 @@ export function applyDevelopmentScreenPreview(): void {
             return;
         }
         if (waitingMatch?.color) {
-            store.patch({
-                phase: "playing",
-                menuScreen: "main",
-                paused: false,
-                opponentMode: "online",
-                playerColor: waitingMatch.color,
-                turn: waitingMatch.turn,
-                matchStatus: "playing",
-                onlineExperience: "async",
-                onlineStatus: "waiting",
-                onlineRoomCode: waitingMatch.roomCode,
-                onlineSeat: waitingMatch.color,
-                onlinePlayerCount: 1,
-                activeMatchKey: waitingMatch.matchKey,
-                activeMatchPace: waitingMatch.pace,
-            });
+            const waitingColor = waitingMatch.color;
+            holdPreviewState(() =>
+                store.patch({
+                    phase: "playing",
+                    menuScreen: "main",
+                    paused: false,
+                    opponentMode: "online",
+                    playerColor: waitingColor,
+                    turn: waitingMatch.turn,
+                    matchStatus: "playing",
+                    onlineExperience: "async",
+                    onlineStatus: "waiting",
+                    onlineRoomCode: waitingMatch.roomCode,
+                    onlineSeat: waitingMatch.color,
+                    onlinePlayerCount: 1,
+                    activeMatchKey: waitingMatch.matchKey,
+                    activeMatchPace: waitingMatch.pace,
+                }),
+            );
             return;
         }
         store.patch({ phase: "playing", menuScreen: "main", paused: false });

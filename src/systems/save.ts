@@ -26,7 +26,6 @@ export interface GameSaveV3 {
         | "notificationsConsent"
         | "hapticsEnabled"
         | "reducedMotion"
-        | "locale"
         | "quality"
     >;
     progress: Pick<
@@ -58,7 +57,8 @@ export interface GameSaveV3 {
     solo: { savedMatch: SavedSoloMatch | null };
 }
 
-export type SaveSource = "run" | "local" | "defaults";
+/** "unavailable": RUN storage could not be read; the local copy (or defaults) is in memory but never written to the cloud. */
+export type SaveSource = "run" | "local" | "defaults" | "unavailable";
 
 function clamp01(value: unknown, fallback: number): number {
     return typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : fallback;
@@ -133,7 +133,6 @@ function snapshot(): GameSaveV3 {
             notificationsConsent: s.notificationsConsent,
             hapticsEnabled: s.hapticsEnabled,
             reducedMotion: s.reducedMotion,
-            locale: s.locale,
             quality: s.quality,
         },
         progress: {
@@ -234,7 +233,6 @@ function migrate(raw: unknown): GameSaveV3 {
             notificationsConsent,
             hapticsEnabled: booleanOr(settings.hapticsEnabled, true),
             reducedMotion: booleanOr(settings.reducedMotion, fallback.settings.reducedMotion),
-            locale: typeof settings.locale === "string" ? settings.locale : "English",
             quality: enumOr(settings.quality, ["high", "low"] as const, "high"),
         },
         progress: {
@@ -288,16 +286,69 @@ function apply(save: GameSaveV3): void {
     });
 }
 
-async function readRemote(): Promise<unknown | null> {
-    const caps = getRunCapabilities();
-    if (!caps.storage) return null;
+/**
+ * Remote-write guard. A failed or timed-out RUN storage read is not a new
+ * player: pushing the local copy or defaults then would replace the real cloud
+ * save. Remote writes stay blocked until one read has succeeded. "blocked"
+ * means the cloud holds a save from a newer build, which this build must
+ * never overwrite.
+ */
+type RemoteState = "unverified" | "verified" | "blocked";
+let remoteState: RemoteState = "unverified";
+let verifyInFlight: Promise<void> | null = null;
+let verifyRetryTimer = 0;
+const VERIFY_RETRY_MS = [2_000, 4_000, 8_000, 15_000, 30_000] as const;
+
+type RemoteRead = { result: "found"; save: unknown } | { result: "empty" | "failed" | "newer" };
+
+async function readRemote(): Promise<RemoteRead> {
+    const result = await readAppStorage(SAVE_KEY);
+    if (!result.ok) return { result: "failed" };
+    if (result.value == null || result.value === "") return { result: "empty" };
+    let parsed: unknown = null;
     try {
-        const result = await readAppStorage(SAVE_KEY);
-        if (!result.ok || result.value == null || result.value === "") return null;
-        return JSON.parse(result.value) as unknown;
+        parsed = JSON.parse(result.value);
     } catch {
-        return null;
+        /* handled as unreadable below */
     }
+    const version = parsed && typeof parsed === "object" ? (parsed as { version?: unknown }).version : undefined;
+    if (typeof version === "number" && version > SAVE_VERSION) return { result: "newer" };
+    if (typeof version === "number" && Number.isInteger(version) && version >= 1)
+        return { result: "found", save: parsed };
+    // Unreadable, not newer: keep a copy before it can be replaced.
+    console.warn("[save] unreadable remote save; backing it up");
+    await writeAppStorage(`${SAVE_KEY}-unreadable-backup`, result.value);
+    return { result: "empty" };
+}
+
+function settleRemote(read: RemoteRead): void {
+    if (read.result === "failed") return;
+    remoteState = read.result === "newer" ? "blocked" : "verified";
+    if (read.result === "newer") console.warn("[save] cloud save is from a newer build; cloud writes disabled");
+}
+
+/**
+ * Retry the read in the background. flush() never awaits this: a caller that
+ * reverts on a failed flush must not revert against a freshly applied save.
+ */
+function verifyRemote(attempt = 0): void {
+    if (remoteState !== "unverified" || verifyInFlight || verifyRetryTimer) return;
+    verifyInFlight = (async () => {
+        if (!getRunCapabilities().storage) return;
+        const read = await readRemote();
+        settleRemote(read);
+        if (read.result === "found") {
+            apply(migrate(read.save));
+            writeLocal(snapshot());
+        }
+    })().finally(() => {
+        verifyInFlight = null;
+        if (remoteState !== "unverified" || attempt >= VERIFY_RETRY_MS.length) return;
+        verifyRetryTimer = window.setTimeout(() => {
+            verifyRetryTimer = 0;
+            verifyRemote(attempt + 1);
+        }, VERIFY_RETRY_MS[attempt]);
+    });
 }
 
 function readLocal(): unknown | null {
@@ -322,19 +373,22 @@ let flushing = false;
 
 export const saveSystem = {
     async load(): Promise<SaveSource> {
-        const remote = await readRemote();
-        if (remote != null) {
-            apply(migrate(remote));
+        const remote = getRunCapabilities().storage ? await readRemote() : null;
+        if (remote) settleRemote(remote);
+        if (remote?.result === "found") {
+            apply(migrate(remote.save));
             writeLocal(snapshot());
             return "run";
         }
-        const local = readLocal();
-        if (local != null) {
-            apply(migrate(local));
-            return "local";
+        if (remote?.result === "failed") {
+            console.warn("[save] cloud save unreadable at boot; cloud writes paused until a read succeeds");
+            verifyRemote();
         }
-        apply(defaults());
-        return "defaults";
+        const local = readLocal();
+        if (local != null) apply(migrate(local));
+        else apply(defaults());
+        if (remote?.result === "failed") return "unavailable";
+        return local != null ? "local" : "defaults";
     },
 
     async flush(): Promise<boolean> {
@@ -344,6 +398,12 @@ export const saveSystem = {
             const save = snapshot();
             writeLocal(save);
             const caps = getRunCapabilities();
+            if (caps.storage && remoteState !== "verified") {
+                // Never write over a cloud save this session has not read. A
+                // host that attached after load() lands here too.
+                verifyRemote();
+                return false;
+            }
             if (caps.storage) {
                 try {
                     await writeAppStorage(SAVE_KEY, JSON.stringify(save));

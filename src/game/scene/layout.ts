@@ -24,11 +24,22 @@ export const LANDSCAPE_RAIL_WIDTH = 400;
 export const LANDSCAPE_RAIL_EDGE = 26;
 export const LANDSCAPE_RAIL_GAP = 18;
 
-export function topReserveFor(insets: Insets): number {
+/**
+ * Landscape keeps the HUD, helper bar and banners inside the right-hand rail
+ * (see the `(orientation: landscape)` blocks in app.css), so the play column
+ * only needs a frame margin above and below the board, not the portrait HUD
+ * reserves. Reusing those left the board at 60% of a phone's height.
+ */
+export const LANDSCAPE_TOP_RESERVE_EXTRA = 40;
+export const LANDSCAPE_BOTTOM_RESERVE_EXTRA = 40;
+
+export function topReserveFor(insets: Insets, landscape = false): number {
+    if (landscape) return insets.top + LANDSCAPE_TOP_RESERVE_EXTRA;
     return Math.max(insets.top + BOARD_TOP_RESERVE_EXTRA, BOARD_TOP_RESERVE_MIN);
 }
 
-export function bottomReserveFor(insets: Insets): number {
+export function bottomReserveFor(insets: Insets, landscape = false): number {
+    if (landscape) return insets.bottom + LANDSCAPE_BOTTOM_RESERVE_EXTRA;
     return Math.max(insets.bottom + BOARD_BOTTOM_RESERVE_EXTRA, BOARD_BOTTOM_RESERVE_MIN);
 }
 
@@ -40,13 +51,13 @@ export function bottomReserveFor(insets: Insets): number {
  * vertical space between the HUD and helper bar is tighter.
  */
 export function computeBoardLayout(designWidth: number, designHeight: number, insets: Insets): BoardLayout {
-    const topReserve = topReserveFor(insets);
-    const bottomReserve = bottomReserveFor(insets);
+    const landscape = designWidth > designHeight;
+    const topReserve = topReserveFor(insets, landscape);
+    const bottomReserve = bottomReserveFor(insets, landscape);
     const sidePadL = insets.left + BOARD_FRAME_PAD;
-    const sidePadR =
-        designWidth > designHeight
-            ? Math.max(insets.right, LANDSCAPE_RAIL_EDGE) + LANDSCAPE_RAIL_WIDTH + LANDSCAPE_RAIL_GAP
-            : insets.right + BOARD_FRAME_PAD;
+    const sidePadR = landscape
+        ? Math.max(insets.right, LANDSCAPE_RAIL_EDGE) + LANDSCAPE_RAIL_WIDTH + LANDSCAPE_RAIL_GAP
+        : insets.right + BOARD_FRAME_PAD;
     const availableW = Math.max(200, designWidth - sidePadL - sidePadR);
     const availableH = Math.max(200, designHeight - topReserve - bottomReserve);
     const size = Math.min(availableW, availableH);

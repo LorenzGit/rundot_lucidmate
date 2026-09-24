@@ -1,4 +1,4 @@
-import lucidmateRookbot from "../assets/art/lucidmate-rookbot.png";
+import lucidmateRookbot from "../assets/art/lucidmate-rookbot.webp";
 import { audioManager } from "../audio/audioManager.ts";
 import { startMatch } from "../game/runController.ts";
 import { store, useStore } from "../state/store.ts";

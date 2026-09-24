@@ -2,14 +2,13 @@ import { useState } from "react";
 import { audioManager } from "../audio/audioManager.ts";
 import { store, useStore } from "../state/store.ts";
 import { dailySystems } from "../systems/dailySystems.ts";
-import { t } from "../systems/localization.ts";
 import { runtimeServices } from "../systems/runtimeServices.ts";
 import MenuScreenLayout from "./MenuScreenLayout.tsx";
 
 export default function DailyQuestsScreen() {
     useStore(
         (state) =>
-            `${state.locale}:${JSON.stringify(state.dailyQuestProgress)}:${state.dailyQuestClaimIds.length}:${state.trustedTimeReady}`,
+            `${JSON.stringify(state.dailyQuestProgress)}:${state.dailyQuestClaimIds.length}:${state.trustedTimeReady}`,
     );
     const [busyId, setBusyId] = useState<string | null>(null);
     const time = dailySystems.timeGate();
@@ -28,8 +27,8 @@ export default function DailyQuestsScreen() {
     };
 
     return (
-        <MenuScreenLayout title={t("MenuDailyQuests")} kicker={t("KickerDailyQuests")}>
-            <p className="screen-copy">{t("DailyQuestsBody")}</p>
+        <MenuScreenLayout title={"TRIPS"} kicker={"TODAY'S TRIP"}>
+            <p className="screen-copy">{"Three jobs a day. They reset with the trusted clock."}</p>
             <p className="authority-label">{time.label}</p>
             <div className="quest-list">
                 {quests.map((quest) => (
@@ -47,12 +46,12 @@ export default function DailyQuestsScreen() {
                             onClick={() => void claim(quest.id)}
                         >
                             {busyId === quest.id
-                                ? t("Saving")
+                                ? "SAVING…"
                                 : quest.claimed
-                                  ? t("Claimed")
+                                  ? "CLAIMED"
                                   : quest.claimable
-                                    ? t("ClaimAuras", { auras: quest.reward })
-                                    : t("InProgress")}
+                                    ? `CLAIM ${quest.reward} AURAS`
+                                    : "IN PROGRESS"}
                         </button>
                     </article>
                 ))}

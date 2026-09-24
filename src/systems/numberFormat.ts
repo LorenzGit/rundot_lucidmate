@@ -1,12 +1,5 @@
-import { store } from "../state/store.ts";
-
-const LOCALE_TAGS: Readonly<Record<string, string>> = {
-    English: "en-US",
-    PortugueseBR: "pt-BR",
-    SpanishLA: "es-419",
-};
+const formatter = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 
 export function formatNumber(value: number): string {
-    const locale = LOCALE_TAGS[store.get().locale] ?? "en-US";
-    return new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(value);
+    return formatter.format(value);
 }

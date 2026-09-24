@@ -47,10 +47,3 @@ Thumbs.db
 *.swp
 *.swo
 *~
-
-# Obsolete pre-redesign captures kept only in the original local workspace.
-/docs/screenshots/gameplay.png
-/docs/screenshots/gameplay-landscape.png
-/docs/screenshots/ui-qa-v0.2.1-gameplay.png
-/docs/screenshots/ui-qa-v0.2.1-landscape.png
-/docs/screenshots/ui-qa-v0.2.1-menu.png

@@ -4,10 +4,11 @@
   <img src="public/thumbnail.jpg" alt="LUCIDMATE icon" width="256">
 </p>
 
-Psychedelic chess for solo play and relaxed asynchronous games with friends on [RUN.world](https://run.world).
+Cosy toybox chess for solo play and relaxed asynchronous games with friends on [RUN.world](https://run.world).
 
 <p align="center">
-  <img src="docs/screenshots/lucidmate-gameplay.png" alt="A LUCIDMATE chess match" width="390">
+  <img src="docs/screenshots/lucidmate-menu.png" alt="The LUCIDMATE match inbox" width="300">
+  <img src="docs/screenshots/lucidmate-gameplay.png" alt="A LUCIDMATE chess match" width="300">
 </p>
 
 ## What is inside

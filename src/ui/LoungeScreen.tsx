@@ -2,14 +2,13 @@
  * Theme lounge — buy/select trip skins with auras or RB.
  */
 import { useEffect, useState } from "react";
-import lucidmateRookbot from "../assets/art/lucidmate-rookbot.png";
+import lucidmateRookbot from "../assets/art/lucidmate-rookbot.webp";
 import { audioManager } from "../audio/audioManager.ts";
 import { THEMES } from "../game/art/palette.ts";
 import { PIECE_STYLES } from "../game/art/pieceStyles.ts";
 import { store, useStore } from "../state/store.ts";
 import { analytics } from "../systems/analytics/analyticsConfig.ts";
 import { productView, purchaseProduct, recordStoreOpened, refreshCommerce } from "../systems/commerce.ts";
-import { t } from "../systems/localization.ts";
 import { monetizationTelemetry } from "../systems/monetization/runtime.ts";
 import { PRODUCT_IDS, type ProductId } from "../systems/monetization/config.ts";
 import { buyThemeWithAuras, selectTheme, themeIsOwned, themeOffer } from "../systems/palettes.ts";
@@ -47,7 +46,6 @@ export default function LoungeScreen() {
     useStore((s) => s.selectedTheme);
     useStore((s) => s.selectedPieceStyle);
     useStore((s) => s.auras);
-    useStore((s) => s.locale);
     const auras = store.get().auras;
     const selected = store.get().selectedTheme;
     const selectedPieceStyle = store.get().selectedPieceStyle;
@@ -77,22 +75,27 @@ export default function LoungeScreen() {
         if (!outcome) {
             audioManager.play("reject");
             void runtimeServices.haptic("error");
-            store.patch({ toast: t("PurchaseUnavailable") });
+            store.patch({ toast: "NOT AVAILABLE RIGHT NOW" });
             return;
         }
         if (outcome.status === "confirmed") {
             audioManager.play("reward");
             void runtimeServices.haptic("success");
-            store.patch({ toast: t("PurchaseConfirmed") });
+            store.patch({ toast: "UNLOCKED \u2014 THANK YOU" });
             return;
         }
         if (outcome.status === "cancelled") {
-            store.patch({ toast: t("PurchaseCancelled") });
+            store.patch({ toast: "PURCHASE CANCELLED" });
             return;
         }
         audioManager.play("reject");
         void runtimeServices.haptic(outcome.status === "unknown" ? "warning" : "error");
-        store.patch({ toast: t(outcome.status === "unknown" ? "PurchasePending" : "PurchaseFailed") });
+        store.patch({
+            toast:
+                outcome.status === "unknown"
+                    ? "STILL CONFIRMING — WE WILL FINISH THIS NEXT TIME YOU OPEN THE GAME"
+                    : "PURCHASE DID NOT COMPLETE",
+        });
     };
 
     const productViews = PRODUCT_IDS.filter((productId) => productId !== "piece_pack")
@@ -103,7 +106,7 @@ export default function LoungeScreen() {
     }, []);
 
     return (
-        <MenuScreenLayout kicker="CUSTOMIZE" title={t("MenuLounge")} artSrc={lucidmateRookbot} artVariant="rookbot">
+        <MenuScreenLayout kicker="CUSTOMIZE" title={"STORE"} artSrc={lucidmateRookbot} artVariant="rookbot">
             <section className="lounge-summary" aria-label={`${auras} auras available`}>
                 <div>
                     <p>YOUR LOOK</p>
@@ -113,7 +116,7 @@ export default function LoungeScreen() {
                 <aside>
                     <i className="aura-glyph" aria-hidden="true" />
                     <strong>{auras}</strong>
-                    <span>{t("LabelAuras")}</span>
+                    <span>{"AURAS"}</span>
                 </aside>
             </section>
             <section className="store-preview-stage" aria-label={`Previewing ${previewTheme.name}`}>
@@ -162,7 +165,7 @@ export default function LoungeScreen() {
                                         onClick={() => void checkout("piece_pack")}
                                     >
                                         {busy === "piece_pack"
-                                            ? t("PurchaseWorking")
+                                            ? "OPENING CHECKOUT…"
                                             : (view?.priceLabel ?? "UNAVAILABLE")}
                                     </button>
                                 )}
@@ -211,7 +214,7 @@ export default function LoungeScreen() {
                                         selectTheme(theme.id);
                                     }}
                                 >
-                                    {isSelected ? t("ThemeSelected") : t("ThemeSelect")}
+                                    {isSelected ? "IN USE" : "SELECT"}
                                 </button>
                             ) : offer?.unlock.kind === "auras" ? (
                                 <button
@@ -223,7 +226,8 @@ export default function LoungeScreen() {
                                         if (!result.ok) {
                                             void runtimeServices.haptic("error");
                                             store.patch({
-                                                toast: result.reason === "broke" ? t("NotEnoughAuras") : result.reason,
+                                                toast:
+                                                    result.reason === "broke" ? "NOT ENOUGH AURAS YET" : result.reason,
                                             });
                                         } else {
                                             audioManager.play("reward");
@@ -231,7 +235,7 @@ export default function LoungeScreen() {
                                         }
                                     }}
                                 >
-                                    {t("ThemeUnlockAuras", { cost: offer.unlock.cost })}
+                                    {`UNLOCK · ${offer.unlock.cost}`}
                                 </button>
                             ) : paidProductId && paidProduct ? (
                                 <button
@@ -240,7 +244,7 @@ export default function LoungeScreen() {
                                     disabled={busy !== null || !paidProduct.purchasable}
                                     onClick={() => void checkout(paidProductId)}
                                 >
-                                    {busy === paidProductId ? t("PurchaseWorking") : paidProduct.priceLabel}
+                                    {busy === paidProductId ? "OPENING CHECKOUT…" : paidProduct.priceLabel}
                                 </button>
                             ) : (
                                 <span />
@@ -251,8 +255,8 @@ export default function LoungeScreen() {
             </div>
 
             <section className="lounge-products">
-                <h3>{t("LoungeProducts")}</h3>
-                <p>{t("LoungeProductsBody")}</p>
+                <h3>{"RUN BITS SHOP"}</h3>
+                <p>{"Permanent unlocks, bought with Run Bits."}</p>
                 <div className="lounge-products-grid" data-catalog-revision={catalogRevision}>
                     {productViews.map((view) => (
                         <article className="shop-card" key={view.productId}>
@@ -265,16 +269,14 @@ export default function LoungeScreen() {
                                 disabled={busy !== null || view.owned || !view.purchasable}
                                 onClick={() => void checkout(view.productId)}
                             >
-                                {busy === view.productId
-                                    ? t("PurchaseWorking")
-                                    : view.owned
-                                      ? t("ProductOwned")
-                                      : view.priceLabel}
+                                {busy === view.productId ? "OPENING CHECKOUT…" : view.owned ? "OWNED" : view.priceLabel}
                             </button>
                         </article>
                     ))}
                 </div>
-                <p className="safety-note">{t("LoungeSafetyNote")}</p>
+                <p className="safety-note">
+                    {"Ownership is read from RUN entitlements every session, never from this device."}
+                </p>
             </section>
         </MenuScreenLayout>
     );

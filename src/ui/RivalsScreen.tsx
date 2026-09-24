@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import lucidmateFriendsBoard from "../assets/art/lucidmate-friends-board.png";
-import lucidmateRookbot from "../assets/art/lucidmate-rookbot.png";
+import lucidmateFriendsBoard from "../assets/art/lucidmate-friends-board.webp";
+import lucidmateRookbot from "../assets/art/lucidmate-rookbot.webp";
 import { audioManager } from "../audio/audioManager.ts";
 import { canUseAuthoritativeRealtime } from "../game/chess/onlineClient.ts";
 import { challengeRival } from "../game/runController.ts";

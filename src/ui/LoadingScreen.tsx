@@ -2,9 +2,8 @@
  * Calm branded loading — wordmark + progress, no busy motif.
  */
 import { GAME_NAME, GAME_TAGLINE } from "../game/constants.ts";
-import lucidmateMascots from "../assets/art/lucidmate-mascots.png";
+import lucidmateMascots from "../assets/art/lucidmate-mascots.webp";
 import { useStore } from "../state/store.ts";
-import { t } from "../systems/localization.ts";
 
 export default function LoadingScreen() {
     const progress = useStore((s) => s.loadProgress);
@@ -22,7 +21,7 @@ export default function LoadingScreen() {
                 <div className="loading-fill" style={{ width: `${pct}%` }} />
             </div>
             <p className="loading-copy">
-                {t("LoadingCopy")} {pct}%
+                {"Setting the board…"} {pct}%
             </p>
         </main>
     );

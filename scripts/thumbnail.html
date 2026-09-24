@@ -2,24 +2,117 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
-    <title>LEADLIGHT thumbnail</title>
+    <title>LUCIDMATE thumbnail</title>
     <style>
-        body { margin: 0; background: #17100a; display: grid; place-items: center; min-height: 100vh; }
-        img { width: 512px; height: 512px; }
+        /*
+          Development-only page. `scripts/make-thumbnail.mjs` opens it in headless
+          Chromium and screenshots #tile as the 512x512 store JPEG. It composes
+          the store tile from the game's own art and type, so the tile cannot
+          drift away from what the game looks like. Never part of `vite build`.
+        */
+        html, body { margin: 0; background: #17100a; }
+        body { display: grid; place-items: center; min-height: 100vh; }
+        #tile {
+            position: relative;
+            width: 512px;
+            height: 512px;
+            overflow: hidden;
+            font-family: ui-rounded, "SF Pro Rounded", "Avenir Next", system-ui, sans-serif;
+            background:
+                radial-gradient(circle at 78% 18%, rgba(255, 214, 96, 0.34), transparent 38%),
+                radial-gradient(circle at 20% 88%, rgba(101, 201, 155, 0.28), transparent 42%),
+                repeating-conic-gradient(from 8deg at 50% 50%, #0d3f32 0 25%, #0a3129 0 50%),
+                #0b3329;
+            background-size: auto, auto, 118px 118px, auto;
+        }
+        #tile::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, rgba(3, 30, 24, 0.12), rgba(3, 30, 24, 0.55) 78%);
+        }
+        .eyebrow {
+            position: absolute;
+            top: 34px;
+            left: 0;
+            right: 0;
+            margin: 0;
+            color: #f3c85a;
+            font-size: 19px;
+            font-weight: 900;
+            letter-spacing: 0.22em;
+            text-align: center;
+            text-shadow: 0 2px 0 rgba(2, 28, 23, 0.5);
+        }
+        h1 {
+            position: absolute;
+            top: 62px;
+            left: 0;
+            right: 0;
+            margin: 0;
+            color: #fff4d1;
+            font-size: 60px;
+            font-weight: 900;
+            letter-spacing: 0.06em;
+            line-height: 1;
+            text-align: center;
+            text-shadow:
+                0 5px 0 #8a4a2e,
+                0 12px 26px rgba(1, 28, 23, 0.55);
+        }
+        .board {
+            position: absolute;
+            left: 292px;
+            top: 252px;
+            width: 190px;
+            height: 190px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            border: 6px solid #fff3cd;
+            border-radius: 22px;
+            overflow: hidden;
+            transform: rotate(7deg);
+            box-shadow: 0 10px 0 #376d5b, 0 22px 38px rgba(1, 28, 23, 0.5);
+        }
+        .board i { background: #fff1c9; }
+        .board i.d { background: #3a9b79; }
+        .board i.hot { background: #ee7f5d; }
+        .mascots {
+            position: absolute;
+            left: -14px;
+            bottom: -18px;
+            width: 372px;
+            filter: drop-shadow(0 16px 22px rgba(1, 28, 23, 0.55));
+        }
+        .pill {
+            position: absolute;
+            right: 26px;
+            bottom: 30px;
+            padding: 12px 22px;
+            border: 4px solid rgba(255, 255, 255, 0.95);
+            border-radius: 999px;
+            background: linear-gradient(120deg, #f7cf5c, #ee8d61 55%, #72c994);
+            color: #173d31;
+            font-size: 21px;
+            font-weight: 900;
+            letter-spacing: 0.1em;
+            box-shadow: 0 6px 0 #9d5943, 0 14px 24px rgba(1, 28, 23, 0.45);
+            transform: rotate(-4deg);
+        }
     </style>
 </head>
 <body>
-    <!--
-      Development-only page. `scripts/make-thumbnail.mjs` opens it in headless
-      Chromium and reads `window.__thumbnail()`. It is never part of the
-      production build: `vite build` bundles index.html and nothing else.
-    -->
-    <img id="preview" alt="Thumbnail preview" />
-    <script type="module">
-        import { renderThumbnail } from "/src/dev/thumbnail.ts";
-        const url = renderThumbnail();
-        document.getElementById("preview").src = url;
-        window.__thumbnail = () => renderThumbnail();
-    </script>
+    <div id="tile">
+        <p class="eyebrow">CHESS WITH FRIENDS</p>
+        <h1>LUCIDMATE</h1>
+        <div class="board" aria-hidden="true">
+            <i></i><i class="d"></i><i></i><i class="d"></i>
+            <i class="d"></i><i class="hot"></i><i class="d"></i><i></i>
+            <i></i><i class="d"></i><i></i><i class="d"></i>
+            <i class="d"></i><i></i><i class="d"></i><i></i>
+        </div>
+        <img class="mascots" src="/src/assets/art/lucidmate-mascots.webp" alt="" />
+        <div class="pill">YOUR TURN ›</div>
+    </div>
 </body>
 </html>

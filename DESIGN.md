@@ -1,6 +1,6 @@
 # LUCIDMATE — Design Doc
 
-**Fantasy:** Classic chess, but every square is melting through a neon wormhole.
+**Fantasy:** Classic chess in a cosy toybox: pastel boards, big-eyed pieces, and a friend one move away.
 
 **Core loop:** Tap a piece → tap a legal square → capture fireworks → the cosmos (AI) answers → check pulses the board → mate pays auras.
 
@@ -39,14 +39,17 @@ Standard chess: castling, en passant, promotion, check, checkmate, stalemate, 50
 - **Dream Rank** — permanent mastery earned from matches, wins, captures, and best streak.
   Six ranks create a visible multi-session path; crossing a rank grants an
   automatic aura cache. Rank never changes chess rules or AI strength.
-- **Themes** — cosmetic trip skins. Acid free; Mango/Mintwave earnable; Nebula/UV/Lava via Run Bits.
+- **Themes** — cosmetic board skins (`src/game/art/palette.ts`). Emerald Club is free;
+  Cozy Café and Royal Aquarium are earned with auras; Moon Candy and Star Pajamas
+  ship in the Toybox Nights theme pack and Sunset Circus in the Trip Pass, both
+  bought with Run Bits.
 - **Helpers** — Undo (12 auras) and Hint (8 auras); optional rewarded free uses after first match.
 
 ## Monetization (day-zero)
 
 | Channel | Surface |
 | --- | --- |
-| Run Bits | Candy Club piece set, Theme Pack (Nebula+UV), Ad-Free Forever, Trip Pass bundle |
+| Run Bits | Candy Club piece set, Toybox Nights theme pack (Moon Candy + Star Pajamas), Ad-Free Forever, Trip Pass bundle (both packs + Sunset Circus + ad-free) |
 | Rewarded | Free undo, free hint, double auras on results |
 | Interstitial | Every 3rd finished match after first session |
 

@@ -2,7 +2,6 @@ import { useState } from "react";
 import { audioManager } from "../audio/audioManager.ts";
 import { store, useStore } from "../state/store.ts";
 import { dailySystems } from "../systems/dailySystems.ts";
-import { t } from "../systems/localization.ts";
 import { runtimeServices } from "../systems/runtimeServices.ts";
 import MenuScreenLayout from "./MenuScreenLayout.tsx";
 
@@ -10,7 +9,7 @@ import MenuScreenLayout from "./MenuScreenLayout.tsx";
 const REWARDS = [20, 25, 30, 40, 50, 60, 120];
 
 export default function DailyRewardsScreen() {
-    useStore((state) => `${state.locale}:${state.dailyRewardClaimIds.length}:${state.trustedTimeReady}`);
+    useStore((state) => `${state.dailyRewardClaimIds.length}:${state.trustedTimeReady}`);
     const [busy, setBusy] = useState(false);
     const view = dailySystems.rewardView();
 
@@ -27,8 +26,8 @@ export default function DailyRewardsScreen() {
     };
 
     return (
-        <MenuScreenLayout title={t("MenuDailyRewards")} kicker={t("KickerDailyRewards")}>
-            <p className="screen-copy">{t("DailyRewardsBody")}</p>
+        <MenuScreenLayout title={"AURAS"} kicker={"RETURN LOOP"}>
+            <p className="screen-copy">{"A handful of auras for every day you come back to the board."}</p>
             <p className="authority-label">{view.label}</p>
             <div className="reward-track">
                 {REWARDS.map((reward, index) => (
@@ -40,10 +39,10 @@ export default function DailyRewardsScreen() {
                         key={reward}
                     >
                         <span>
-                            {t("LabelDay")} {index + 1}
+                            {"DAY"} {index + 1}
                         </span>
                         <strong>{reward}</strong>
-                        <small>{t("LabelAuras")}</small>
+                        <small>{"AURAS"}</small>
                     </div>
                 ))}
             </div>
@@ -53,9 +52,9 @@ export default function DailyRewardsScreen() {
                 disabled={busy || !view.ready || view.claimed}
                 onClick={() => void claim()}
             >
-                {busy ? t("Saving") : view.claimed ? t("ClaimedToday") : t("ClaimAuras", { auras: view.reward })}
+                {busy ? "SAVING…" : view.claimed ? "CLAIMED TODAY" : `CLAIM ${view.reward} AURAS`}
             </button>
-            <p className="safety-note">{t("LocalClaimNote")}</p>
+            <p className="safety-note">{"Local claims work offline; trusted time is used on RUN host."}</p>
         </MenuScreenLayout>
     );
 }

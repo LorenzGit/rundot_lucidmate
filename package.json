@@ -1,7 +1,7 @@
 {
   "name": "lucidmate",
-  "version": "1.0.26",
-  "description": "LUCIDMATE — Neon chess for RUN.world, built with PixiJS 8 (WebGPU-first).",
+  "version": "1.0.27",
+  "description": "LUCIDMATE — cosy toybox chess for RUN.world, built with PixiJS 8 (WebGPU-first).",
   "private": true,
   "license": "SEE LICENSE IN LICENSE.md",
   "type": "module",
@@ -24,7 +24,7 @@
     "format:check": "biome format .",
     "lint": "biome lint src scripts vite.config.js --diagnostic-level=error --max-diagnostics=none",
     "typecheck": "tsc --noEmit",
-    "test": "node scripts/test-noise-random.mjs && node scripts/test-social-model.mjs && node scripts/test-solo-save.ts && node scripts/test-online-errors.ts && node scripts/test-room-notifications.ts && node scripts/test-platform-systems.ts && node scripts/test-launch-router.ts && node scripts/test-move-feedback.ts && node scripts/check-safe-area.ts && node scripts/simulate.mjs && node scripts/check-game.mjs && node scripts/test-ui-layout.mjs",
+    "test": "node scripts/test-noise-random.mjs && node scripts/test-social-model.mjs && node scripts/test-solo-save.ts && node scripts/test-online-errors.ts && node scripts/test-room-notifications.ts && node scripts/test-platform-systems.ts && node scripts/test-launch-router.ts && node scripts/test-move-feedback.ts && node scripts/check-safe-area.ts && node scripts/simulate.mjs && node scripts/check-game.mjs && node scripts/test-ui-layout.mjs && node --experimental-strip-types --experimental-test-module-mocks --no-warnings scripts/test-save-guard.ts",
     "test:multiplayer": "node scripts/qa-rivals-flow.mjs && node scripts/qa-correspondence-turn-flow.mjs && node scripts/qa-correspondence-management.mjs",
     "test:ui": "node scripts/test-ui-layout.mjs",
     "simulate": "node scripts/simulate.mjs",
@@ -45,7 +45,6 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.5",
-    "@revenuecat/purchases-js": "^1.8.0",
     "@tailwindcss/vite": "^4.1.5",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",

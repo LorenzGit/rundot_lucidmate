@@ -2,8 +2,8 @@
  * In-match HUD: turn, helpers, promotion picker, results.
  */
 import { useCallback, useEffect, useState } from "react";
-import lucidmateReactionStickers from "../assets/art/lucidmate-reaction-stickers.png";
-import lucidmateVictoryDuo from "../assets/art/lucidmate-victory-duo.png";
+import lucidmateReactionStickers from "../assets/art/lucidmate-reaction-stickers.webp";
+import lucidmateVictoryDuo from "../assets/art/lucidmate-victory-duo.webp";
 import { audioManager } from "../audio/audioManager.ts";
 import type { PieceType } from "../game/chess/types.ts";
 import { getRunController } from "../game/GameCanvas.tsx";
@@ -22,7 +22,6 @@ import { resultPresentation, turnHeadline } from "../social/matchCopy.ts";
 import { CHESS_REACTIONS, type CorrespondenceMatch, paceLabel } from "../social/model.ts";
 import { store, useStore } from "../state/store.ts";
 import { recordCompletedRun, rewardedAvailable, showRewarded } from "../systems/ads.ts";
-import { t } from "../systems/localization.ts";
 import { dreamMastery } from "../systems/mastery.ts";
 import { PLACEMENT } from "../systems/monetization/config.ts";
 import { formatNumber } from "../systems/numberFormat.ts";
@@ -200,14 +199,14 @@ export default function Hud() {
                     <span>{turnCopy.eyebrow}</span>
                     <strong>{turnCopy.headline}</strong>
                 </div>
-                <div className="helper-auras hud-auras-top" role="status" aria-label={t("LabelAuras")}>
+                <div className="helper-auras hud-auras-top" role="status" aria-label={"AURAS"}>
                     <span className="aura-glyph" aria-hidden="true" />
                     <strong>{formatNumber(auras)}</strong>
                 </div>
                 <button
                     type="button"
                     className="hud-settings pointer-events-auto"
-                    aria-label={t("MenuSettings")}
+                    aria-label={"SETTINGS"}
                     onClick={() => {
                         tapFeedback();
                         setSettingsOpen(true);
@@ -227,7 +226,7 @@ export default function Hud() {
                         leave();
                     }}
                 >
-                    {t("ButtonMenu")}
+                    {"MENU"}
                 </button>
             </div>
 
@@ -347,28 +346,28 @@ export default function Hud() {
             {!summary && !waitingOnline && !connectionFailed && !isOnline && (
                 <div className={`helper-bar${isYourTurn ? " your-turn" : ""}`}>
                     <HelperButton
-                        label={t("HelperUndo")}
+                        label={"UNDO"}
                         cost={freeUndoReady ? 0 : UNDO_COST}
                         auras={auras}
                         disabled={!canUndo || isOnline}
-                        hint={isOnline ? "Undo is offline-only" : t("HelperUndoHint")}
+                        hint={isOnline ? "Undo is offline-only" : "Rewind the last exchange."}
                         onPress={() => {
                             audioManager.play("tap");
                             getRunController()?.undo();
                         }}
                     />
                     <HelperButton
-                        label={t("HelperHint")}
+                        label={"HINT"}
                         cost={freeHintReady ? 0 : HINT_COST}
                         auras={auras}
                         disabled={thinking || Boolean(summary) || isOnline}
-                        hint={isOnline ? "Hints are disabled in multiplayer" : t("HelperHintHint")}
+                        hint={isOnline ? "Hints are disabled in multiplayer" : "Glow a strong legal idea."}
                         onPress={() => {
                             audioManager.play("tap");
                             getRunController()?.hint();
                         }}
                     />
-                    <div className="helper-auras" role="status" aria-label={t("LabelAuras")}>
+                    <div className="helper-auras" role="status" aria-label={"AURAS"}>
                         <span className="aura-glyph" aria-hidden="true" />
                         <strong>{formatNumber(auras)}</strong>
                     </div>
@@ -548,19 +547,19 @@ function ResultsCard() {
                 <div className="results-details">
                     <dl className="results-grid">
                         <div>
-                            <dt>{t("LabelMoves")}</dt>
+                            <dt>{"MOVES"}</dt>
                             <dd>{summary.movesPlayed}</dd>
                         </div>
                         <div>
-                            <dt>{t("LabelCaptures")}</dt>
+                            <dt>{"CAPTURES"}</dt>
                             <dd>{summary.captures}</dd>
                         </div>
                         <div>
-                            <dt>{t("LabelChecks")}</dt>
+                            <dt>{"CHECKS"}</dt>
                             <dd>{summary.checksGiven}</dd>
                         </div>
                         <div>
-                            <dt>{t("LabelAuras")}</dt>
+                            <dt>{"AURAS"}</dt>
                             <dd>+{auraDoubled ? summary.aurasEarned * 2 : summary.aurasEarned}</dd>
                         </div>
                         {masteryBonusAuras > 0 && (
@@ -594,7 +593,7 @@ function ResultsCard() {
                                     void showRewarded(PLACEMENT.doubleAuras).then((result) => {
                                         setBusy(false);
                                         if (result !== "verified") {
-                                            store.patch({ toast: t("AdUnavailable") });
+                                            store.patch({ toast: "NO VIDEO AVAILABLE RIGHT NOW" });
                                             void runtimeServices.haptic("error");
                                             return;
                                         }
@@ -609,7 +608,7 @@ function ResultsCard() {
                                     });
                                 }}
                             >
-                                {busy ? t("AdLoading") : t("ResultsDoubleAuras", { auras: summary.aurasEarned })}
+                                {busy ? "LOADING…" : `WATCH · DOUBLE ${summary.aurasEarned} AURAS`}
                             </button>
                         )}
 
@@ -630,7 +629,7 @@ function ResultsCard() {
                                     });
                                 }}
                             >
-                                {t("ResultsAgain")}
+                                {"PLAY AGAIN"}
                             </button>
                         )}
                         {isCorrespondence && (
@@ -662,7 +661,7 @@ function ResultsCard() {
                                 void saveSystem.flush();
                             }}
                         >
-                            {isCorrespondence ? "BACK TO YOUR GAMES" : t("ResultsLounge")}
+                            {isCorrespondence ? "BACK TO YOUR GAMES" : "BACK TO LOUNGE"}
                         </button>
                     </div>
                 </div>
@@ -698,8 +697,8 @@ function LeaveSheet({ onStay, onSave, onEnd }: { onStay: () => void; onSave: () 
 function PauseCard() {
     return (
         <div className="modal-card pointer-events-auto">
-            <p className="eyebrow">{t("PausedEyebrow")}</p>
-            <h2>{t("Paused")}</h2>
+            <p className="eyebrow">{"MATCH HELD"}</p>
+            <h2>{"PAUSED"}</h2>
             <button
                 type="button"
                 className="play-button"
@@ -708,7 +707,7 @@ function PauseCard() {
                     resumeFromPause();
                 }}
             >
-                {t("PausedResume")}
+                {"TAP TO RESUME"}
             </button>
         </div>
     );
@@ -722,7 +721,7 @@ function InGameSettings({ onClose, onEndSolo }: { onClose: () => void; onEndSolo
 
     return (
         <div className="modal-card pointer-events-auto settings-sheet">
-            <p className="eyebrow">{t("MenuSettings")}</p>
+            <p className="eyebrow">{"SETTINGS"}</p>
             <SettingToggle
                 label="Music"
                 checked={musicEnabled}
@@ -773,7 +772,7 @@ function InGameSettings({ onClose, onEndSolo }: { onClose: () => void; onEndSolo
                     onClose();
                 }}
             >
-                {t("ButtonDone")}
+                {"DONE"}
             </button>
         </div>
     );

@@ -1,8 +1,7 @@
 import type { ReactNode } from "react";
-import lucidmateMascots from "../assets/art/lucidmate-mascots.png";
+import lucidmateMascots from "../assets/art/lucidmate-mascots.webp";
 import { audioManager } from "../audio/audioManager.ts";
 import { type MenuScreen, store } from "../state/store.ts";
-import { t } from "../systems/localization.ts";
 import { runtimeServices } from "../systems/runtimeServices.ts";
 
 export default function MenuScreenLayout({
@@ -35,7 +34,7 @@ export default function MenuScreenLayout({
     return (
         <main className="subscreen pt-safe-top">
             <header className="subscreen-header">
-                <button type="button" className="back-button" onClick={() => void back()} aria-label={t("ButtonBack")}>
+                <button type="button" className="back-button" onClick={() => void back()} aria-label={"BACK"}>
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                         <path d="m15 5-7 7 7 7" />
                     </svg>

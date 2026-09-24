@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { audioManager } from "../audio/audioManager.ts";
 import { type AppState, store, useStore } from "../state/store.ts";
-import { LOCALES, selectLocale, t } from "../systems/localization.ts";
 import {
     requestNotificationSelfTest,
     showInAppNotificationTest,
@@ -40,27 +39,24 @@ export default function SettingsScreen() {
             audioManager.play("tap");
         } else {
             audioManager.play("reject");
-            store.patch({ toast: result === "unavailable" ? t("SettingsUnavailable") : t("NotificationFailed") });
+            store.patch({
+                toast:
+                    result === "unavailable" ? "Not available right now" : "Could not update notification preference",
+            });
         }
-    };
-
-    const setLocale = (locale: string) => {
-        audioManager.play("tap");
-        void runtimeServices.haptic("light");
-        selectLocale(locale);
     };
 
     const testHaptic = async () => {
         await audioManager.unlock();
         audioManager.play("reward");
         const sent = await runtimeServices.haptic("success");
-        store.patch({ toast: sent ? t("HapticSent") : t("HapticUnsupported") });
+        store.patch({ toast: sent ? "Haptic sent" : "Haptics unsupported here" });
     };
 
     const testNotifications = async () => {
         await audioManager.unlock();
         setNotificationTestBusy(true);
-        setNotificationTestStatus("NotificationTestStarting");
+        setNotificationTestStatus("Contacting RUN…");
         audioManager.play("tap");
         void runtimeServices.haptic("light");
 
@@ -68,7 +64,9 @@ export default function SettingsScreen() {
             const preference = await updateNotificationPreference(true);
             if (preference !== "enabled") {
                 const resultKey =
-                    preference === "unavailable" ? "NotificationTestUnavailable" : "NotificationTestFailed";
+                    preference === "unavailable"
+                        ? "Alert testing is available inside the RUN app."
+                        : "No alert was scheduled. Check RUN notification permission and try again.";
                 setNotificationTestStatus(resultKey);
                 setNotificationTestBusy(false);
                 audioManager.play("reject");
@@ -79,9 +77,9 @@ export default function SettingsScreen() {
 
         const result: NotificationSelfTestResult = await requestNotificationSelfTest();
         const statusKey: Record<NotificationSelfTestResult, string> = {
-            scheduled: "NotificationTestScheduled",
-            unavailable: "NotificationTestUnavailable",
-            failed: "NotificationTestFailed",
+            scheduled: "Scheduled. Close RUN now.",
+            unavailable: "Alert testing is available inside the RUN app.",
+            failed: "No alert was scheduled. Check RUN notification permission and try again.",
         };
         const resultKey = statusKey[result];
         setNotificationTestStatus(resultKey);
@@ -95,20 +93,20 @@ export default function SettingsScreen() {
         await audioManager.unlock();
         audioManager.play("tap");
         void runtimeServices.haptic("light");
-        const shown = await showInAppNotificationTest(t("NotificationTestInAppMessage"));
-        if (!shown) store.patch({ toast: t("NotificationTestUnavailable") });
+        const shown = await showInAppNotificationTest("Lucidmate in-app alerts are working.");
+        if (!shown) store.patch({ toast: "Alert testing is available inside the RUN app." });
     };
 
     return (
-        <MenuScreenLayout title={t("MenuSettings")} kicker={t("KickerSettings")}>
+        <MenuScreenLayout title={"SETTINGS"} kicker={"CONTROLS"}>
             <div className="settings-list">
                 <SettingToggle
-                    label={t("SettingsMusic")}
+                    label={"Music"}
                     checked={state.musicEnabled}
                     onChange={(value) => persist({ musicEnabled: value })}
                 />
                 <label className="setting-slider">
-                    <span>{t("SettingsMusicVolume")}</span>
+                    <span>{"Music volume"}</span>
                     <input
                         type="range"
                         min="0"
@@ -119,12 +117,12 @@ export default function SettingsScreen() {
                     />
                 </label>
                 <SettingToggle
-                    label={t("SettingsSfx")}
+                    label={"Sound effects"}
                     checked={state.sfxEnabled}
                     onChange={(value) => persist({ sfxEnabled: value })}
                 />
                 <label className="setting-slider">
-                    <span>{t("SettingsSfxVolume")}</span>
+                    <span>{"SFX volume"}</span>
                     <input
                         type="range"
                         min="0"
@@ -135,21 +133,21 @@ export default function SettingsScreen() {
                     />
                 </label>
                 <label className="setting-row">
-                    <span>{t("SettingsHaptics")}</span>
+                    <span>{"Haptics"}</span>
                     <div className="setting-actions">
                         <input
-                            aria-label={t("SettingsHaptics")}
+                            aria-label={"Haptics"}
                             type="checkbox"
                             checked={state.hapticsEnabled}
                             onChange={(event) => persist({ hapticsEnabled: event.target.checked })}
                         />
                         <button type="button" disabled={!state.hapticsEnabled} onClick={() => void testHaptic()}>
-                            {t("ButtonTest")}
+                            {"TEST"}
                         </button>
                     </div>
                 </label>
                 <SettingToggle
-                    label={t("SettingsReducedMotion")}
+                    label={"Reduced motion"}
                     checked={state.reducedMotion}
                     onChange={(value) => {
                         document.documentElement.dataset.reducedMotion = String(value);
@@ -157,7 +155,7 @@ export default function SettingsScreen() {
                     }}
                 />
                 <label className="setting-row">
-                    <span>{t("SettingsNotifications")}</span>
+                    <span>{"Notifications"}</span>
                     <button
                         type="button"
                         disabled={notificationBusy}
@@ -166,40 +164,30 @@ export default function SettingsScreen() {
                         {notificationBusy
                             ? "…"
                             : turnAlertsOn
-                              ? t("ToggleOn")
+                              ? "ON"
                               : state.notificationsEnabled
-                                ? t("ToggleAsk")
+                                ? "ASK"
                                 : state.notificationsConsent === "denied"
-                                  ? t("ToggleOff")
-                                  : t("ToggleAsk")}
+                                  ? "OFF"
+                                  : "ASK"}
                     </button>
                 </label>
-                <label className="setting-row">
-                    <span>{t("SettingsLanguage")}</span>
-                    <select value={state.locale} onChange={(event) => setLocale(event.target.value)}>
-                        {LOCALES.map((locale) => (
-                            <option key={locale.id} value={locale.id}>
-                                {locale.label}
-                            </option>
-                        ))}
-                    </select>
-                </label>
                 <div className="setting-row">
-                    <span>{t("SettingsQuality")}</span>
+                    <span>{"Graphics quality"}</span>
                     <div className="segmented">
                         <button
                             type="button"
                             className={state.quality === "low" ? "active" : ""}
                             onClick={() => persist({ quality: "low" })}
                         >
-                            {t("SettingsLow")}
+                            {"Low"}
                         </button>
                         <button
                             type="button"
                             className={state.quality === "high" ? "active" : ""}
                             onClick={() => persist({ quality: "high" })}
                         >
-                            {t("SettingsHigh")}
+                            {"High"}
                         </button>
                     </div>
                 </div>
@@ -218,15 +206,21 @@ export default function SettingsScreen() {
                     </span>
                     <div>
                         <p className="eyebrow" id="notification-test-heading">
-                            {t("SettingsTestAlerts")}
+                            {"ALERT LAB"}
                         </p>
-                        <h3>{t("SettingsTestTitle")}</h3>
+                        <h3>{"Make sure Lucidmate can find you."}</h3>
                     </div>
                 </div>
-                <p className="notification-test-copy">{t("SettingsTestCopy")}</p>
-                <p className="notification-test-disclaimer">{t("SettingsTestDisclaimer")}</p>
+                <p className="notification-test-copy">
+                    {"A phone notification arrives in 5 seconds. This tests alert permission on this device."}
+                </p>
+                <p className="notification-test-disclaimer">
+                    {
+                        "Tap the test then close RUN immediately. Push + Inbox testing will appear after RUN adds remote game alerts."
+                    }
+                </p>
                 <p className="notification-test-status" role="status">
-                    {notificationTestStatus ? t(notificationTestStatus) : "\u00a0"}
+                    {notificationTestStatus ?? "\u00a0"}
                 </p>
                 <div className="notification-test-actions">
                     <button
@@ -235,14 +229,14 @@ export default function SettingsScreen() {
                         disabled={notificationTestBusy}
                         onClick={() => void testNotifications()}
                     >
-                        {notificationTestBusy ? t("NotificationTestScheduling") : t("SettingsTestPhone")}
+                        {notificationTestBusy ? "SCHEDULING…" : "ALERT \u00b7 5 SEC"}
                     </button>
                     <button type="button" onClick={() => void testInAppNotification()}>
-                        {t("SettingsTestInApp")}
+                        {"SHOW IN-APP"}
                     </button>
                 </div>
             </section>
-            <p className="safety-note">{t("NotificationConsentNote")}</p>
+            <p className="safety-note">{"Notifications are optional and can be turned off anytime."}</p>
         </MenuScreenLayout>
     );
 }

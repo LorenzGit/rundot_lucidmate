@@ -112,7 +112,6 @@ export interface AppState {
     notificationsConsent: "unknown" | "granted" | "denied";
     hapticsEnabled: boolean;
     reducedMotion: boolean;
-    locale: string;
     quality: "high" | "low";
 
     toast: string | null;
@@ -203,7 +202,6 @@ let state: AppState = {
     notificationsConsent: "unknown",
     hapticsEnabled: true,
     reducedMotion: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false,
-    locale: "English",
     quality: "high",
 
     toast: null,

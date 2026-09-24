@@ -18,7 +18,6 @@ import { createMatchLaunchRouter } from "./sdk/matchLaunchRouter.ts";
 import { rivalsClient } from "./social/rivalsClient.ts";
 import { store } from "./state/store.ts";
 import { analytics } from "./systems/analytics/analyticsConfig.ts";
-import { restoreLocale } from "./systems/localization.ts";
 import { runtimeServices } from "./systems/runtimeServices.ts";
 import { saveSystem } from "./systems/save.ts";
 import App from "./ui/App.tsx";
@@ -85,7 +84,6 @@ async function boot() {
     analytics.funnelStep("load", 3);
     document.documentElement.dataset.reducedMotion = String(store.get().reducedMotion);
     document.documentElement.dataset.quality = store.get().quality;
-    restoreLocale();
     audioManager.bind();
 
     // Re-anchor return reminders only after the player's save and locale are

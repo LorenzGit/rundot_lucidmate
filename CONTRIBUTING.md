@@ -1,8 +1,7 @@
 # Contributing
 
-Thank you for improving `rundot_template`, the RUN renderer and platform
-reference. Keep contributions small, reviewable, and safe for downstream game
-creators.
+Thank you for improving LUCIDMATE. Keep contributions small, reviewable, and
+safe for the players already on RUN.
 
 ## Before opening a pull request
 
@@ -14,7 +13,7 @@ creators.
    privileged operation, or billed generation result.
 4. Preserve local fallback behavior, capability checks, bounded SDK calls,
    lifecycle cleanup, relative asset paths, and fail-closed platform IDs.
-5. Run `npm run format`, then `npm run check:all`.
+5. Run `npm run format`, then `npm run check`.
 6. Update documentation and the visible package version when behavior changes.
 
 Do not commit credentials, environment files, RUN session data, player data,

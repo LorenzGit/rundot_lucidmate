@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import packageJson from "../../package.json";
-import lucidmateFriendsBoard from "../assets/art/lucidmate-friends-board.png";
-import lucidmateRookbot from "../assets/art/lucidmate-rookbot.png";
+import lucidmateFriendsBoard from "../assets/art/lucidmate-friends-board.webp";
+import lucidmateRookbot from "../assets/art/lucidmate-rookbot.webp";
 import { audioManager } from "../audio/audioManager.ts";
 import { canUseAuthoritativeRealtime } from "../game/chess/onlineClient.ts";
 import { soloResumeCopy } from "../game/chess/soloSave.ts";
@@ -161,7 +161,9 @@ function TurnSpotlight({ matches, allMatches }: { matches: CorrespondenceMatch[]
                 </em>
                 <span className="turn-spotlight-rivalry">
                     <i style={{ "--rival-progress": rivalry.progress } as React.CSSProperties} />
-                    Rivalry {rivalry.level} · {rivalry.name}
+                    <span>
+                        Rivalry {rivalry.level} · {rivalry.name}
+                    </span>
                 </span>
             </span>
             <span className="turn-spotlight-cta">
